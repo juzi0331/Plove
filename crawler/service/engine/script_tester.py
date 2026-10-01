@@ -98,12 +98,18 @@ class ScriptTester:
         from .proxy_manager import proxy_manager
         env.update(proxy_manager.get_env())
 
-        # 注入 crawler_kit 所在目录
-        crawler_dir = Path(__file__).resolve().parents[2] / "crawler"
+        # 注入 crawler_kit 所在目录与项目根目录
+        crawler_dir = Path(__file__).resolve().parents[2]
+        project_root = crawler_dir.parent
+        sites_dir = crawler_dir / "sites"
         if crawler_dir.is_dir():
             crawler_root = str(crawler_dir)
+            env["CRAWLER_KIT_PATH"] = crawler_root
             existing = env.get("PYTHONPATH", "")
-            env["PYTHONPATH"] = f"{crawler_root}{os.pathsep}{existing}" if existing else crawler_root
+            pp_parts = [crawler_root, str(project_root)]
+            if existing:
+                pp_parts.append(existing)
+            env["PYTHONPATH"] = os.pathsep.join(pp_parts)
 
         try:
             proc = subprocess.run(  # noqa: S603
@@ -114,6 +120,7 @@ class ScriptTester:
                 errors="replace",
                 timeout=15.0,
                 env=env,
+                cwd=str(sites_dir) if sites_dir.is_dir() else None,
             )
         except subprocess.TimeoutExpired:
             return False, None, f"运行 {command} 超时 (超过 15 秒)"
@@ -162,8 +169,11 @@ class ScriptTester:
         if not ast_ok:
             return FullSuiteReport(all_passed=False, key=detected_key, site_name=site_name, steps=steps, can_deploy=False)
 
-        # 写入临时文件测试
-        with tempfile.NamedTemporaryFile("w", suffix=".py", encoding="utf-8", delete=False) as tmp:
+        # 写入临时文件测试（落在 crawler/sites 目录下以确保与正式脚本一致的模块寻址环境）
+        crawler_dir = Path(__file__).resolve().parents[2]
+        sites_dir = crawler_dir / "sites"
+        sites_dir.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile("w", prefix="_tmp_test_", suffix=".py", dir=str(sites_dir), encoding="utf-8", delete=False) as tmp:
             tmp.write(self.code)
             tmp_path = Path(tmp.name)
 

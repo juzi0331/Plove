@@ -247,11 +247,7 @@ function openDetail(item: { vod_id?: string | number }): void {
 
 function goBack(): void {
   saveState()
-  if (window.history.length > 1) {
-    router.back()
-  } else {
-    void router.push({ name: 'home' })
-  }
+  void router.push({ name: 'home' })
 }
 </script>
 

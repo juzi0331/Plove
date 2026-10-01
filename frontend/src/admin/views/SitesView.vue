@@ -1656,14 +1656,14 @@ async function saveDetailPolicy(): Promise<void> {
 }
 
 .file-upload-dropzone {
-  border: 2px dashed var(--el-border-color);
+  border: 1px dashed var(--el-border-color);
   border-radius: 8px;
   background-color: var(--el-fill-color-blank);
   text-align: center;
-  padding: 22px 16px;
+  padding: 14px 12px;
   cursor: pointer;
   transition: all 0.2s ease;
-  margin-bottom: 18px;
+  margin-bottom: 14px;
 }
 
 .file-upload-dropzone:hover {
@@ -1671,16 +1671,35 @@ async function saveDetailPolicy(): Promise<void> {
   background-color: var(--el-color-primary-light-9);
 }
 
+.dropzone-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
 .dropzone-icon {
-  font-size: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-bottom: 4px;
   color: var(--el-color-primary);
-  margin-bottom: 8px;
+}
+
+.dropzone-icon :deep(svg),
+.dropzone-icon svg {
+  width: 26px !important;
+  height: 26px !important;
+  max-width: 26px !important;
+  max-height: 26px !important;
 }
 
 .dropzone-text {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--el-text-color-regular);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .dropzone-text strong {
@@ -1688,20 +1707,20 @@ async function saveDetailPolicy(): Promise<void> {
 }
 
 .dropzone-sub {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--el-text-color-secondary);
 }
 
 .selected-file-badge {
-  margin-top: 12px;
+  margin-top: 10px;
   display: inline-flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   background: var(--el-fill-color-light);
   border: 1px solid var(--el-border-color-lighter);
-  padding: 5px 14px;
-  border-radius: 16px;
-  font-size: 13px;
+  padding: 4px 12px;
+  border-radius: 14px;
+  font-size: 12px;
 }
 
 .file-name-tag strong {

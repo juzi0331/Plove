@@ -146,14 +146,16 @@ watch(() => sites.currentKey, () => void loadDetail())
 watch(() => device.restoredAt, () => void loadDetail())
 
 function goBack(): void {
-  // 优先返回最初进入详情页的列表/大厅（分类页或主页）
-  const origin = initialReferrer.value || sessionStorage.getItem('plove_detail_origin')
-  if (origin && !origin.includes('/detail/')) {
-    void router.push(origin)
-  } else if (window.history.length > 1) {
+  // 详情页点击返回：使用浏览器的后退返回到刚才的列表或大厅
+  if (window.history.length > 1) {
     router.back()
   } else {
-    void router.push({ name: 'home' })
+    const origin = initialReferrer.value || sessionStorage.getItem('plove_detail_origin')
+    if (origin && !origin.includes('/detail/')) {
+      void router.replace(origin)
+    } else {
+      void router.replace({ name: 'home' })
+    }
   }
 }
 

@@ -267,8 +267,6 @@ def check_category_allowed(key: str, tid: str | None, store: SiteSettingsStore) 
             if isinstance(s, dict) and str(s.get("tid")) == target_tid and s.get("hidden"):
                 raise AppError(ErrorCode.FORBIDDEN, f"该二级分类已被停用: {tid}")
 
-        raise AppError(ErrorCode.FORBIDDEN, f"该分类已被停用: {tid}")
-
 
 # ------------------------------------------------------------------ 详情页显示与清洗策略
 
