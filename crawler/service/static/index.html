@@ -813,10 +813,14 @@
       align-items: center;
       justify-content: space-between;
     }
+
+    [v-cloak] {
+      display: none !important;
+    }
   </style>
 </head>
 <body>
-  <div id="app">
+  <div id="app" v-cloak>
     <!-- 顶部导航 -->
     <header>
       <div class="brand">
@@ -1431,7 +1435,7 @@
   <script>
     const { createApp, ref, computed, onMounted } = Vue;
 
-    createApp({
+    const app = createApp({
       setup() {
         const tab = ref('smart');
         const sites = ref([]);
