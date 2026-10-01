@@ -80,6 +80,17 @@ class CrawlerRunner:
         env["PYTHONIOENCODING"] = "utf-8"
         env.setdefault("PYTHONUTF8", "1")
 
+        # 确保子进程无论在任何工作目录下执行，都能精确加载 crawler_kit
+        crawler_dir = self.sites_dir.parent
+        project_root = crawler_dir.parent
+        if crawler_dir.is_dir():
+            env["CRAWLER_KIT_PATH"] = str(crawler_dir)
+            existing_pp = env.get("PYTHONPATH", "")
+            pp_parts = [str(crawler_dir), str(project_root)]
+            if existing_pp:
+                pp_parts.append(existing_pp)
+            env["PYTHONPATH"] = os.pathsep.join(pp_parts)
+
         logger.debug("跑爬虫 key=%s command=%s timeout=%ss", key, command, timeout)
 
         try:
@@ -91,6 +102,7 @@ class CrawlerRunner:
                 errors="replace",
                 timeout=timeout,
                 env=env,
+                cwd=str(self.sites_dir) if self.sites_dir.is_dir() else None,
             )
         except subprocess.TimeoutExpired as exc:
             raise AppError(

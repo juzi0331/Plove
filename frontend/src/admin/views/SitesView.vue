@@ -19,6 +19,7 @@ import {
   Refresh,
   Setting,
   Upload,
+  UploadFilled,
 } from '@element-plus/icons-vue'
 import {
   ElButton,
@@ -164,12 +165,77 @@ const uploadOverwrite = ref(false)
 const validating = ref(false)
 const uploading = ref(false)
 const validateResult = ref<CrawlerValidateResult | null>(null)
+const selectedFileName = ref('')
+const selectedFileSize = ref(0)
+const fileInputRef = ref<HTMLInputElement | null>(null)
+
+function triggerFileInput(): void {
+  fileInputRef.value?.click()
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
+}
+
+function processFile(file: File): void {
+  if (!file.name.endsWith('.py')) {
+    ElMessage.warning('请选择 .py 格式的 Python 采集器脚本文件')
+    return
+  }
+  selectedFileName.value = file.name
+  selectedFileSize.value = file.size
+
+  // 自动从文件名提取 key，如 xiaoyakankan.py -> xiaoyakankan
+  const inferredKey = file.name.replace(/\.py$/i, '').trim()
+  if (inferredKey && (!uploadKey.value || uploadKey.value === '')) {
+    uploadKey.value = inferredKey
+  }
+
+  const reader = new FileReader()
+  reader.onload = (event) => {
+    const text = event.target?.result as string
+    if (text) {
+      uploadCode.value = text
+      ElMessage.success(`已成功载入文件：${file.name}`)
+      // 载入成功后，自动执行一次在线校验，给用户最直接的审计反馈
+      handleValidateCrawler()
+    }
+  }
+  reader.onerror = () => {
+    ElMessage.error('读取文件内容失败，请重试')
+  }
+  reader.readAsText(file, 'utf-8')
+}
+
+function handleFileDrop(e: DragEvent): void {
+  const files = e.dataTransfer?.files
+  if (!files || files.length === 0) return
+  processFile(files[0])
+}
+
+function handleFileChange(e: Event): void {
+  const target = e.target as HTMLInputElement
+  const files = target.files
+  if (!files || files.length === 0) return
+  processFile(files[0])
+}
+
+function clearSelectedFile(): void {
+  selectedFileName.value = ''
+  selectedFileSize.value = 0
+  if (fileInputRef.value) fileInputRef.value.value = ''
+}
 
 function openUploadDialog(): void {
   uploadKey.value = ''
   uploadCode.value = ''
   uploadOverwrite.value = false
   validateResult.value = null
+  selectedFileName.value = ''
+  selectedFileSize.value = 0
+  if (fileInputRef.value) fileInputRef.value.value = ''
   isUploadVisible.value = true
 }
 
@@ -944,11 +1010,43 @@ async function saveDetailPolicy(): Promise<void> {
       destroy-on-close
     >
       <ElForm label-position="top">
+        <!-- 本地文件选择与拖拽上传区域 -->
+        <div
+          class="file-upload-dropzone"
+          @dragover.prevent
+          @drop.prevent="handleFileDrop"
+          @click="triggerFileInput"
+        >
+          <input
+            ref="fileInputRef"
+            type="file"
+            accept=".py"
+            style="display: none;"
+            @change="handleFileChange"
+          />
+          <div class="dropzone-content">
+            <el-icon class="dropzone-icon"><UploadFilled /></el-icon>
+            <div class="dropzone-text">
+              <strong>点击选择本地 .py 文件</strong> 或直接拖拽文件到这里
+            </div>
+            <div class="dropzone-sub">
+              选择后将自动提取站点 Key、载入完整源代码并自动执行全链路安全冒烟校验
+            </div>
+          </div>
+          <div v-if="selectedFileName" class="selected-file-badge" @click.stop>
+            <span class="file-name-tag">
+              📄 已载入文件：<strong>{{ selectedFileName }}</strong>（{{ formatFileSize(selectedFileSize) }}）
+            </span>
+            <ElButton size="small" type="primary" link @click.stop="triggerFileInput">更换文件</ElButton>
+            <ElButton size="small" type="danger" link @click.stop="clearSelectedFile">清除</ElButton>
+          </div>
+        </div>
+
         <ElFormItem label="站点 Key（英文小写下划线，对应 crawler/sites/<key>.py）" required>
           <ElInput v-model="uploadKey" placeholder="如：my_vod_site" />
         </ElFormItem>
 
-        <ElFormItem label="采集器 Python 源代码" required>
+        <ElFormItem label="采集器 Python 源代码（支持上方直接选文件载入，或在此手动粘贴与微调）" required>
           <ElInput
             v-model="uploadCode"
             type="textarea"
@@ -1555,6 +1653,59 @@ async function saveDetailPolicy(): Promise<void> {
   font-size: 13px;
   line-height: 1.5;
   background: var(--el-fill-color-light);
+}
+
+.file-upload-dropzone {
+  border: 2px dashed var(--el-border-color);
+  border-radius: 8px;
+  background-color: var(--el-fill-color-blank);
+  text-align: center;
+  padding: 22px 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 18px;
+}
+
+.file-upload-dropzone:hover {
+  border-color: var(--el-color-primary);
+  background-color: var(--el-color-primary-light-9);
+}
+
+.dropzone-icon {
+  font-size: 38px;
+  color: var(--el-color-primary);
+  margin-bottom: 8px;
+}
+
+.dropzone-text {
+  font-size: 14px;
+  color: var(--el-text-color-regular);
+  margin-bottom: 4px;
+}
+
+.dropzone-text strong {
+  color: var(--el-color-primary);
+}
+
+.dropzone-sub {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
+
+.selected-file-badge {
+  margin-top: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--el-fill-color-light);
+  border: 1px solid var(--el-border-color-lighter);
+  padding: 5px 14px;
+  border-radius: 16px;
+  font-size: 13px;
+}
+
+.file-name-tag strong {
+  color: var(--el-color-primary);
 }
 
 .upload-options {

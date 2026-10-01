@@ -77,12 +77,16 @@ def _load_crawler_kit():
         pass
 
     here = os.path.dirname(os.path.abspath(__file__))
+    cwd = os.getcwd()
     bases = (
         os.environ.get("CRAWLER_KIT_PATH") or "",
         here,
         os.path.dirname(here),
-        os.getcwd(),
-        os.path.join(os.getcwd(), "crawler"),
+        os.path.dirname(os.path.dirname(here)),
+        cwd,
+        os.path.join(cwd, "crawler"),
+        os.path.join(os.path.dirname(cwd), "crawler"),
+        os.path.join(os.path.dirname(os.path.dirname(cwd)), "crawler"),
     )
     for base in bases:
         if base and os.path.isdir(os.path.join(base, "crawler_kit")):

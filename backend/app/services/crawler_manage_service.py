@@ -88,10 +88,17 @@ def _probe_meta(script_path: Path, python_exe: str | None = None) -> tuple[bool,
 
     # 确保隔离临时文件子进程也能加载并导入 crawler_kit
     crawler_dir = Path(__file__).resolve().parents[3] / "crawler"
+    project_root = crawler_dir.parent
     if crawler_dir.is_dir():
         crawler_root = str(crawler_dir)
+        env["CRAWLER_KIT_PATH"] = crawler_root
         existing_pp = env.get("PYTHONPATH", "")
-        env["PYTHONPATH"] = f"{crawler_root}{os.pathsep}{existing_pp}" if existing_pp else crawler_root
+        pp_parts = [crawler_root, str(project_root)]
+        if existing_pp:
+            pp_parts.append(existing_pp)
+        env["PYTHONPATH"] = os.pathsep.join(pp_parts)
+
+    sites_exec_dir = crawler_dir / "sites" if (crawler_dir / "sites").is_dir() else script_path.parent
 
     try:
         proc = subprocess.run(  # noqa: S603
@@ -102,6 +109,7 @@ def _probe_meta(script_path: Path, python_exe: str | None = None) -> tuple[bool,
             errors="replace",
             timeout=4.0,
             env=env,
+            cwd=str(sites_exec_dir),
         )
     except subprocess.TimeoutExpired:
         return False, None, "试运行 meta 超时（超过 4 秒未返回）"
@@ -157,8 +165,16 @@ def validate_crawler_code(
         )
     checks.append("语法与安全审计通过")
 
-    # 2. 临时写出并试跑 meta 命令
-    with tempfile.NamedTemporaryFile("w", suffix=".py", encoding="utf-8", delete=False) as tmp:
+    # 2. 临时写出并试跑 meta 命令（优先落在 sites_dir 下，保证天然享有同级 crawler_kit 寻址环境）
+    target_dir = sites_dir if sites_dir.is_dir() else None
+    with tempfile.NamedTemporaryFile(
+        "w",
+        prefix="_tmp_val_",
+        suffix=".py",
+        dir=str(target_dir) if target_dir else None,
+        encoding="utf-8",
+        delete=False,
+    ) as tmp:
         tmp.write(code)
         tmp_path = Path(tmp.name)
 
