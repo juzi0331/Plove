@@ -193,9 +193,9 @@ def _split_tag2(text):
 
 
 def _nav_categories(root):
-    """首页分类：顶部导航（10 电影 / 11 连续剧 / 12 综艺 / 13 动漫 / 15 福利）
-    加上各板块的子分类（1001 动作片…）。``全部xx`` 与导航 tid 重叠，去重丢弃。"""
-    out = []
+    """首页分类：顶部大类（10 电影 / 11 连续剧 / 12 综艺 / 13 动漫 / 15 福利）
+    各自挂载所属的子分类（1001 动作片…），并以结构化树形 categories[i].subcategories 输出。"""
+    nav_names = {}
     head = root.select_first(".m4-head") or root
     for anchor in head.select('a[href^="/cat/"]'):
         match = re.search(r"/cat/(\d+)\.html", anchor.attr("href") or "")
@@ -204,16 +204,58 @@ def _nav_categories(root):
         span = anchor.select_first("span")
         name = clean.collapse(span.text if span is not None else anchor.text)
         if name:
-            out.append({"tid": match.group(1), "name": name})
+            nav_names[match.group(1)] = name
+
+    categories = []
+    seen_parent_tids = set()
+
     for meta in root.select(".m4-meta"):
-        for anchor in meta.select('a[href^="/cat/"]'):
+        links = meta.select('a[href^="/cat/"]')
+        if not links:
+            continue
+        first_match = re.search(r"/cat/(\d+)\.html", links[0].attr("href") or "")
+        if not first_match:
+            continue
+        parent_tid = first_match.group(1)
+        if parent_tid in seen_parent_tids:
+            continue
+        seen_parent_tids.add(parent_tid)
+
+        parent_name = nav_names.get(parent_tid, clean.collapse(links[0].text))
+        if parent_name.startswith("全部"):
+            parent_name = parent_name[2:]
+
+        subcats = []
+        # 第一个放 "全部{大类名}"，tid 为父级 tid（例如 10: 全部电影）
+        subcats.append({"tid": parent_tid, "name": f"全部{parent_name}"})
+
+        for anchor in links[1:]:
             match = re.search(r"/cat/(\d+)\.html", anchor.attr("href") or "")
             if not match:
                 continue
-            name = clean.collapse(anchor.text)
-            if name:
-                out.append({"tid": match.group(1), "name": name})
-    return clean.dedupe(out, key=lambda item: item["tid"])
+            sub_name = clean.collapse(anchor.text)
+            if sub_name and not sub_name.startswith("全部"):
+                subcats.append({"tid": match.group(1), "name": sub_name})
+
+        # 去重子分类
+        deduped_subs = clean.dedupe(subcats, key=lambda s: s["tid"])
+        categories.append({
+            "tid": parent_tid,
+            "name": parent_name,
+            "subcategories": deduped_subs
+        })
+
+    # 兜底补齐：如果在 head 中有大类但在 meta 里没扫到
+    for tid, name in nav_names.items():
+        if tid not in seen_parent_tids:
+            clean_name = name[2:] if name.startswith("全部") else name
+            categories.append({
+                "tid": tid,
+                "name": clean_name,
+                "subcategories": [{"tid": tid, "name": f"全部{clean_name}"}]
+            })
+
+    return categories
 
 
 def _max_page(root, tid):

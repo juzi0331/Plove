@@ -74,6 +74,11 @@ def get_category_rules_payload(
             for s in saved_item.get("subcategories", [])
             if isinstance(s, dict) and "tid" in s
         ]
+        if not subcats and cat.subcategories:
+            subcats = [
+                SubCategoryItem(tid=str(s.tid), name=str(s.name))
+                for s in cat.subcategories
+            ]
         rules.append(
             CategoryRuleItem(
                 tid=tid,
@@ -159,15 +164,15 @@ def apply_category_rules(
 
         name = cat.name
         sort_order = 0
-        subcategories: list[SubCategory] = []
+        subcategories: list[SubCategory] = list(cat.subcategories)
 
         if rule:
             custom_name = rule.get("custom_name", "").strip()
             if custom_name:
                 name = custom_name
             sort_order = int(rule.get("sort_order", 0))
-            subcats_raw = rule.get("subcategories", [])
-            if isinstance(subcats_raw, list):
+            subcats_raw = rule.get("subcategories")
+            if isinstance(subcats_raw, list) and subcats_raw:
                 subcategories = [
                     SubCategory(tid=str(s.get("tid")), name=str(s.get("name")))
                     for s in subcats_raw
