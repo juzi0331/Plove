@@ -46,7 +46,20 @@ const siteSelectorRef = ref<InstanceType<typeof SiteSelector> | null>(null)
 // 下面视频展示行：随机选取 3 个互不重复的真实分类行展示
 const displayedSections = ref<HomeSection[]>([])
 
-const categories = computed(() => home.value?.categories ?? [])
+function formatCatDisplay(name?: string, custom?: string): string {
+  if (!name) return ''
+  if (!custom || !custom.trim()) return name
+  let c = custom.trim()
+  if ((c.startsWith('(') && c.endsWith(')')) || (c.startsWith('（') && c.endsWith('）'))) {
+    c = c.slice(1, -1).trim()
+  }
+  if (!c) return name
+  const suffix = `（${c}）`
+  if (name.endsWith(suffix)) return name
+  return `${name}${suffix}`
+}
+
+const categories = computed(() => (home.value?.categories ?? []).filter((c) => !c.hidden))
 const recommend = computed(() => home.value?.recommend ?? [])
 const sections = computed(() => home.value?.sections ?? [])
 
@@ -195,7 +208,7 @@ function scrollRow(rowId: string, direction: 'left' | 'right'): void {
             type="button"
             @click="onSelectCategory(cat.tid)"
           >
-            {{ cat.name || cat.tid }}
+            {{ formatCatDisplay(cat.name, cat.custom_name) || cat.tid }}
           </button>
         </nav>
       </div>

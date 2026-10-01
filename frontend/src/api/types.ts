@@ -520,12 +520,16 @@ export interface SitePreheatDetail {
 export interface SubCategory {
   tid: string
   name?: string
+  custom_name?: string
+  hidden?: boolean
 }
 
 /** 子分类/二级筛选标签。 */
 export interface SubCategoryItem {
   tid: string
   name: string
+  custom_name?: string
+  hidden?: boolean
 }
 
 /** 紧急停服维护模式。 */
@@ -558,6 +562,8 @@ export interface SystemStatusPayload {
 export interface VodCategory {
   tid: string
   name?: string
+  custom_name?: string
+  hidden?: boolean
   subcategories?: SubCategory[]
 }
 

@@ -39,6 +39,19 @@ const page = ref(1)
 
 const scrolled = ref(false)
 
+function formatCatDisplay(name?: string, custom?: string): string {
+  if (!name) return ''
+  if (!custom || !custom.trim()) return name
+  let c = custom.trim()
+  if ((c.startsWith('(') && c.endsWith(')')) || (c.startsWith('（') && c.endsWith('）'))) {
+    c = c.slice(1, -1).trim()
+  }
+  if (!c) return name
+  const suffix = `（${c}）`
+  if (name.endsWith(suffix)) return name
+  return `${name}${suffix}`
+}
+
 // 当前主分类与二级分类关系解析
 const currentParentCategory = computed(() => {
   const direct = allCategories.value.find((c) => String(c.tid) === String(props.tid))
@@ -47,18 +60,19 @@ const currentParentCategory = computed(() => {
 })
 
 const currentSubcategories = computed(() => {
-  return currentParentCategory.value?.subcategories || []
+  const subs = currentParentCategory.value?.subcategories || []
+  return subs.filter((s) => !s.hidden)
 })
 
 // 当前分类名称（支持显示 "大类 · 小类"）
 const categoryTitle = computed(() => {
   for (const c of allCategories.value) {
     if (String(c.tid) === String(props.tid)) {
-      return c.name || `分類 #${props.tid}`
+      return formatCatDisplay(c.name, c.custom_name) || `分類 #${props.tid}`
     }
     const sub = c.subcategories?.find((s) => String(s.tid) === String(props.tid))
     if (sub) {
-      return `${c.name} · ${sub.name}`
+      return `${formatCatDisplay(c.name, c.custom_name)} · ${formatCatDisplay(sub.name, sub.custom_name)}`
     }
   }
   return `分類 #${props.tid}`
@@ -272,7 +286,7 @@ function goBack(): void {
             type="button"
             @click="switchCategory(cat.tid)"
           >
-            {{ cat.name || cat.tid }}
+            {{ formatCatDisplay(cat.name, cat.custom_name) || cat.tid }}
           </button>
         </nav>
       </div>
@@ -310,7 +324,7 @@ function goBack(): void {
             type="button"
             @click="switchCategory(sub.tid)"
           >
-            {{ sub.name }}
+            {{ formatCatDisplay(sub.name, sub.custom_name) }}
           </button>
         </div>
       </section>

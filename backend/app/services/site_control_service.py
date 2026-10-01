@@ -39,6 +39,21 @@ def _load_cat_rules_json(raw: str) -> dict[str, Any]:
         return {}
 
 
+def format_category_display_name(raw_name: str, custom_name: str) -> str:
+    """分类重命名规则：
+    若填写了重命名（如"你好"），前端显示格式为"原名（你好）"；
+    若未重命名则直接显示原名。
+    """
+    raw = (raw_name or "").strip()
+    custom = (custom_name or "").strip()
+    if not custom:
+        return raw
+    clean_custom = custom.strip("()（）")
+    if not clean_custom:
+        return raw
+    return f"{raw}（{clean_custom}）"
+
+
 def get_category_rules_payload(
     registry: SiteRegistry,
     store: SiteSettingsStore,
@@ -70,13 +85,23 @@ def get_category_rules_payload(
         seen_tids.add(tid)
         saved_item = saved_rules_map.get(tid, {})
         subcats = [
-            SubCategoryItem(tid=str(s.get("tid")), name=str(s.get("name")))
+            SubCategoryItem(
+                tid=str(s.get("tid")),
+                name=str(s.get("name")),
+                custom_name=str(s.get("custom_name", "")),
+                hidden=bool(s.get("hidden", False)),
+            )
             for s in saved_item.get("subcategories", [])
             if isinstance(s, dict) and "tid" in s
         ]
         if not subcats and cat.subcategories:
             subcats = [
-                SubCategoryItem(tid=str(s.tid), name=str(s.name))
+                SubCategoryItem(
+                    tid=str(s.tid),
+                    name=str(s.name),
+                    custom_name="",
+                    hidden=False,
+                )
                 for s in cat.subcategories
             ]
         rules.append(
@@ -94,7 +119,12 @@ def get_category_rules_payload(
     for tid, saved_item in saved_rules_map.items():
         if tid not in seen_tids:
             subcats = [
-                SubCategoryItem(tid=str(s.get("tid")), name=str(s.get("name")))
+                SubCategoryItem(
+                    tid=str(s.get("tid")),
+                    name=str(s.get("name")),
+                    custom_name=str(s.get("custom_name", "")),
+                    hidden=bool(s.get("hidden", False)),
+                )
                 for s in saved_item.get("subcategories", [])
                 if isinstance(s, dict) and "tid" in s
             ]
@@ -162,22 +192,35 @@ def apply_category_rules(
             # 隐藏该分类
             continue
 
-        name = cat.name
+        raw_name = cat.name or tid
+        name = raw_name
         sort_order = 0
-        subcategories: list[SubCategory] = list(cat.subcategories)
+        subcategories: list[SubCategory] = []
 
         if rule:
-            custom_name = rule.get("custom_name", "").strip()
-            if custom_name:
-                name = custom_name
+            custom_name = rule.get("custom_name", "")
+            name = format_category_display_name(raw_name, custom_name)
             sort_order = int(rule.get("sort_order", 0))
             subcats_raw = rule.get("subcategories")
             if isinstance(subcats_raw, list) and subcats_raw:
-                subcategories = [
-                    SubCategory(tid=str(s.get("tid")), name=str(s.get("name")))
-                    for s in subcats_raw
-                    if isinstance(s, dict) and s.get("tid")
-                ]
+                for s in subcats_raw:
+                    if not isinstance(s, dict) or not s.get("tid"):
+                        continue
+                    # 二级分类被隐藏，前台不展示
+                    if s.get("hidden"):
+                        continue
+                    s_raw_name = str(s.get("name", s.get("tid")))
+                    s_custom = str(s.get("custom_name", ""))
+                    subcategories.append(
+                        SubCategory(
+                            tid=str(s.get("tid")),
+                            name=format_category_display_name(s_raw_name, s_custom),
+                        )
+                    )
+            else:
+                subcategories = list(cat.subcategories)
+        else:
+            subcategories = list(cat.subcategories)
 
         new_cat = VodCategory(tid=tid, name=name, subcategories=subcategories)
         result.append((sort_order, new_cat))
@@ -186,12 +229,20 @@ def apply_category_rules(
     for item in saved_rules_list:
         tid = str(item.get("tid", ""))
         if tid and tid not in seen_tids and not item.get("hidden"):
-            subcategories = [
-                SubCategory(tid=str(s.get("tid")), name=str(s.get("name")))
-                for s in item.get("subcategories", [])
-                if isinstance(s, dict) and s.get("tid")
-            ]
-            name = item.get("custom_name", "").strip() or item.get("name", tid)
+            subcategories = []
+            for s in item.get("subcategories", []):
+                if isinstance(s, dict) and s.get("tid") and not s.get("hidden"):
+                    s_raw_name = str(s.get("name", s.get("tid")))
+                    s_custom = str(s.get("custom_name", ""))
+                    subcategories.append(
+                        SubCategory(
+                            tid=str(s.get("tid")),
+                            name=format_category_display_name(s_raw_name, s_custom),
+                        )
+                    )
+            cat_raw_name = str(item.get("name", tid))
+            cat_custom = str(item.get("custom_name", ""))
+            name = format_category_display_name(cat_raw_name, cat_custom)
             new_cat = VodCategory(tid=tid, name=name, subcategories=subcategories)
             result.append((int(item.get("sort_order", 0)), new_cat))
 
@@ -201,18 +252,21 @@ def apply_category_rules(
 
 
 def check_category_allowed(key: str, tid: str | None, store: SiteSettingsStore) -> None:
-    """若指定分类被后台禁用，直接拒绝访问。"""
+    """若指定分类或二级分类被后台禁用，直接拒绝访问。"""
     if not tid:
         return
     config = store.config(key)
     saved = _load_cat_rules_json(config.category_rules_json)
-    rules_map = {
-        str(item.get("tid")): item
-        for item in saved.get("rules", [])
-        if isinstance(item, dict) and item.get("tid")
-    }
-    rule = rules_map.get(str(tid))
-    if rule and rule.get("hidden"):
+    target_tid = str(tid)
+    for rule in saved.get("rules", []):
+        if not isinstance(rule, dict):
+            continue
+        if str(rule.get("tid")) == target_tid and rule.get("hidden"):
+            raise AppError(ErrorCode.FORBIDDEN, f"该分类已被停用: {tid}")
+        for s in rule.get("subcategories", []):
+            if isinstance(s, dict) and str(s.get("tid")) == target_tid and s.get("hidden"):
+                raise AppError(ErrorCode.FORBIDDEN, f"该二级分类已被停用: {tid}")
+
         raise AppError(ErrorCode.FORBIDDEN, f"该分类已被停用: {tid}")
 
 

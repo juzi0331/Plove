@@ -33,6 +33,7 @@ import {
   ElMessage,
   ElMessageBox,
   ElOption,
+  ElPopover,
   ElRadio,
   ElRadioButton,
   ElRadioGroup,
@@ -384,13 +385,29 @@ const categoryPayload = ref<SiteCategoryRulePayload>({
 })
 
 // 为每个分类维护新增子分类的临时输入
-const subCatInputs = ref<Record<string, { tid: string; name: string }>>({})
+const subCatInputs = ref<Record<string, { tid: string; name: string; custom_name?: string }>>({})
 
-function getSubInput(tid: string): { tid: string; name: string } {
+function getSubInput(tid: string): { tid: string; name: string; custom_name?: string } {
   if (!subCatInputs.value[tid]) {
-    subCatInputs.value[tid] = { tid: '', name: '' }
+    subCatInputs.value[tid] = { tid: '', name: '', custom_name: '' }
   }
   return subCatInputs.value[tid]!
+}
+
+function formatCategoryPreview(rawName: string, customName?: string): string {
+  if (!customName || !customName.trim()) {
+    return rawName
+  }
+  let c = customName.trim()
+  if ((c.startsWith('(') && c.endsWith(')')) || (c.startsWith('（') && c.endsWith('）'))) {
+    c = c.slice(1, -1).trim()
+  }
+  if (!c) return rawName
+  return `${rawName}（${c}）`
+}
+
+function toggleSubCategoryHidden(sub: SubCategoryItem): void {
+  sub.hidden = !sub.hidden
 }
 
 async function openCategoryDrawer(site: AdminSiteItem): Promise<void> {
@@ -408,7 +425,11 @@ async function openCategoryDrawer(site: AdminSiteItem): Promise<void> {
       site_key: res.site_key,
       rules: (res.rules ?? []).map((r) => ({
         ...r,
-        subcategories: r.subcategories ?? [],
+        subcategories: (r.subcategories ?? []).map((s) => ({
+          ...s,
+          custom_name: s.custom_name ?? '',
+          hidden: !!s.hidden,
+        })),
       })),
       default_tid: res.default_tid ?? null,
     }
@@ -433,9 +454,12 @@ function addSubCategory(rule: CategoryRuleItem): void {
   rule.subcategories.push({
     tid: input.tid.trim(),
     name: input.name.trim(),
+    custom_name: input.custom_name?.trim() || '',
+    hidden: false,
   })
   input.tid = ''
   input.name = ''
+  input.custom_name = ''
 }
 
 function removeSubCategory(rule: CategoryRuleItem, sub: SubCategoryItem): void {
@@ -1197,7 +1221,10 @@ async function saveDetailPolicy(): Promise<void> {
             <div v-if="!rule.hidden" class="rule-body">
               <div class="rule-row">
                 <span class="label">前台别名：</span>
-                <ElInput v-model="rule.custom_name" placeholder="留空保持原名" size="small" style="width: 200px;" />
+                <ElInput v-model="rule.custom_name" placeholder="留空保持原名" size="small" style="width: 170px;" clearable />
+                <span class="cat-preview-text">
+                  前台显示：<strong :class="{ 'has-custom': !!rule.custom_name?.trim() }">{{ formatCategoryPreview(rule.name, rule.custom_name) }}</strong>
+                </span>
 
                 <span class="label ml">排序权重：</span>
                 <ElInputNumber v-model="rule.sort_order" size="small" :step="1" style="width: 110px;" />
@@ -1205,18 +1232,62 @@ async function saveDetailPolicy(): Promise<void> {
 
               <!-- 二级子分类标签 -->
               <div class="subcategories-wrap">
-                <div class="sub-label">二级子分类/筛选标签：</div>
+                <div class="sub-label-row">
+                  <span class="sub-label">二级子分类/筛选标签：</span>
+                  <span class="sub-tip-desc">（点击胶囊切换显隐：变红即隐藏；点击 ✏️ 可重命名）</span>
+                </div>
                 <div class="sub-tags">
-                  <ElTag
+                  <div
                     v-for="sub in (rule.subcategories || [])"
                     :key="sub.tid"
-                    size="small"
-                    closable
-                    effect="plain"
-                    @close="removeSubCategory(rule, sub)"
+                    class="sub-item-pill"
+                    :class="{ 'is-hidden': sub.hidden }"
                   >
-                    {{ sub.name }} ({{ sub.tid }})
-                  </ElTag>
+                    <div
+                      class="sub-tag-body"
+                      :title="sub.hidden ? '当前已隐藏（前台不展示），点击恢复展示' : '当前正常展示，点击切换为隐藏（变红）'"
+                      @click="toggleSubCategoryHidden(sub)"
+                    >
+                      <span class="sub-status-dot" :class="sub.hidden ? 'dot-danger' : 'dot-success'" />
+                      <span class="sub-title" :style="{ textDecoration: sub.hidden ? 'line-through' : 'none' }">
+                        {{ formatCategoryPreview(sub.name, sub.custom_name) }}
+                      </span>
+                      <span class="sub-tid">#{{ sub.tid }}</span>
+                      <span v-if="sub.hidden" class="sub-hidden-label">已隐藏</span>
+                    </div>
+
+                    <!-- 重命名二级分类 popover -->
+                    <ElPopover trigger="click" :width="280" placement="top">
+                      <template #reference>
+                        <button class="sub-icon-btn edit-btn" type="button" title="重命名二级分类" @click.stop>
+                          ✏️
+                        </button>
+                      </template>
+                      <div class="sub-popover-content">
+                        <div class="popover-title">重命名二级分类</div>
+                        <div class="popover-orig">原名：{{ sub.name }} (#{{ sub.tid }})</div>
+                        <ElInput
+                          v-model="sub.custom_name"
+                          placeholder="前台别名（留空保持原名）"
+                          size="small"
+                          clearable
+                        />
+                        <div class="popover-preview">
+                          前台显示：<strong>{{ formatCategoryPreview(sub.name, sub.custom_name) }}</strong>
+                        </div>
+                      </div>
+                    </ElPopover>
+
+                    <!-- 彻底删除按钮 -->
+                    <button
+                      class="sub-icon-btn remove-btn"
+                      type="button"
+                      title="从列表中彻底移除该子分类"
+                      @click.stop="removeSubCategory(rule, sub)"
+                    >
+                      ×
+                    </button>
+                  </div>
                   <span v-if="!(rule.subcategories && rule.subcategories.length)" class="a-muted no-sub">无子分类</span>
                 </div>
 
@@ -1226,13 +1297,19 @@ async function saveDetailPolicy(): Promise<void> {
                     v-model="getSubInput(rule.tid).tid"
                     placeholder="子分类 TID"
                     size="small"
-                    style="width: 120px;"
+                    style="width: 100px;"
                   />
                   <ElInput
                     v-model="getSubInput(rule.tid).name"
-                    placeholder="标签名称"
+                    placeholder="分类原名"
                     size="small"
-                    style="width: 140px;"
+                    style="width: 120px;"
+                  />
+                  <ElInput
+                    v-model="getSubInput(rule.tid).custom_name"
+                    placeholder="别名（选填）"
+                    size="small"
+                    style="width: 110px;"
                   />
                   <ElButton
                     size="small"
@@ -1579,22 +1656,165 @@ async function saveDetailPolicy(): Promise<void> {
 
 .subcategories-wrap {
   margin-top: 8px;
-  padding: 8px 10px;
+  padding: 8px 12px;
   background: var(--el-fill-color-light);
   border-radius: 6px;
+}
+
+.cat-preview-text {
+  margin-left: 8px;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
+
+.cat-preview-text strong {
+  color: var(--el-text-color-primary);
+}
+
+.cat-preview-text strong.has-custom {
+  color: #409eff;
+}
+
+.sub-label-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
 }
 
 .sub-label {
   font-size: 12px;
   font-weight: 500;
-  margin-bottom: 6px;
+}
+
+.sub-tip-desc {
+  font-size: 11px;
+  color: var(--el-text-color-secondary);
 }
 
 .sub-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.sub-item-pill {
+  display: inline-flex;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #dcdfe6;
+  border-radius: 16px;
+  padding: 2px 6px 2px 10px;
+  font-size: 12px;
+  color: #303133;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.sub-item-pill:hover {
+  border-color: #c0c4cc;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* 隐藏状态：变红 */
+.sub-item-pill.is-hidden {
+  background: #fef0f0;
+  border-color: #fde2e2;
+  color: #f56c6c;
+}
+
+.sub-tag-body {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+.sub-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dot-success {
+  background-color: #67c23a;
+  box-shadow: 0 0 4px rgba(103, 194, 58, 0.4);
+}
+
+.dot-danger {
+  background-color: #f56c6c;
+  box-shadow: 0 0 4px rgba(245, 108, 108, 0.4);
+}
+
+.sub-title {
+  font-weight: 500;
+}
+
+.sub-tid {
+  color: #909399;
+  font-size: 11px;
+}
+
+.sub-hidden-label {
+  background: #f56c6c;
+  color: #fff;
+  font-size: 10px;
+  border-radius: 4px;
+  padding: 0 4px;
+  margin-left: 2px;
+}
+
+.sub-icon-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  margin-left: 4px;
+  font-size: 12px;
+  opacity: 0.65;
+  transition: opacity 0.2s;
+  border-radius: 50%;
+}
+
+.sub-icon-btn:hover {
+  opacity: 1;
+}
+
+.sub-icon-btn.remove-btn {
+  font-size: 14px;
+  font-weight: bold;
+  color: #909399;
+}
+
+.sub-icon-btn.remove-btn:hover {
+  color: #f56c6c;
+}
+
+.sub-popover-content {
+  font-size: 12px;
+}
+
+.popover-title {
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #303133;
+}
+
+.popover-orig {
+  color: #909399;
   margin-bottom: 8px;
+}
+
+.popover-preview {
+  margin-top: 8px;
+  color: #606266;
+}
+
+.popover-preview strong {
+  color: #409eff;
 }
 
 .no-sub {

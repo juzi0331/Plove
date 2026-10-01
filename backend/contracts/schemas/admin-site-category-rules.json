@@ -61,6 +61,18 @@
           "description": "子分类名称",
           "title": "Name",
           "type": "string"
+        },
+        "custom_name": {
+          "default": "",
+          "description": "前台展示重命名（空则保持原名）",
+          "title": "Custom Name",
+          "type": "string"
+        },
+        "hidden": {
+          "default": false,
+          "description": "是否在前台隐藏/屏蔽该二级分类",
+          "title": "Hidden",
+          "type": "boolean"
         }
       },
       "required": [

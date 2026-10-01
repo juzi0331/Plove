@@ -83,6 +83,8 @@ class SubCategoryItem(BaseModel):
 
     tid: str = Field(description="子分类唯一标识")
     name: str = Field(description="子分类名称")
+    custom_name: str = Field(default="", description="前台展示重命名（空则保持原名）")
+    hidden: bool = Field(default=False, description="是否在前台隐藏/屏蔽该二级分类")
 
 
 class CategoryRuleItem(BaseModel):
