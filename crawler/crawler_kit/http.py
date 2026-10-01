@@ -100,9 +100,20 @@ class Client:
         self._last_request_at = 0.0
 
         handlers = []
-        if proxy:
+        effective_proxy = proxy
+        if not effective_proxy:
+            import os
+            effective_proxy = (
+                os.environ.get("HTTPS_PROXY")
+                or os.environ.get("HTTP_PROXY")
+                or os.environ.get("https_proxy")
+                or os.environ.get("http_proxy")
+                or os.environ.get("ALL_PROXY")
+                or os.environ.get("all_proxy")
+            )
+        if effective_proxy:
             handlers.append(
-                urllib.request.ProxyHandler({"http": proxy, "https": proxy})
+                urllib.request.ProxyHandler({"http": effective_proxy, "https": effective_proxy})
             )
         self._opener = urllib.request.build_opener(*handlers)
 

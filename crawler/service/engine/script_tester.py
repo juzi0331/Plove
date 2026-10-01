@@ -94,6 +94,10 @@ class ScriptTester:
         env["PYTHONIOENCODING"] = "utf-8"
         env["PYTHONUTF8"] = "1"
 
+        # 注入代理配置（如启用）
+        from .proxy_manager import proxy_manager
+        env.update(proxy_manager.get_env())
+
         # 注入 crawler_kit 所在目录
         crawler_dir = Path(__file__).resolve().parents[2] / "crawler"
         if crawler_dir.is_dir():

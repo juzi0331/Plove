@@ -850,6 +850,16 @@
       </nav>
 
       <div class="header-actions">
+        <button 
+          class="btn" 
+          :class="proxyConfig.enabled ? 'btn-primary' : 'btn-secondary'" 
+          style="padding:6px 12px;font-size:0.82rem;display:flex;align-items:center;gap:6px" 
+          @click="openProxyModal"
+        >
+          <span style="display:inline-block;width:8px;height:8px;border-radius:50%" :style="{ background: proxyConfig.enabled ? '#10b981' : '#94a3b8' }"></span>
+          <span>代理: {{ proxyConfig.enabled ? (proxyConfig.proxy_url.replace(/https?:\/\//, '') || '已开启') : '直连 (关闭)' }}</span>
+        </button>
+
         <div class="status-badge">
           <span class="status-pulse"></span>
           纯本地隔离 :8088
@@ -1430,6 +1440,57 @@
         </div>
       </div>
     </div>
+
+    <!-- 本地网络代理配置弹窗 (v2rayN / Clash 等) -->
+    <div class="modal-overlay" v-if="showProxyModal" @click.self="showProxyModal = false">
+      <div class="modal-body" style="max-width:580px">
+        <div class="panel-head">
+          <span class="panel-title">本地网络代理配置 (v2rayN / Clash / SOCKS)</span>
+          <button class="btn btn-secondary" @click="showProxyModal = false">关闭</button>
+        </div>
+
+        <p style="color:var(--text-muted);font-size:0.86rem;margin:1rem 0">
+          爬虫运行于纯本地环境。若目标影视站位于境外或海外 CDN 访问受阻，可开启本地代理一键加速！
+        </p>
+
+        <div class="form-group">
+          <label class="form-label" style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" v-model="proxyForm.enabled" style="width:16px;height:16px;cursor:pointer" />
+            <span style="font-size:0.95rem;font-weight:700;color:var(--text-main)">启用本地网络代理 (Proxy)</span>
+          </label>
+        </div>
+
+        <div class="form-group" style="margin-top:1rem">
+          <label class="form-label">代理服务器地址 (HTTP / SOCKS5)</label>
+          <input class="form-input" v-model="proxyForm.proxy_url" placeholder="如 http://127.0.0.1:10809" />
+          <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+            <button class="btn btn-secondary" style="padding:3px 8px;font-size:0.75rem" @click="proxyForm.proxy_url = 'http://127.0.0.1:10809'">填入 v2rayN 默认 (10809)</button>
+            <button class="btn btn-secondary" style="padding:3px 8px;font-size:0.75rem" @click="proxyForm.proxy_url = 'http://127.0.0.1:7890'">填入 Clash 默认 (7890)</button>
+            <button class="btn btn-secondary" style="padding:3px 8px;font-size:0.75rem" @click="proxyForm.proxy_url = 'socks5://127.0.0.1:10808'">填入 SOCKS5 (10808)</button>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top:1.25rem">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <label class="form-label">连通性测试</label>
+            <button class="btn btn-secondary" style="padding:4px 10px;font-size:0.78rem" :disabled="testingProxy" @click="testProxyConnection">
+              {{ testingProxy ? '正在测试连接...' : '测试代理连通性' }}
+            </button>
+          </div>
+          <div v-if="proxyTestResult" style="margin-top:6px;padding:8px 12px;border-radius:6px;font-size:0.82rem;font-family:var(--font-mono)" :style="{ background: proxyTestResult.ok ? '#f0fdf4' : '#fff1f2', color: proxyTestResult.ok ? '#15803d' : '#e11d48', border: proxyTestResult.ok ? '1px solid #bbf7d0' : '1px solid #fecdd3' }">
+            {{ proxyTestResult.message }}
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:1.5rem;border-top:1px solid var(--border-subtle);padding-top:1rem">
+          <button class="btn btn-secondary" @click="showProxyModal = false">取消</button>
+          <button class="btn btn-primary" :disabled="savingProxy" @click="saveProxySettings">
+            <span v-if="!savingProxy">保存配置并立即生效</span>
+            <span v-else>正在生效中...</span>
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -1444,6 +1505,14 @@
         const smartUrl = ref('https://xiaoyakankan.com');
         const smartLoading = ref(false);
         const smartResult = ref(null);
+
+        // 本地代理配置状态
+        const showProxyModal = ref(false);
+        const proxyConfig = ref({ enabled: false, proxy_url: 'http://127.0.0.1:10809' });
+        const proxyForm = ref({ enabled: false, proxy_url: 'http://127.0.0.1:10809' });
+        const testingProxy = ref(false);
+        const proxyTestResult = ref(null);
+        const savingProxy = ref(false);
 
         // 外部脚本测试工坊状态
         const scriptFileInputRef = ref(null);
@@ -1870,7 +1939,10 @@
         }
 
         async function fetchLiveHome() {
-          if (!live.value.siteKey) return;
+          if (!live.value.siteKey) {
+            alert('请先选择目标源');
+            return;
+          }
           liveLoading.value = true;
           live.value.recommendList = [];
           live.value.detail = null;
@@ -1879,9 +1951,16 @@
             const json = await res.json();
             if (json.ok && json.data) {
               live.value.recommendList = json.data.recommend || [];
+              if (live.value.recommendList.length === 0) {
+                alert('抓取完成，但该站点未提取到首页推荐影片');
+              }
+            } else {
+              const errMsg = json.error ? json.error.message : '未知异常';
+              alert('抓取首页推荐失败: ' + errMsg);
             }
           } catch (e) {
             console.error('抓取首页失败', e);
+            alert('抓取首页网络异常: ' + e);
           } finally {
             liveLoading.value = false;
           }
@@ -1897,9 +1976,13 @@
               if (live.value.detail.episodes && live.value.detail.episodes.length > 0) {
                 playEpisode(live.value.detail.episodes[0]);
               }
+            } else {
+              const errMsg = json.error ? json.error.message : '未知错误';
+              alert('获取影片详情失败: ' + errMsg);
             }
           } catch (e) {
             console.error('抓取详情失败', e);
+            alert('抓取详情网络异常: ' + e);
           } finally {
             liveLoading.value = false;
           }
@@ -1914,9 +1997,13 @@
             if (json.ok && json.data && json.data.url) {
               live.value.currentStreamUrl = json.data.url;
               mountVideo(json.data.url, 'liveVideoPlayer');
+            } else {
+              const errMsg = json.error ? json.error.message : '未能嗅探到播放直链';
+              alert('播放嗅探失败: ' + errMsg);
             }
           } catch (e) {
             console.error('播放嗅探失败', e);
+            alert('播放嗅探异常: ' + e);
           }
         }
 
@@ -2017,8 +2104,73 @@ if __name__ == "__main__":
           sandbox.value.rule.selector = 'data.m3u8';
         }
 
+        // 代理配置交互
+        async function fetchProxySettings() {
+          try {
+            const res = await fetch('/api/v1/proxy');
+            const json = await res.json();
+            if (json.ok && json.data) {
+              proxyConfig.value = json.data;
+            }
+          } catch (e) {
+            console.error('获取代理配置失败', e);
+          }
+        }
+
+        function openProxyModal() {
+          proxyForm.value = { ...proxyConfig.value };
+          proxyTestResult.value = null;
+          showProxyModal.value = true;
+        }
+
+        async function testProxyConnection() {
+          testingProxy.value = true;
+          proxyTestResult.value = null;
+          try {
+            const res = await fetch('/api/v1/proxy/test', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ target_url: 'https://xiaoyakankan.com' })
+            });
+            const json = await res.json();
+            if (json.ok && json.data) {
+              proxyTestResult.value = json.data;
+            } else {
+              proxyTestResult.value = { ok: false, message: '测试请求异常: ' + (json.error ? json.error.message : '未知错误') };
+            }
+          } catch (e) {
+            proxyTestResult.value = { ok: false, message: '网络异常: ' + e };
+          } finally {
+            testingProxy.value = false;
+          }
+        }
+
+        async function saveProxySettings() {
+          savingProxy.value = true;
+          try {
+            const res = await fetch('/api/v1/proxy', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(proxyForm.value)
+            });
+            const json = await res.json();
+            if (json.ok && json.data) {
+              proxyConfig.value = json.data;
+              showProxyModal.value = false;
+              alert(json.data.enabled ? `本地代理已成功开启 (${json.data.proxy_url})` : '已切换为直接连接模式');
+            } else {
+              alert('保存代理设置失败: ' + (json.error ? json.error.message : '未知错误'));
+            }
+          } catch (e) {
+            alert('保存异常: ' + e);
+          } finally {
+            savingProxy.value = false;
+          }
+        }
+
         onMounted(() => {
           fetchSites();
+          fetchProxySettings();
           // 全局拦截页面空白处的 drop，防止浏览器默认在当前窗口以文本打开本地文件导致页面空白
           window.addEventListener('dragover', (e) => { e.preventDefault(); }, false);
           window.addEventListener('drop', (e) => { e.preventDefault(); }, false);
@@ -2056,6 +2208,15 @@ if __name__ == "__main__":
           loadingExtract,
           live,
           liveLoading,
+          showProxyModal,
+          proxyConfig,
+          proxyForm,
+          testingProxy,
+          proxyTestResult,
+          savingProxy,
+          openProxyModal,
+          testProxyConnection,
+          saveProxySettings,
           fetchSites,
           startSmartExplore,
           loadSmartCodeToTester,

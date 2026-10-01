@@ -157,7 +157,78 @@ class RuleManager:
             py_file.unlink()
             logger.info("已删除站点库脚本: %s.py", clean_key)
             return True
-        return False
+    def has_script(self, key: str) -> bool:
+        """检查是否存在指定 Key 的 Python 独立采集脚本。"""
+        clean_key = re.sub(r"[^a-zA-Z0-9_]", "", key).strip()
+        return bool(clean_key and (self.sites_dir / f"{clean_key}.py").is_file())
+
+    async def execute_script_action(self, key: str, action: str, **kwargs: Any) -> dict[str, Any]:
+        """以受保护子进程调用 sites/<key>.py <action> [--param value] 并返回标准化结果字典。"""
+        import asyncio
+        import subprocess
+        import sys
+
+        clean_key = re.sub(r"[^a-zA-Z0-9_]", "", key).strip()
+        py_file = self.sites_dir / f"{clean_key}.py"
+        if not py_file.is_file():
+            raise CrawlerServiceError(ErrorCode.SITE_NOT_FOUND, f"未找到站点采集器: {clean_key}.py")
+
+        argv = [sys.executable, str(py_file), action]
+        for k, v in kwargs.items():
+            if v is not None and str(v).strip():
+                cli_param = k.replace("_", "-")
+                argv.extend([f"--{cli_param}", str(v)])
+
+        env = os.environ.copy()
+        env["PYTHONIOENCODING"] = "utf-8"
+        env["PYTHONUTF8"] = "1"
+
+        # 注入本地网络代理（如 v2rayN / Clash 等）
+        from .proxy_manager import proxy_manager
+        env.update(proxy_manager.get_env())
+
+        crawler_dir = Path(__file__).resolve().parents[2] / "crawler"
+        if crawler_dir.is_dir():
+            crawler_root = str(crawler_dir)
+            existing = env.get("PYTHONPATH", "")
+            env["PYTHONPATH"] = f"{crawler_root}{os.pathsep}{existing}" if existing else crawler_root
+
+        def _run():
+            return subprocess.run(
+                argv,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=30.0,
+                env=env,
+            )
+
+        try:
+            proc = await asyncio.to_thread(_run)
+        except Exception as exc:
+            raise CrawlerServiceError(ErrorCode.NETWORK_ERROR, f"执行采集脚本异常: {exc}")
+
+        if proc.returncode != 0:
+            err_msg = proc.stderr.strip() or f"脚本非正常退出 (code {proc.returncode})"
+            raise CrawlerServiceError(ErrorCode.PARSE_ERROR, f"采集失败: {err_msg}")
+
+        lines = [line.strip() for line in proc.stdout.splitlines() if line.strip()]
+        if not lines:
+            raise CrawlerServiceError(ErrorCode.PARSE_ERROR, f"脚本未输出任何有效结果，stderr: {proc.stderr.strip()[:300]}")
+
+        first_line = lines[-1]
+        try:
+            envelope = json.loads(first_line)
+        except Exception as exc:
+            raise CrawlerServiceError(ErrorCode.PARSE_ERROR, f"解析信封失败: {exc} (末行内容: {first_line[:200]})")
+
+        if not envelope.get("ok"):
+            err_info = envelope.get("error") or {}
+            msg = err_info.get("message") if isinstance(err_info, dict) else str(err_info)
+            raise CrawlerServiceError(ErrorCode.PARSE_ERROR, f"采集源站报错: {msg}")
+
+        return envelope.get("data") or {}
 
     def get_rule(self, key: str) -> SiteRule:
         rule = self._rules_cache.get(key)

@@ -39,11 +39,14 @@ class HttpClient:
         if headers:
             req_headers.update(headers)
 
+        from ..engine.proxy_manager import proxy_manager
+
         self._timeout = timeout or settings.DEFAULT_TIMEOUT
         self._client = httpx.AsyncClient(
             base_url=self.base_url if self.base_url.startswith("http") else None,
             headers=req_headers,
             cookies=cookies,
+            proxy=proxy_manager.get_proxy_url(),
             timeout=httpx.Timeout(self._timeout, connect=5.0),
             follow_redirects=True,
             verify=False,  # 目标源站经常有证书过期或自签情况，避免因 SSL 阻断抓取
