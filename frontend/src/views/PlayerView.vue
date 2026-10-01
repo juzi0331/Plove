@@ -167,9 +167,18 @@ function attachPlayer(result: Playback): void {
     return
   }
 
+  // 过滤掉浏览器受保护禁止设置的请求头（Referer, User-Agent, Origin, Host 等）
+  const forbiddenHeaders = new Set(['referer', 'user-agent', 'host', 'origin', 'cookie'])
+  const safeHeaders: Record<string, string> = {}
+  for (const [key, value] of Object.entries(result.headers ?? {})) {
+    if (!forbiddenHeaders.has(key.toLowerCase())) {
+      safeHeaders[key] = value
+    }
+  }
+
   hls = new Hls({
     xhrSetup: (xhr) => {
-      for (const [key, value] of Object.entries(result.headers ?? {})) {
+      for (const [key, value] of Object.entries(safeHeaders)) {
         try {
           xhr.setRequestHeader(key, value)
         } catch {
@@ -178,19 +187,34 @@ function attachPlayer(result: Playback): void {
       }
     },
     enableWorker: true,
-    lowLatencyMode: true,
+    lowLatencyMode: false,
   })
+
+  let networkRetryCount = 0
+  let mediaRetryCount = 0
 
   hls.on(Hls.Events.ERROR, (_event, data) => {
     if (data.fatal) {
       switch (data.type) {
         case Hls.ErrorTypes.NETWORK_ERROR:
-          error.value = '網絡串流載入中斷，建議嘗試重試或切換線路'
-          hls?.startLoad()
+          networkRetryCount++
+          if (networkRetryCount <= 3) {
+            console.warn(`HLS 网络错误，第 ${networkRetryCount} 次重载...`, data)
+            hls?.startLoad()
+          } else {
+            error.value = '播放线路连接超时或无法访问，请返回重新选择或稍后重试'
+            destroyPlayer()
+          }
           break
         case Hls.ErrorTypes.MEDIA_ERROR:
-          error.value = '媒體解碼異常，正在嘗試自救恢復...'
-          hls?.recoverMediaError()
+          mediaRetryCount++
+          if (mediaRetryCount <= 2) {
+            console.warn(`HLS 媒体解码错误，第 ${mediaRetryCount} 次恢复...`, data)
+            hls?.recoverMediaError()
+          } else {
+            error.value = '视频解码失败，当前线路格式不兼容'
+            destroyPlayer()
+          }
           break
         default:
           error.value = `播放線路解析異常（${data.details || '未知錯誤'}）`
@@ -200,9 +224,20 @@ function attachPlayer(result: Playback): void {
     }
   })
 
+  video.onerror = () => {
+    if (!error.value && !loading.value) {
+      error.value = '视频源加载失败，请检查网络或稍后重试'
+      destroyPlayer()
+    }
+  }
+
   hls.loadSource(result.url)
   hls.attachMedia(video)
-  void video.play().catch(() => undefined)
+  hls.on(Hls.Events.MANIFEST_PARSED, () => {
+    void video.play().catch((err) => {
+      console.warn('自动播放受限，等待用户交互', err)
+    })
+  })
 }
 
 // ==========================================
@@ -266,7 +301,7 @@ async function load(): Promise<void> {
 // ==========================================
 function switchEpisode(episode: Episode): void {
   isDrawerOpen.value = false
-  void router.push({
+  void router.replace({
     name: 'play',
     params: { vodId: props.vodId, ep: String(episode.ep_index) },
     query: {
@@ -279,7 +314,7 @@ function switchEpisode(episode: Episode): void {
 
 function switchLine(lineId: number): void {
   isLineMenuOpen.value = false
-  void router.push({
+  void router.replace({
     name: 'play',
     params: { vodId: props.vodId, ep: props.ep },
     query: {
@@ -296,11 +331,22 @@ function playNext(): void {
 }
 
 function goBack(): void {
-  if (window.history.length > 1) {
-    router.back()
-  } else {
-    void router.push({ name: 'detail', params: { vodId: props.vodId } })
+  if (document.fullscreenElement) {
+    void document.exitFullscreen().catch(() => undefined)
   }
+  const origin = sessionStorage.getItem('plove_detail_origin')
+  if (origin && !origin.includes('/play/') && !origin.includes('/detail/')) {
+    void router.replace(origin)
+  } else {
+    void router.replace({ name: 'categories' })
+  }
+}
+
+function goToDetail(): void {
+  if (document.fullscreenElement) {
+    void document.exitFullscreen().catch(() => undefined)
+  }
+  void router.replace({ name: 'detail', params: { vodId: props.vodId } })
 }
 
 // ==========================================
@@ -504,8 +550,11 @@ watch(() => device.restoredAt, () => void load())
             >
               切換其他線路
             </button>
-            <button class="nf-err-btn ghost" type="button" @click="goBack">
+            <button class="nf-err-btn secondary" type="button" @click="goToDetail">
               返回影片詳情
+            </button>
+            <button class="nf-err-btn ghost" type="button" @click="goBack">
+              返回影片列表
             </button>
           </div>
         </div>

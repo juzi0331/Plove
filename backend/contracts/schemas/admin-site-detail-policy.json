@@ -48,6 +48,12 @@
       },
       "title": "Hide Fields",
       "type": "array"
+    },
+    "auto_select_fastest_line": {
+      "default": true,
+      "description": "后端测速优选单线路模式：多线路时由后端并发测速默认选用最快线路，不让前端显示多线路",
+      "title": "Auto Select Fastest Line",
+      "type": "boolean"
     }
   },
   "required": [

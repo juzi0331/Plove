@@ -140,10 +140,10 @@ def get_content_cache(settings: Settings = Depends(get_settings)) -> ContentCach
     # 优先读取持久化数据库配置
     enabled = settings.cache_enabled
     try:
-        from app.db.session import SessionLocal
+        from app.db.session import get_session_factory
         from app.models.system_setting import SystemSetting
         import json
-        with SessionLocal() as session:
+        with get_session_factory()() as session:
             row = session.query(SystemSetting).filter_by(key="content_cache_config").first()
             if row and row.value_json:
                 data = json.loads(row.value_json)

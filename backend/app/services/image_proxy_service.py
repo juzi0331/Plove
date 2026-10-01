@@ -37,8 +37,8 @@ def get_image_proxy_config(db: Any = None) -> ImageProxyConfig:
     if _cached_config is not None:
         return _cached_config
     if db is None:
-        from app.db.session import SessionLocal
-        with SessionLocal() as session:
+        from app.db.session import get_session_factory
+        with get_session_factory()() as session:
             return get_image_proxy_config(session)
     row = db.query(SystemSetting).filter_by(key=PROXY_CONFIG_KEY).first()
     if not row or not row.value_json:
@@ -144,6 +144,21 @@ def fetch_image_with_cache(
         
         content = resp.content
         c_type = resp.headers.get("content-type", "image/jpeg")
+
+    # 针对部分源站（如黄果短剧等）的前端 AES-128-CBC 加密图片进行自动解密
+    if not (content.startswith(b"\xff\xd8\xff") or content.startswith(b"\x89PNG") or content.startswith(b"RIFF") or content.startswith(b"GIF8")):
+        try:
+            from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+            from cryptography.hazmat.backends import default_backend
+            # 黄果短剧的固定媒体密钥 (来自 plugins/crypto-worker.js)
+            cipher = Cipher(algorithms.AES(b"f5d965df75336270"), modes.CBC(b"97b60394abc2fbe1"), backend=default_backend())
+            decryptor = cipher.decryptor()
+            decrypted = decryptor.update(content) + decryptor.finalize()
+            if decrypted.startswith(b"\xff\xd8\xff") or decrypted.startswith(b"\x89PNG"):
+                content = decrypted
+                c_type = "image/jpeg" if decrypted.startswith(b"\xff\xd8\xff") else "image/png"
+        except Exception:
+            pass
 
     # 3. 异步/即时落盘（必须显式开启磁盘缓存时才写盘）
     if cfg.disk_cache_enabled:

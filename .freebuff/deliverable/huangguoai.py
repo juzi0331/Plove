@@ -607,12 +607,10 @@ class 黄果短剧官网Crawler:
     def home(self):
         """首页：分类树（含二级题材）+ 推荐片单。"""
         root = parse.parse_html(self._page("/"))
-        common_tags = _tag_links(root, limit=12)
         categories = []
         for item in _categories(root):
             subcategories = [{"tid": item["tid"], "name": f"全部{item['name']}"}]
-            if item["tid"] != "ranks/hot":
-                subcategories.extend(common_tags)
+            subcategories.extend(self._channel_tags(item["tid"]))
             categories.append(
                 {"tid": item["tid"], "name": item["name"], "subcategories": subcategories}
             )

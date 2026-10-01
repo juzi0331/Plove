@@ -345,6 +345,7 @@ def get_detail_policy_payload(store: SiteSettingsStore, key: str) -> SiteDetailP
         ep_naming_rule=saved.get("ep_naming_rule", "auto"),
         default_poster=saved.get("default_poster", ""),
         hide_fields=saved.get("hide_fields", []),
+        auto_select_fastest_line=bool(saved.get("auto_select_fastest_line", True)),
     )
 
 
@@ -368,6 +369,8 @@ def save_detail_policy_payload(
         saved["default_poster"] = payload.default_poster.strip()
     if payload.hide_fields is not None:
         saved["hide_fields"] = payload.hide_fields
+    if payload.auto_select_fastest_line is not None:
+        saved["auto_select_fastest_line"] = bool(payload.auto_select_fastest_line)
 
     current.detail_policy_json = json.dumps(saved, ensure_ascii=False)
     session.flush()
@@ -379,6 +382,7 @@ def save_detail_policy_payload(
         ep_naming_rule=saved.get("ep_naming_rule", "auto"),
         default_poster=saved.get("default_poster", ""),
         hide_fields=saved.get("hide_fields", []),
+        auto_select_fastest_line=bool(saved.get("auto_select_fastest_line", True)),
     )
 
 
@@ -397,22 +401,113 @@ def clean_text_with_patterns(text: str, patterns: list[str]) -> str:
     return result.strip()
 
 
+_fastest_line_cache: dict[tuple[str, str], tuple[float, int]] = {}
+
+
+def get_cached_fastest_line(key: str, vod_id: str) -> int | None:
+    cached = _fastest_line_cache.get((key, vod_id))
+    if cached:
+        import time
+        ts, line_id = cached
+        if time.time() - ts < 600:  # 10 分钟缓存
+            return line_id
+    return None
+
+
+def set_cached_fastest_line(key: str, vod_id: str, line_id: int) -> None:
+    import time
+    _fastest_line_cache[(key, vod_id)] = (time.time(), line_id)
+
+
+def probe_and_select_fastest_line(
+    key: str,
+    detail: DetailPayload,
+    registry: Any | None = None,
+) -> int:
+    """并发对影片的所有线路第 1 集进行测速，返回延迟最低的线路号。"""
+    vod_id = detail.video.vod_id
+    cached_line = get_cached_fastest_line(key, vod_id)
+    available_line_ids = {line.line for line in detail.lines}
+    if cached_line is not None and cached_line in available_line_ids:
+        return cached_line
+
+    fallback = detail.lines[0].line if detail.lines else 1
+    if not registry or len(detail.lines) <= 1:
+        return fallback
+
+    import concurrent.futures
+    import time
+    import httpx
+    from app.schemas.playback import Playback
+    from app.services import catalog_service
+
+    def _probe_line(line_info: Any) -> tuple[int, float]:
+        line_id = line_info.line
+        ep = next((e for e in detail.episodes if e.line == line_id), None)
+        if not ep and detail.episodes:
+            ep = detail.episodes[0]
+        ep_index = ep.ep_index if ep else 1
+        play_id = catalog_service._clean_play_id(ep.play_id) if ep and ep.play_id else None
+
+        options: dict[str, Any] = {"id": vod_id, "ep": ep_index, "line": line_id}
+        if play_id:
+            options["play_id"] = play_id
+
+        try:
+            playback_obj = catalog_service._load(Playback, registry, key, "play", **options)
+            url = playback_obj.url
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                "Range": "bytes=0-1024",
+            }
+            if playback_obj.headers:
+                headers.update(playback_obj.headers)
+
+            t0 = time.perf_counter()
+            with httpx.Client(timeout=1.5, verify=False, follow_redirects=True) as client:
+                resp = client.get(url, headers=headers)
+                latency = time.perf_counter() - t0
+                if resp.status_code < 400:
+                    return line_id, latency
+                return line_id, 900.0 + (resp.status_code / 10.0)
+        except Exception:
+            return line_id, 999.0
+
+    best_line = fallback
+    min_latency = 999.0
+    try:
+        candidate_lines = detail.lines[:8]
+        max_workers = min(len(candidate_lines), 8)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_to_line = {executor.submit(_probe_line, line): line for line in candidate_lines}
+            for future in concurrent.futures.as_completed(future_to_line, timeout=2.0):
+                line_id, latency = future.result()
+                if latency < min_latency:
+                    min_latency = latency
+                    best_line = line_id
+    except Exception:
+        pass
+
+    set_cached_fastest_line(key, vod_id, best_line)
+    return best_line
+
+
 def apply_detail_policy(
     key: str,
     detail: DetailPayload,
     store: SiteSettingsStore,
+    registry: SiteRegistry | None = None,
 ) -> DetailPayload:
-    """清洗与格式化详情页数据。"""
+    """清洗与格式化详情页数据，并按配置支持测速折叠多线路为单条最快线路。"""
     config = store.config(key)
     saved = _load_detail_policy_json(config.detail_policy_json)
-    if not saved:
-        return detail
 
     patterns: list[str] = saved.get("ad_patterns", [])
     line_overrides: dict[str, str] = saved.get("line_name_overrides", {})
     naming_rule: str = saved.get("ep_naming_rule", "auto")
     default_poster: str = saved.get("default_poster", "")
     hide_fields: set[str] = set(saved.get("hide_fields", []))
+    auto_select: bool = bool(saved.get("auto_select_fastest_line", True))
 
     # 1. 清洗影片卡片基本信息
     v = detail.video
@@ -463,6 +558,16 @@ def apply_detail_policy(
             ep_name = clean_text_with_patterns(ep_name, patterns)
 
         clean_episodes.append(ep.model_copy(update={"ep_name": ep_name}))
+
+    # 5. 后端测速优选单线路（如果有多条线路且开启了自动优选，折叠为单一极速线路）
+    if auto_select and len(clean_lines) > 1:
+        winner_line_id = probe_and_select_fastest_line(key, detail, registry)
+        winner_line = next((l for l in clean_lines if l.line == winner_line_id), clean_lines[0])
+        clean_lines = [winner_line.model_copy(update={"name": "极速专线"})]
+        clean_episodes = [
+            ep for ep in clean_episodes
+            if ep.line is None or ep.line == winner_line_id
+        ]
 
     return detail.model_copy(
         update={

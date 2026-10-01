@@ -95,48 +95,52 @@ def home(
     force: bool = False,
 ) -> HomePayload:
     _ensure_enabled(registry, key)
-    raw = cache.home(key, lambda: _load(HomePayload, registry, key, "home"), force=force)
-    actual_store = store or site_settings.store()
-    filtered_categories = site_control_service.apply_category_rules(key, raw.categories, actual_store)
 
-    # 计算应在首页展示的分类计划（后台勾选 或 新站点默认前 3 个）
-    plans = site_control_service.get_home_display_category_plans(key, filtered_categories, actual_store)
-    custom_sections: list[HomeSection] = []
-    from app.schemas.catalog import HomeSection
+    def _assemble() -> HomePayload:
+        raw = _load(HomePayload, registry, key, "home")
+        actual_store = store or site_settings.store()
+        filtered_categories = site_control_service.apply_category_rules(key, raw.categories, actual_store)
 
-    for plan in plans:
-        try:
-            cat_res = category(
-                registry,
-                cache,
-                key,
-                tid=plan["tid"],
-                page=1,
-                store=actual_store,
-                force=force,
-            )
-            if cat_res and cat_res.videos:
-                # 严格只展示前 10 个视频
-                custom_sections.append(
-                    HomeSection(
-                        title=plan["title"],
-                        tid=plan["tid"],
-                        videos=cat_res.videos[:10],
-                    )
+        # 计算应在首页展示的分类计划（后台勾选 或 新站点默认前 3 个）
+        plans = site_control_service.get_home_display_category_plans(key, filtered_categories, actual_store)
+        custom_sections: list[HomeSection] = []
+        from app.schemas.catalog import HomeSection
+
+        for plan in plans:
+            try:
+                cat_res = category(
+                    registry,
+                    cache,
+                    key,
+                    tid=plan["tid"],
+                    page=1,
+                    store=actual_store,
+                    force=force,
                 )
-        except Exception:
-            pass
+                if cat_res and cat_res.videos:
+                    # 严格只展示前 10 个视频
+                    custom_sections.append(
+                        HomeSection(
+                            title=plan["title"],
+                            tid=plan["tid"],
+                            videos=cat_res.videos[:10],
+                        )
+                    )
+            except Exception:
+                pass
 
-    if custom_sections:
-        # 用户确认选择方案 A（前台完全替代）：以真实分类横幅注入 sections
-        return raw.model_copy(
-            update={
-                "categories": filtered_categories,
-                "sections": custom_sections,
-            }
-        )
+        if custom_sections:
+            # 用户确认选择方案 A（前台完全替代）：以真实分类横幅注入 sections
+            return raw.model_copy(
+                update={
+                    "categories": filtered_categories,
+                    "sections": custom_sections,
+                }
+            )
 
-    return raw.model_copy(update={"categories": filtered_categories})
+        return raw.model_copy(update={"categories": filtered_categories})
+
+    return cache.home(key, _assemble, force=force)
 
 
 def category(
@@ -191,7 +195,9 @@ def detail(
         force=force,
     )
     actual_store = store or site_settings.store()
-    return site_control_service.apply_detail_policy(key, raw, actual_store)
+    return site_control_service.apply_detail_policy(
+        key, raw, actual_store, registry=registry
+    )
 
 
 def playback(
@@ -218,6 +224,11 @@ def playback(
             ErrorCode.NOT_IMPLEMENTED,
             f"{meta.name} 标记为需要后端流代理，而流代理尚未实现",
         )
+
+    if line is None:
+        cached_line = site_control_service.get_cached_fastest_line(key, vod_id)
+        if cached_line is not None:
+            line = cached_line
 
     options: dict[str, object] = {"id": vod_id, "ep": ep}
     if line is not None:

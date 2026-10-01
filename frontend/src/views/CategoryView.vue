@@ -138,8 +138,10 @@ async function loadFirstPage(force = false): Promise<void> {
       firstLoading.value = false
       void loadCategories()
 
-      // 瞬时恢复滚动高度
+      // 瞬时恢复滚动高度并重新挂载哨兵监听
       nextTick(() => {
+        setupObserver()
+        void ensureScreenFilled()
         window.scrollTo({ top: cached.scrollY, behavior: 'instant' as ScrollBehavior })
         setTimeout(() => {
           window.scrollTo({ top: cached.scrollY, behavior: 'instant' as ScrollBehavior })
@@ -159,7 +161,12 @@ async function loadFirstPage(force = false): Promise<void> {
     const key = sites.currentKey
     if (!key) throw new Error('後端暫無可用片源站')
 
-    void loadCategories()
+    // 优先保证分类数据已装载，以便正确计算二级分类和标题
+    if (allCategories.value.length === 0) {
+      await loadCategories()
+    } else {
+      void loadCategories()
+    }
 
     const result = await api.getCategory(key, { tid: props.tid, page: 1 })
     items.value = result.videos ?? []
@@ -170,6 +177,11 @@ async function loadFirstPage(force = false): Promise<void> {
   } finally {
     firstLoading.value = false
   }
+
+  // 首屏在 DOM 挂载脱离骨架屏后，启动哨兵监听并检测是否铺满视口
+  await nextTick()
+  setupObserver()
+  void ensureScreenFilled()
 }
 
 /**
@@ -197,6 +209,11 @@ async function loadMore(): Promise<void> {
     finished.value = !result.has_more || videos.length === 0
     // 保存翻页更新状态
     saveState()
+
+    // 每一页加载后，若大屏全屏仍未填满滚动条，继续递归拉取填充
+    await nextTick()
+    setupObserver()
+    void ensureScreenFilled()
   } catch (err) {
     console.warn('瀑布流翻頁異常：', describeError(err))
     finished.value = true
@@ -205,31 +222,109 @@ async function loadMore(): Promise<void> {
   }
 }
 
+/** 哨兵元素：用于 IntersectionObserver 自动检测触底 */
+const bottomSentinelRef = ref<HTMLElement | null>(null)
+let observer: IntersectionObserver | null = null
+
+function setupObserver(): void {
+  if (observer) {
+    observer.disconnect()
+    observer = null
+  }
+  if (typeof IntersectionObserver === 'undefined') return
+  observer = new IntersectionObserver(
+    (entries) => {
+      const entry = entries[0]
+      // 只要哨兵元素进入或已处于视口下方 400px 范围（含全屏下首屏内容少直接可见），立即触发加载
+      if (entry && entry.isIntersecting) {
+        void loadMore()
+      }
+    },
+    { rootMargin: '400px' }
+  )
+  if (bottomSentinelRef.value) {
+    observer.observe(bottomSentinelRef.value)
+  }
+}
+
+/**
+ * 屏幕高度填充保护：
+ * 当屏幕全屏或高分辨率（2K/4K）导致首屏/当前内容高度不足以撑出足够的滚动空间（低于视口 + 400px 阈值）时，
+ * 自动递归拉取下一页，直到内容超出视口产生舒适的滚动条，或数据已全部加载完毕。
+ */
+async function ensureScreenFilled(): Promise<void> {
+  await nextTick()
+  setTimeout(async () => {
+    if (finished.value || loadingMore.value || firstLoading.value) return
+    const scrollHeight = document.documentElement.scrollHeight
+    const clientHeight = window.innerHeight || document.documentElement.clientHeight
+    // 若总高度没能超过 视口 + 400px 缓冲带，说明全屏下内容太少，立即主动加一页
+    if (scrollHeight <= clientHeight + 400) {
+      await loadMore()
+      void ensureScreenFilled()
+    }
+  }, 80)
+}
+
 function onScroll(): void {
   scrolled.value = window.scrollY > 30
 
-  // 接近页面底部 350px 时自动触发无限瀑布流加载
+  // 接近页面底部 400px 时自动触发无限瀑布流加载
   const scrollHeight = document.documentElement.scrollHeight
   const scrollTop = window.scrollY || document.documentElement.scrollTop
   const clientHeight = window.innerHeight || document.documentElement.clientHeight
-  if (scrollHeight - scrollTop - clientHeight < 350) {
+  if (scrollHeight - scrollTop - clientHeight <= 400) {
     void loadMore()
   }
 }
 
+async function onSiteChanged(): Promise<void> {
+  try {
+    const key = sites.currentKey
+    if (!key) return
+    const homeData = await api.getHome(key)
+    allCategories.value = homeData.categories ?? []
+
+    // 检查原 tid 是否依然属于当前新站点的分类（主类或任意子类）
+    const exists = allCategories.value.some(
+      (c) => String(c.tid) === String(props.tid) || c.subcategories?.some((s) => String(s.tid) === String(props.tid))
+    )
+    if (!exists && allCategories.value.length > 0) {
+      // 若原 tid 不属于新站点，自动切到新站点的第一个主分类，防止 404 与二级分类消失
+      const newTid = allCategories.value[0].tid
+      void router.replace({ name: 'category', params: { tid: newTid } })
+      return
+    }
+    void loadFirstPage(true)
+  } catch {
+    void loadFirstPage(true)
+  }
+}
+
+function onResize(): void {
+  void ensureScreenFilled()
+}
+
 onMounted(() => {
   window.addEventListener('scroll', onScroll, { passive: true })
+  window.addEventListener('resize', onResize, { passive: true })
   onScroll()
+  setupObserver()
   if (device.activated) void device.heartbeatOnce()
 })
 
 onBeforeUnmount(() => {
   saveState()
+  if (observer) {
+    observer.disconnect()
+    observer = null
+  }
   window.removeEventListener('scroll', onScroll)
+  window.removeEventListener('resize', onResize)
 })
 
 watch(() => props.tid, () => void loadFirstPage(), { immediate: true })
-watch(() => sites.currentKey, () => void loadFirstPage(true))
+watch(() => sites.currentKey, () => void onSiteChanged())
 watch(() => device.restoredAt, () => void loadFirstPage())
 
 function switchCategory(tid: string): void {
@@ -360,7 +455,10 @@ function goBack(): void {
           />
         </div>
 
-        <!-- 触底加载指示器与提示 -->
+        <!-- 哨兵标记元素：供 IntersectionObserver 监听视口可见性 -->
+        <div ref="bottomSentinelRef" class="category__sentinel" />
+
+        <!-- 触底加载指示器与提示（水平居中） -->
         <div class="category__footer">
           <div v-if="loadingMore" class="category__loading-more">
             <span class="category__spinner" />
@@ -369,6 +467,14 @@ function goBack(): void {
           <div v-else-if="finished" class="category__finished">
             — 已呈現全部精彩片源 (共 {{ items.length }} 部) —
           </div>
+          <button
+            v-else
+            class="category__load-more-btn"
+            type="button"
+            @click="loadMore"
+          >
+            點擊載入更多大片 ▾
+          </button>
         </div>
       </template>
     </main>
@@ -625,20 +731,31 @@ function goBack(): void {
   background: #f40612;
 }
 
-/* 底部触底无限瀑布流指示器 */
+/* 底部触底无限瀑布流指示器（绝对居中） */
 .category__footer {
-  padding: 24px 0 60px;
+  width: 100%;
+  padding: 24px 0 64px;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  text-align: center;
+  box-sizing: border-box;
 }
 
 .category__loading-more {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 13px;
+  justify-content: center;
+  gap: 12px;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 14px;
+  white-space: nowrap;
+  padding: 8px 20px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
 
 .category__spinner {
@@ -648,6 +765,7 @@ function goBack(): void {
   border-top-color: #e50914;
   border-radius: 50%;
   animation: nf-spin 0.8s linear infinite;
+  flex-shrink: 0;
 }
 
 @keyframes nf-spin {
@@ -658,6 +776,33 @@ function goBack(): void {
   font-size: 13px;
   color: rgba(255, 255, 255, 0.4);
   letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.category__sentinel {
+  width: 100%;
+  height: 2px;
+  margin-top: -2px;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+}
+
+.category__load-more-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  color: #ffffff;
+  padding: 8px 24px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.category__load-more-btn:hover {
+  background: rgba(229, 9, 20, 0.2);
+  border-color: #e50914;
+  color: #ffffff;
 }
 
 /* 二级分类胶囊筛选栏 (Pill Filters) */

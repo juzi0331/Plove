@@ -71,6 +71,7 @@ class ScriptTester:
         from .proxy_manager import proxy_manager
         env.update(proxy_manager.get_env())
 
+        sites_dir = script_path.parent
         try:
             proc = subprocess.run(  # noqa: S603
                 argv,

@@ -81,6 +81,19 @@
       "default": null,
       "description": "隐藏字段列表",
       "title": "Hide Fields"
+    },
+    "auto_select_fastest_line": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "是否开启后端测速优选单线路",
+      "title": "Auto Select Fastest Line"
     }
   },
   "title": "SiteDetailPolicyUpdateRequest",

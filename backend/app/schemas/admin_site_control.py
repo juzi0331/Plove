@@ -138,6 +138,10 @@ class SiteDetailPolicyPayload(BaseModel):
         default_factory=list,
         description="隐藏字段列表，例如 ['vod_actor', 'vod_director']",
     )
+    auto_select_fastest_line: bool = Field(
+        default=True,
+        description="后端测速优选单线路模式：多线路时由后端并发测速默认选用最快线路，不让前端显示多线路",
+    )
 
 
 class SiteDetailPolicyUpdateRequest(BaseModel):
@@ -148,3 +152,4 @@ class SiteDetailPolicyUpdateRequest(BaseModel):
     ep_naming_rule: Literal["auto", "standard", "raw"] | None = Field(default=None, description="剧集命名规则")
     default_poster: str | None = Field(default=None, description="兜底海报 URL")
     hide_fields: list[str] | None = Field(default=None, description="隐藏字段列表")
+    auto_select_fastest_line: bool | None = Field(default=None, description="是否开启后端测速优选单线路")

@@ -69,8 +69,8 @@ class Settings(BaseSettings):
     contracts_dir: Path = BACKEND_DIR / "contracts"
 
     # -------------------------------------------------------------- 缓存
-    #: 全局内容缓存总开关（默认关，需手动开启）。
-    cache_enabled: bool = False
+    #: 全局内容缓存总开关（默认开启）。
+    cache_enabled: bool = True
     #: 目录类内容的缓存生存时间（秒）。**设成 0 就等于关掉这一类缓存。**
     cache_ttl_home: float = 600.0
     cache_ttl_category: float = 300.0

@@ -6,7 +6,7 @@
 // 重新生成：cd frontend && npm run gen:types
 // 检查是否过期：npm run check:types（退出码非 0 = 契约改过但没重新生成）
 //
-// 契约指纹：b3a5b5e03b3f
+// 契约指纹：3ab977812824
 /** 激活成功后的状态。 */
 export interface ActivationResult {
   device_token: string
@@ -126,11 +126,7 @@ export interface CacheStats {
   misses: number
   inflight: number
   ttl: CacheTtl
-  disk?: {
-    count: number
-    size_mb: number
-    db_path: string
-  }
+  disk?: Record<string, unknown> | null
 }
 
 /** 缓存全局命中率与容量看板数据。 */
@@ -142,11 +138,9 @@ export interface CacheStatsPayload {
   hit_ratio_percent: number
   inflight?: number
   ttl?: Record<string, number>
-  disk?: {
-    count: number
-    size_mb: number
-    db_path: string
-  }
+  disk?: Record<string, unknown> | null
+  enabled?: boolean
+  warmup_enabled?: boolean
 }
 
 /** 三类内容的缓存时长（秒）。0 表示该类缓存已关闭。 */
@@ -344,8 +338,8 @@ export interface IssueCodesRequest {
   hours?: number | null
   days?: number | null
   count?: number
-  note?: string
   max_devices?: number
+  note?: string
 }
 
 /** 发码的回执。**码本身一定要回给调用方** —— 它是唯一的交付物。 */
@@ -487,6 +481,7 @@ export interface SiteDetailPolicyPayload {
   ep_naming_rule?: "auto" | "standard" | "raw"
   default_poster?: string
   hide_fields?: string[]
+  auto_select_fastest_line?: boolean
 }
 
 /** 更新详情页策略。 */
@@ -496,6 +491,7 @@ export interface SiteDetailPolicyUpdateRequest {
   ep_naming_rule?: "auto" | "standard" | "raw" | null
   default_poster?: string | null
   hide_fields?: string[] | null
+  auto_select_fastest_line?: boolean | null
 }
 
 /** 单个源的守护状态。 */

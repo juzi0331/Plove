@@ -76,7 +76,7 @@ def issue_code(
                 code=code,
                 duration_hours=duration_hours,
                 note=note,
-                max_devices=max_devices if (max_devices and max_devices > 0) else None,
+                max_devices=max_devices if (max_devices and max_devices > 0) else 0,
             )
             session.add(record)
             session.flush()
