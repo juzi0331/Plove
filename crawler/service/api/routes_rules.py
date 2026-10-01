@@ -20,12 +20,35 @@ class TestFieldRequest(BaseModel):
     base_url: str = "https://example.com"
 
 
-@router.get("")
+@router.get("", summary="获取所有站点库（包含 Python 脚本采集器与 JSON 规则）")
 async def list_rules():
-    rules = rule_manager.list_rules()
+    sites = rule_manager.list_unified_sites()
     return {
         "ok": True,
-        "data": [r.model_dump() for r in rules],
+        "data": sites,
+        "error": None,
+    }
+
+
+@router.get("/script/{key}/code", summary="获取指定 Python 脚本源码")
+async def get_script_code(key: str):
+    code = rule_manager.get_script_code(key)
+    return {
+        "ok": True,
+        "data": {
+            "key": key,
+            "code": code,
+        },
+        "error": None,
+    }
+
+
+@router.delete("/script/{key}", summary="从本地站点库删除指定 Python 采集脚本")
+async def delete_script(key: str):
+    ok = rule_manager.delete_script(key)
+    return {
+        "ok": ok,
+        "data": {"deleted": key},
         "error": None,
     }
 

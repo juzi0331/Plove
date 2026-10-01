@@ -206,7 +206,7 @@ async def deploy_to_backend(req: DeployToBackendRequest):
             return {
                 "ok": True,
                 "data": {
-                    "message": f"🎉 成功上传并热部署到后端！站点 {req.key} 已在线就绪！",
+                    "message": f"成功上传并热部署到后端！站点 {req.key} 已在线就绪！",
                     "details": up_data.get("data"),
                 },
                 "error": None,
@@ -217,3 +217,32 @@ async def deploy_to_backend(req: DeployToBackendRequest):
                 "data": None,
                 "error": {"code": "CONNECT_ERROR", "message": f"无法连接后端上传接口: {exc}"},
             }
+
+
+class SaveScriptToLibraryRequest(BaseModel):
+    key: str = Field(..., description="站点英文 key")
+    code: str = Field(..., description="Python 采集器脚本源码")
+
+
+@router.post("/save-script-to-library", summary="将测试通过的 Python 脚本收录至本地站点与规则库")
+async def save_script_to_library(req: SaveScriptToLibraryRequest):
+    """将外部导入并通过体检的 Python 采集脚本存入本微服务的站点库中，便于长期维护与测试。"""
+    try:
+        res = rule_manager.save_script(req.key, req.code)
+        return {
+            "ok": True,
+            "data": {
+                "message": f"采集器脚本 {req.key}.py 已成功收录并保存至本地站点库！",
+                "details": res,
+            },
+            "error": None,
+        }
+    except Exception as exc:
+        return {
+            "ok": False,
+            "data": None,
+            "error": {
+                "code": ErrorCode.RULE_SYNTAX_ERROR.value,
+                "message": f"收录失败: {exc}",
+            },
+        }
