@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+
+# 环境变量文件：
+#   .env        —— 本地开发（含数据库密码、后台令牌）
+#   .env.prod   —— 生产（同上，而且是在服务器上）
+#   例外：*.example 那些是模板，要进仓库
+.env
+.env.*
+!*.example
+
+# 前端
+node_modules/
+dist/
+
+# 本地数据（数据库文件不进仓库）
+*.db
+*.sqlite3
+
+# 编辑器 / 系统
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

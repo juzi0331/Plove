@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/site-meta.json",
+  "properties": {
+    "key": {
+      "maxLength": 64,
+      "minLength": 2,
+      "pattern": "^[a-z_][a-z0-9_]*$",
+      "title": "Key",
+      "type": "string"
+    },
+    "name": {
+      "title": "Name",
+      "type": "string"
+    },
+    "version": {
+      "default": "",
+      "title": "Version",
+      "type": "string"
+    },
+    "base_url": {
+      "default": "",
+      "title": "Base Url",
+      "type": "string"
+    },
+    "mode": {
+      "default": "direct",
+      "description": "direct = 前端直连源站；proxy = 必须走后端流代理（防盗链/被墙）",
+      "enum": [
+        "direct",
+        "proxy"
+      ],
+      "title": "Mode",
+      "type": "string"
+    },
+    "capabilities": {
+      "description": "支持的命令名，如 home / category / search / detail / play",
+      "items": {
+        "type": "string"
+      },
+      "title": "Capabilities",
+      "type": "array"
+    },
+    "play_format": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Play Format",
+      "type": "array"
+    },
+    "note": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Note"
+    },
+    "badge": {
+      "default": "",
+      "description": "前台站点角标（如 4K, 极速）",
+      "title": "Badge",
+      "type": "string"
+    },
+    "custom_name": {
+      "default": "",
+      "description": "前台自定义别名",
+      "title": "Custom Name",
+      "type": "string"
+    }
+  },
+  "required": [
+    "key",
+    "name"
+  ],
+  "title": "SiteMeta",
+  "type": "object"
+}

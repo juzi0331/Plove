@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-cache-preheat-result.json",
+  "$defs": {
+    "SitePreheatDetail": {
+      "description": "单站首页预热成果明细报表。",
+      "properties": {
+        "site": {
+          "description": "站点 key",
+          "title": "Site",
+          "type": "string"
+        },
+        "site_name": {
+          "description": "站点名称",
+          "title": "Site Name",
+          "type": "string"
+        },
+        "categories_count": {
+          "description": "成功装载的分类数",
+          "title": "Categories Count",
+          "type": "integer"
+        },
+        "categories": {
+          "description": "装载的分类标签列表",
+          "items": {
+            "type": "string"
+          },
+          "title": "Categories",
+          "type": "array"
+        },
+        "recommend_count": {
+          "description": "推荐影视片单数量",
+          "title": "Recommend Count",
+          "type": "integer"
+        },
+        "recommend_titles": {
+          "description": "装载的推荐影片片名",
+          "items": {
+            "type": "string"
+          },
+          "title": "Recommend Titles",
+          "type": "array"
+        },
+        "sample_posters": {
+          "description": "抽样海报图片预览",
+          "items": {
+            "type": "string"
+          },
+          "title": "Sample Posters",
+          "type": "array"
+        },
+        "elapsed_ms": {
+          "description": "该站预热耗时（毫秒）",
+          "title": "Elapsed Ms",
+          "type": "number"
+        }
+      },
+      "required": [
+        "site",
+        "site_name",
+        "categories_count",
+        "recommend_count",
+        "elapsed_ms"
+      ],
+      "title": "SitePreheatDetail",
+      "type": "object"
+    }
+  },
+  "description": "缓存预热结果。",
+  "properties": {
+    "success": {
+      "description": "预热是否全部或部分成功",
+      "title": "Success",
+      "type": "boolean"
+    },
+    "preheated_sites": {
+      "description": "成功预热并落入缓存的站点列表",
+      "items": {
+        "type": "string"
+      },
+      "title": "Preheated Sites",
+      "type": "array"
+    },
+    "elapsed_ms": {
+      "description": "预热整体耗时（毫秒）",
+      "title": "Elapsed Ms",
+      "type": "number"
+    },
+    "details": {
+      "description": "各站点的具体预热成果明细（分类数、推荐影视列表、海报样片）",
+      "items": {
+        "$ref": "#/$defs/SitePreheatDetail"
+      },
+      "title": "Details",
+      "type": "array"
+    }
+  },
+  "required": [
+    "success",
+    "elapsed_ms"
+  ],
+  "title": "CachePreheatResult",
+  "type": "object"
+}

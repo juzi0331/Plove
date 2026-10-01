@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-playground-probe-result.json",
+  "description": "探针执行响应：包含清洗前后的数据差分、耗时与视频流。",
+  "properties": {
+    "site": {
+      "description": "站点 key",
+      "title": "Site",
+      "type": "string"
+    },
+    "command": {
+      "description": "执行命令",
+      "title": "Command",
+      "type": "string"
+    },
+    "elapsed_ms": {
+      "description": "总耗时毫秒数",
+      "title": "Elapsed Ms",
+      "type": "number"
+    },
+    "cache_hit": {
+      "description": "本次请求是否命中了系统缓存（HIT 为 true，MISS 为 false）",
+      "title": "Cache Hit",
+      "type": "boolean"
+    },
+    "status": {
+      "description": "执行状态",
+      "enum": [
+        "OK",
+        "ERROR"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "raw_data": {
+      "anyOf": [
+        {},
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "爬虫原始返回的 JSON 结构",
+      "title": "Raw Data"
+    },
+    "cleaned_data": {
+      "anyOf": [
+        {},
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "经过清洗策略（广告清洗/分类规则）后的数据",
+      "title": "Cleaned Data"
+    },
+    "playback_url": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "如果是 play 命令，提取出的直接播放地址（如 m3u8）",
+      "title": "Playback Url"
+    },
+    "error_detail": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "如果执行失败，返回的错误详情",
+      "title": "Error Detail"
+    }
+  },
+  "required": [
+    "site",
+    "command",
+    "elapsed_ms",
+    "cache_hit",
+    "status"
+  ],
+  "title": "PlaygroundProbeResult",
+  "type": "object"
+}

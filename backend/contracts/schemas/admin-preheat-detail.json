@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-preheat-detail.json",
+  "description": "单站首页预热成果明细报表。",
+  "properties": {
+    "site": {
+      "description": "站点 key",
+      "title": "Site",
+      "type": "string"
+    },
+    "site_name": {
+      "description": "站点名称",
+      "title": "Site Name",
+      "type": "string"
+    },
+    "categories_count": {
+      "description": "成功装载的分类数",
+      "title": "Categories Count",
+      "type": "integer"
+    },
+    "categories": {
+      "description": "装载的分类标签列表",
+      "items": {
+        "type": "string"
+      },
+      "title": "Categories",
+      "type": "array"
+    },
+    "recommend_count": {
+      "description": "推荐影视片单数量",
+      "title": "Recommend Count",
+      "type": "integer"
+    },
+    "recommend_titles": {
+      "description": "装载的推荐影片片名",
+      "items": {
+        "type": "string"
+      },
+      "title": "Recommend Titles",
+      "type": "array"
+    },
+    "sample_posters": {
+      "description": "抽样海报图片预览",
+      "items": {
+        "type": "string"
+      },
+      "title": "Sample Posters",
+      "type": "array"
+    },
+    "elapsed_ms": {
+      "description": "该站预热耗时（毫秒）",
+      "title": "Elapsed Ms",
+      "type": "number"
+    }
+  },
+  "required": [
+    "site",
+    "site_name",
+    "categories_count",
+    "recommend_count",
+    "elapsed_ms"
+  ],
+  "title": "SitePreheatDetail",
+  "type": "object"
+}

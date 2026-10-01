@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/episode.json",
+  "description": "单集。\n\n``ep_index`` 是 **1 起算的集号**，不是数组下标。\n\n``play_id`` 的含义由爬虫定义：后端拿到它去调 ``play``，自行不作解释。\n多线路源的集号会重复，必须靠 ``line`` 区分——所以 ``play_id`` 建议用完整路径\n（见 crawler-plan.md 的\"最容易踩的坑\"）。",
+  "properties": {
+    "ep_index": {
+      "description": "1 起算的集号",
+      "minimum": 1,
+      "title": "Ep Index",
+      "type": "integer"
+    },
+    "ep_name": {
+      "default": "",
+      "title": "Ep Name",
+      "type": "string"
+    },
+    "play_id": {
+      "title": "Play Id",
+      "type": "string"
+    },
+    "line": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "多线路源才有；单线路为 null",
+      "title": "Line"
+    },
+    "duration_sec": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Duration Sec"
+    }
+  },
+  "required": [
+    "ep_index",
+    "play_id"
+  ],
+  "title": "Episode",
+  "type": "object"
+}

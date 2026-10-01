@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-sample-posters.json",
+  "$defs": {
+    "SamplePosterItem": {
+      "description": "抽样的真实源站海报。",
+      "properties": {
+        "title": {
+          "description": "影视标题",
+          "title": "Title",
+          "type": "string"
+        },
+        "url": {
+          "description": "海报原始 URL",
+          "title": "Url",
+          "type": "string"
+        },
+        "site": {
+          "description": "所属站点",
+          "title": "Site",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "url",
+        "site"
+      ],
+      "title": "SamplePosterItem",
+      "type": "object"
+    }
+  },
+  "description": "自动从内容源提取的海报图库。",
+  "properties": {
+    "items": {
+      "description": "抽样海报清单",
+      "items": {
+        "$ref": "#/$defs/SamplePosterItem"
+      },
+      "title": "Items",
+      "type": "array"
+    }
+  },
+  "title": "SamplePostersPayload",
+  "type": "object"
+}

@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/session-state.json",
+  "description": "心跳返回的会话状态。\n\n``is_active`` 是**单会话模型的抓手**：为 false 就说明活跃位已经被别的设备拿走了，\n客户端应当立即停止播放并提示用户，而不是自己抢回来。",
+  "properties": {
+    "is_active": {
+      "title": "Is Active",
+      "type": "boolean"
+    },
+    "expires_at": {
+      "format": "date-time",
+      "title": "Expires At",
+      "type": "string"
+    },
+    "remaining_seconds": {
+      "title": "Remaining Seconds",
+      "type": "integer"
+    },
+    "server_time": {
+      "format": "date-time",
+      "title": "Server Time",
+      "type": "string"
+    },
+    "heartbeat_interval_seconds": {
+      "title": "Heartbeat Interval Seconds",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "is_active",
+    "expires_at",
+    "remaining_seconds",
+    "server_time",
+    "heartbeat_interval_seconds"
+  ],
+  "title": "SessionState",
+  "type": "object"
+}

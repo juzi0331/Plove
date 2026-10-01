@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/activation-result.json",
+  "description": "激活成功后的状态。",
+  "properties": {
+    "device_token": {
+      "title": "Device Token",
+      "type": "string"
+    },
+    "device_name": {
+      "title": "Device Name",
+      "type": "string"
+    },
+    "expires_at": {
+      "description": "到期时间，带时区的 UTC",
+      "format": "date-time",
+      "title": "Expires At",
+      "type": "string"
+    },
+    "remaining_seconds": {
+      "description": "还剩多少秒。客户端主要用它，少碰时间戳",
+      "title": "Remaining Seconds",
+      "type": "integer"
+    },
+    "heartbeat_interval_seconds": {
+      "title": "Heartbeat Interval Seconds",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "device_token",
+    "device_name",
+    "expires_at",
+    "remaining_seconds",
+    "heartbeat_interval_seconds"
+  ],
+  "title": "ActivationResult",
+  "type": "object"
+}

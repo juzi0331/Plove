@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/line-info.json",
+  "description": "一条播放线路。多线路源必须让上层知道有几条线、各有多少集。",
+  "properties": {
+    "line": {
+      "description": "线路号，1 起算",
+      "title": "Line",
+      "type": "integer"
+    },
+    "name": {
+      "default": "",
+      "title": "Name",
+      "type": "string"
+    },
+    "count": {
+      "default": 0,
+      "title": "Count",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "line"
+  ],
+  "title": "LineInfo",
+  "type": "object"
+}

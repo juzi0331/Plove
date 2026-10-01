@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/sub-category.json",
+  "description": "子分类或过滤标签。",
+  "properties": {
+    "tid": {
+      "description": "子分类 id",
+      "title": "Tid",
+      "type": "string"
+    },
+    "name": {
+      "default": "",
+      "title": "Name",
+      "type": "string"
+    }
+  },
+  "required": [
+    "tid"
+  ],
+  "title": "SubCategory",
+  "type": "object"
+}

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-code-cleanup.json",
+  "description": "批量清理失效激活码结果。",
+  "properties": {
+    "deleted_count": {
+      "description": "删除的失效激活码数量",
+      "title": "Deleted Count",
+      "type": "integer"
+    },
+    "message": {
+      "description": "提示信息",
+      "title": "Message",
+      "type": "string"
+    }
+  },
+  "required": [
+    "deleted_count",
+    "message"
+  ],
+  "title": "CodeCleanupResult",
+  "type": "object"
+}

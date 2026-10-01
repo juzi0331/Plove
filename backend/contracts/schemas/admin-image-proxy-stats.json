@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-image-proxy-stats.json",
+  "description": "图片代理缓存看板数据。",
+  "properties": {
+    "cached_files": {
+      "description": "已持久化缓存的图片文件总数",
+      "title": "Cached Files",
+      "type": "integer"
+    },
+    "total_size_mb": {
+      "description": "图片缓存占用磁盘大小（MB）",
+      "title": "Total Size Mb",
+      "type": "number"
+    },
+    "cache_dir": {
+      "description": "缓存存储绝对路径",
+      "title": "Cache Dir",
+      "type": "string"
+    }
+  },
+  "required": [
+    "cached_files",
+    "total_size_mb",
+    "cache_dir"
+  ],
+  "title": "ImageProxyStats",
+  "type": "object"
+}

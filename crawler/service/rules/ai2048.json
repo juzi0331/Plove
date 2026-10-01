@@ -1,0 +1,66 @@
+{
+  "key": "ai2048",
+  "name": "2048短剧 (JSON API)",
+  "version": "1.0.0",
+  "base_url": "https://2048ai.vip",
+  "mode": "direct",
+  "data_type": "json",
+  "encoding": "utf-8",
+  "custom_headers": {
+    "Referer": "https://2048ai.vip/"
+  },
+  "ad_patterns": [
+    "2048原创短剧\\s*-\\s*"
+  ],
+  "home": {
+    "path": "/api/v1/short-dramas/home?productId=1",
+    "method": "GET",
+    "static_categories": [
+      { "tid": "1", "name": "逆袭反转" },
+      { "tid": "2", "name": "都市现代" },
+      { "tid": "3", "name": "古装仙侠" },
+      { "tid": "4", "name": "总裁甜宠" }
+    ],
+    "recommend_container": "data.hotDramas",
+    "recommend_item": {
+      "vod_id": { "selector": "id" },
+      "vod_name": { "selector": "title" },
+      "vod_pic": { "selector": "coverUrl" },
+      "vod_remarks": { "selector": "episodeCount", "template": "共{value}集" }
+    }
+  },
+  "category": {
+    "path": "/api/v1/short-dramas?productId=1&categoryId={tid}&page={page}&size=12",
+    "method": "GET",
+    "list_container": "data.list",
+    "item": {
+      "vod_id": { "selector": "id" },
+      "vod_name": { "selector": "title" },
+      "vod_pic": { "selector": "coverUrl" },
+      "vod_remarks": { "selector": "heatCount", "template": "热度 {value}" }
+    },
+    "page_size": 12
+  },
+  "detail": {
+    "path": "/api/v1/short-dramas/{id}?productId=1",
+    "method": "GET",
+    "title_extractor": { "selector": "data.title" },
+    "pic_extractor": { "selector": "data.coverUrl" },
+    "desc_extractor": { "selector": "data.description" },
+    "remarks_extractor": { "selector": "data.episodeCount", "template": "更新至{value}集" },
+    "episodes_container": "data.episodes",
+    "episode_item": {
+      "ep_name": { "selector": "title" },
+      "play_id": { "selector": "videoUrl" }
+    }
+  },
+  "play": {
+    "path": "/api/v1/m3u8/proxy?path={play_id}",
+    "method": "GET",
+    "play_url_extractor": {
+      "type": "constant",
+      "default": "https://2048ai.vip/api/v1/m3u8/proxy?path={play_id}"
+    },
+    "format": "m3u8"
+  }
+}

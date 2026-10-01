@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-code-action.json",
+  "$defs": {
+    "CodeListItem": {
+      "description": "后台列表里的一行激活码。",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "integer"
+        },
+        "code": {
+          "title": "Code",
+          "type": "string"
+        },
+        "note": {
+          "default": "",
+          "title": "Note",
+          "type": "string"
+        },
+        "duration_hours": {
+          "description": "发码时给的时长（小时）—— **历史记录**，不是当前剩余",
+          "title": "Duration Hours",
+          "type": "integer"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "activated_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "首次激活时间；为空 = 还没被用过",
+          "title": "Activated At"
+        },
+        "expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "到期时间；为空 = 还没开始计时",
+          "title": "Expires At"
+        },
+        "disabled_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "停用时间；非空 = 这个码现在用不了",
+          "title": "Disabled At"
+        },
+        "remaining_seconds": {
+          "default": 0,
+          "description": "还剩多少秒。**0 有两种含义**：还没激活（``activated_at`` 为空），或者已经到期了。界面必须结合 ``activated_at`` 才能说清是哪种",
+          "title": "Remaining Seconds",
+          "type": "integer"
+        },
+        "device_count": {
+          "default": 0,
+          "description": "这个码用过几台设备",
+          "title": "Device Count",
+          "type": "integer"
+        },
+        "active_device_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "当前活跃的那台设备名",
+          "title": "Active Device Name"
+        }
+      },
+      "required": [
+        "id",
+        "code",
+        "duration_hours",
+        "created_at"
+      ],
+      "title": "CodeListItem",
+      "type": "object"
+    }
+  },
+  "description": "停用 / 启用 / 延长之后的回执：说明 + 变更后的那一行。\n\n回带整行而不是只回一个 ``ok``：界面可以直接用它刷新那一行，\n不用再多发一次列表请求（也就不会出现\"操作成功了但列表还是旧值\"）。",
+  "properties": {
+    "message": {
+      "title": "Message",
+      "type": "string"
+    },
+    "code": {
+      "$ref": "#/$defs/CodeListItem"
+    }
+  },
+  "required": [
+    "message",
+    "code"
+  ],
+  "title": "CodeActionResult",
+  "type": "object"
+}

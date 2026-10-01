@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-refresh-result.json",
+  "$defs": {
+    "WarmupSiteResult": {
+      "description": "一次预热里某个源的结果。",
+      "properties": {
+        "site": {
+          "title": "Site",
+          "type": "string"
+        },
+        "ok": {
+          "title": "Ok",
+          "type": "boolean"
+        },
+        "home_items": {
+          "default": 0,
+          "description": "首页预热回来的推荐条数",
+          "title": "Home Items",
+          "type": "integer"
+        },
+        "categories": {
+          "default": 0,
+          "description": "成功预热的分类个数",
+          "title": "Categories",
+          "type": "integer"
+        },
+        "seconds": {
+          "default": 0.0,
+          "title": "Seconds",
+          "type": "number"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "失败原因，形如 ``UPSTREAM_TIMEOUT: …``",
+          "title": "Error"
+        }
+      },
+      "required": [
+        "site",
+        "ok"
+      ],
+      "title": "WarmupSiteResult",
+      "type": "object"
+    },
+    "WarmupStatus": {
+      "description": "主动预热的状态。``last_*`` 为空表示这个进程还从没跑过。",
+      "properties": {
+        "enabled": {
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "running": {
+          "title": "Running",
+          "type": "boolean"
+        },
+        "interval_seconds": {
+          "title": "Interval Seconds",
+          "type": "number"
+        },
+        "last_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Reason"
+        },
+        "last_started_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Started At"
+        },
+        "last_finished_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Finished At"
+        },
+        "last_seconds": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Seconds"
+        },
+        "sites": {
+          "items": {
+            "$ref": "#/$defs/WarmupSiteResult"
+          },
+          "title": "Sites",
+          "type": "array"
+        }
+      },
+      "required": [
+        "enabled",
+        "running",
+        "interval_seconds"
+      ],
+      "title": "WarmupStatus",
+      "type": "object"
+    }
+  },
+  "description": "``POST /admin/cache/refresh`` 的回执。\n\n``started=False`` 不是错误：可能只是**已经有一轮在跑**，\n这时应该去看 ``GET /admin/status`` 里的 ``warmup.running``。",
+  "properties": {
+    "started": {
+      "title": "Started",
+      "type": "boolean"
+    },
+    "message": {
+      "title": "Message",
+      "type": "string"
+    },
+    "warmup": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/WarmupStatus"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "只在 ``?wait=true`` 时返回（等这一轮跑完的结果）"
+    }
+  },
+  "required": [
+    "started",
+    "message"
+  ],
+  "title": "RefreshResult",
+  "type": "object"
+}

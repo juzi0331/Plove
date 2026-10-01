@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="referrer" content="no-referrer" />
+  <meta name="theme-color" content="#000000" />
+  <title>PLOVE - 開啟專屬私人影院</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    /* ====================================================================
+       基础重置与全局环境
+    ==================================================================== */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #000000;
+      color: #ffffff;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC',
+        'Hiragino Sans GB', 'Noto Sans CJK SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      user-select: none;
+    }
+
+    /* ====================================================================
+       顶部导航与品牌标识
+    ==================================================================== */
+    .nf-header {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 10;
+      height: 90px;
+      background: linear-gradient(180deg, rgba(0, 0, 0, 0.75) 0%, transparent 100%);
+    }
+
+    .nf-header__inner {
+      max-width: 1360px;
+      height: 100%;
+      margin: 0 auto;
+      padding: 0 54px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+    }
+
+    .nf-brand-logo {
+      display: inline-flex;
+      align-items: center;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .nf-brand-logo__img {
+      display: block;
+      width: 148px;
+      height: 40px;
+      aspect-ratio: 37 / 10;
+      object-fit: contain;
+      transition: transform 0.22s cubic-bezier(0.2, 0, 0.1, 1);
+    }
+
+    .nf-brand-logo:hover .nf-brand-logo__img {
+      transform: scale(1.04);
+    }
+
+    /* ====================================================================
+       Hero 首屏区域
+    ==================================================================== */
+    .nf-hero {
+      position: relative;
+      min-height: 720px;
+      height: 92vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 100px 24px 60px;
+      overflow: hidden;
+    }
+
+    .nf-hero__content {
+      position: relative;
+      z-index: 2;
+      max-width: 950px;
+      margin: 0 auto;
+      padding-bottom: 2rem;
+    }
+
+    .nf-hero__title {
+      font-size: clamp(36px, 4.4vw, 56px);
+      font-weight: 700;
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+      margin: 0 0 16px;
+      color: #ffffff;
+      text-shadow: 0 2px 14px rgba(0, 0, 0, 0.75);
+    }
+
+    .nf-hero__subtitle {
+      font-size: clamp(18px, 1.8vw, 24px);
+      font-weight: 400;
+      color: #ffffff;
+      margin: 0 0 20px;
+      letter-spacing: -0.01em;
+    }
+
+    .nf-hero__lead {
+      font-size: clamp(15px, 1.4vw, 18px);
+      font-weight: 400;
+      color: #ffffff;
+      margin: 0 0 26px;
+      line-height: 1.5;
+      letter-spacing: -0.01em;
+    }
+
+    /* ====================================================================
+       激活表单 (15px 圆角)
+    ==================================================================== */
+    .nf-cta-form {
+      display: flex;
+      flex-direction: row;
+      align-items: stretch;
+      justify-content: center;
+      gap: 8px;
+      max-width: 640px;
+      margin: 0 auto;
+    }
+
+    .nf-input-wrapper {
+      position: relative;
+      flex: 1;
+      min-width: 320px;
+      height: 56px;
+    }
+
+    .nf-input {
+      width: 100%;
+      height: 100%;
+      padding: 22px 18px 8px;
+      background: rgba(18, 18, 18, 0.85);
+      border: 1px solid rgba(128, 128, 128, 0.7);
+      border-radius: 15px; /* 👈【输入框圆角】在此调节 */
+      color: #ffffff;
+      font-size: 16px;
+      outline: none;
+      transition: all 0.2s ease;
+      box-sizing: border-box;
+    }
+
+    .nf-input:hover {
+      border-color: rgba(255, 255, 255, 0.85);
+    }
+
+    .nf-input:focus {
+      border-color: #ffffff;
+      background: rgba(22, 22, 22, 0.95);
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
+    }
+
+    .nf-floating-label {
+      position: absolute;
+      left: 18px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: rgba(255, 255, 255, 0.65);
+      font-size: 15px;
+      pointer-events: none;
+      transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .nf-input-wrapper.is-focused .nf-floating-label,
+    .nf-input:not(:placeholder-shown) + .nf-floating-label {
+      top: 13px;
+      font-size: 11px;
+      font-weight: 700;
+      color: rgba(255, 255, 255, 0.8);
+      letter-spacing: 0.04em;
+    }
+
+    .nf-cta-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      height: 56px;
+      padding: 0 34px;
+      background-color: #e50914;
+      border: none;
+      border-radius: 15px; /* 👈【开始使用按钮圆角】在此调节 */
+      color: #ffffff;
+      font-size: 23px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background-color 0.2s ease, transform 0.1s ease;
+    }
+
+    .nf-cta-btn:hover {
+      background-color: #c11119;
+    }
+
+    .nf-cta-btn:active {
+      transform: scale(0.98);
+    }
+
+    .nf-cta-icon {
+      width: 22px;
+      height: 22px;
+    }
+
+    /* ====================================================================
+       电影海报背景墙 (纵向 3~4 排，大小随机错落)
+    ==================================================================== */
+    .nf-backdrop {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      overflow: hidden;
+      pointer-events: none;
+      background: #000000;
+    }
+
+    .nf-poster-wall {
+      position: absolute;
+      top: -18%;
+      left: -12%;
+      right: -12%;
+      bottom: -18%;
+      transform: rotate(-3.5deg) scale(1.06);
+      opacity: 0.92;
+      filter: contrast(1.05) brightness(0.88);
+    }
+
+    .nf-poster-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      grid-auto-rows: 165px;
+      grid-auto-flow: dense;
+      gap: 12px;
+      width: 100%;
+      height: 100%;
+    }
+
+    .nf-poster-card {
+      position: relative;
+      border-radius: 6px;
+      overflow: hidden;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.7);
+      background-color: #1a1a1a;
+      transform: translateZ(0);
+    }
+
+    .nf-poster-card.is-standard {
+      grid-column: span 1;
+      grid-row: span 1;
+    }
+
+    .nf-poster-card.is-wide {
+      grid-column: span 2;
+      grid-row: span 1;
+    }
+
+    .nf-poster-card.is-tall {
+      grid-column: span 1;
+      grid-row: span 2;
+    }
+
+    .nf-poster-card.is-featured {
+      grid-column: span 2;
+      grid-row: span 2;
+    }
+
+    .nf-poster-img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .nf-vignette-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+      background-image:
+        linear-gradient(
+          180deg,
+          rgba(0, 0, 0, 0.85) 0%,
+          rgba(0, 0, 0, 0.25) 35%,
+          rgba(0, 0, 0, 0.3) 65%,
+          rgba(0, 0, 0, 0.9) 100%
+        ),
+        radial-gradient(
+          60% 55% at 50% 50%,
+          rgba(0, 0, 0, 0.75) 0%,
+          rgba(0, 0, 0, 0.5) 55%,
+          rgba(0, 0, 0, 0.15) 100%
+        );
+    }
+
+    /* ====================================================================
+       官方 1:1 原生 CSS 椭圆地平线贝塞尔曲线与两端消融系统
+    ==================================================================== */
+    .nf-curve-container {
+      box-sizing: border-box;
+      overflow-x: hidden;
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 6.25rem;
+      z-index: 3;
+      pointer-events: none;
+    }
+
+    .nf-curve {
+      box-sizing: border-box;
+      position: absolute;
+      height: 100%;
+      top: 0;
+      margin: auto;
+      display: flex;
+      align-items: center;
+      border: solid 0.25rem transparent;
+      border-top-left-radius: 50% 100%;
+      border-top-right-radius: 50% 100%;
+      border-bottom: none;
+      background: radial-gradient(
+        50% 500% at 50% -420%,
+        rgba(64, 97, 231, 0.4) 80%,
+        rgba(0, 0, 0, 0.1) 100%
+      ), black;
+      -webkit-background-clip: padding-box;
+      background-clip: padding-box;
+      width: 200%;
+      left: -50%;
+    }
+
+    @media all and (min-width: 600px) {
+      .nf-curve { width: 180%; left: -40%; }
+    }
+    @media all and (min-width: 960px) {
+      .nf-curve { width: 150%; left: -25%; }
+    }
+    @media all and (min-width: 1280px) {
+      .nf-curve { width: 130%; left: -15%; }
+    }
+    @media all and (min-width: 1920px) {
+      .nf-curve { width: 120%; left: -10%; }
+    }
+
+    /* 官方核心渐变线：两翼精准渐隐消融！ */
+    .nf-curve:before {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      z-index: -1;
+      margin-top: -0.25rem;
+      border-radius: inherit;
+      background: linear-gradient(
+        to right,
+        rgba(33, 13, 22, 1) 16%,
+        rgba(184, 40, 105, 1),
+        rgba(229, 9, 20, 1),
+        rgba(184, 40, 105, 1),
+        rgba(33, 13, 22, 1) 84%
+      );
+    }
+
+    /* ====================================================================
+       現正熱播 (Trending Now) 官方 1:1 双层立体数字与画幅卡片
+    ==================================================================== */
+    .nf-trending {
+      position: relative;
+      z-index: 2;
+      background-color: #000000;
+      padding: 24px 0 72px;
+    }
+
+    .nf-trending__inner {
+      max-width: 1360px;
+      margin: 0 auto;
+      padding: 0 54px;
+    }
+
+    .nf-trending__header {
+      margin-bottom: 22px;
+    }
+
+    .nf-trending__title {
+      font-size: 25px;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      color: #ffffff;
+      margin: 0;
+    }
+
+    .nf-trending__stage {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .nf-trending__track {
+      display: flex;
+      gap: 0;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scroll-behavior: smooth;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      padding: 20px 4px 28px;
+      width: 100%;
+    }
+
+    .nf-trending__track::-webkit-scrollbar {
+      display: none;
+    }
+
+    .nf-rank-card {
+      position: relative;
+      flex: 0 0 auto;
+      padding: 0.4rem 1.375rem;
+      display: flex;
+      align-items: flex-end;
+      cursor: pointer;
+      user-select: none;
+      transition: transform 0.2s ease-in-out;
+    }
+
+    .nf-rank-card:hover {
+      transform: scale(1.05);
+      z-index: 2;
+    }
+
+    .nf-rank-card__poster {
+      position: relative;
+      width: 11.25rem;
+      height: 15.75rem;
+      border-radius: 0.5rem;
+      overflow: hidden;
+      background-color: rgb(35, 35, 35);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.75);
+    }
+
+    @media (min-width: 1280px) {
+      .nf-rank-card__poster {
+        width: 13.375rem;
+        height: 18.75rem;
+      }
+    }
+
+    .nf-rank-card__img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* 官方 1:1 双层立体描边空心大数字 */
+    .nf-rank-card__num-wrap {
+      position: absolute;
+      bottom: 0rem;
+      left: 0.2rem;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .nf-rank-card__num {
+      font-family: 'Impact', 'Arial Black', -apple-system, sans-serif;
+      font-size: 6.25rem;
+      line-height: 1;
+      display: inline-block;
+      height: 1em;
+      position: relative;
+      font-weight: 700;
+      color: rgb(65, 65, 65);
+      -webkit-text-stroke: 0.25rem rgb(255, 255, 255);
+      text-shadow: 0 0 1.5rem rgba(0, 0, 0, 0.5);
+    }
+
+    @media (min-width: 1280px) {
+      .nf-rank-card__num {
+        font-size: 7.5rem;
+      }
+    }
+
+    .nf-rank-card__num::before {
+      content: attr(data-content);
+      -webkit-text-fill-color: rgb(0, 0, 0);
+      -webkit-text-stroke: 0;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+
+    .nf-slider-bar-arrow {
+      position: absolute;
+      right: -24px;
+      top: 50%;
+      transform: translateY(-60%);
+      width: 48px;
+      height: 84px;
+      background: rgba(0, 0, 0, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 5;
+      transition: all 0.2s ease;
+    }
+
+    .nf-slider-bar-arrow:hover {
+      background: rgba(229, 9, 20, 0.85);
+      border-color: transparent;
+      transform: translateY(-60%) scale(1.05);
+    }
+
+    .nf-slider-bar-arrow svg {
+      width: 28px;
+      height: 28px;
+    }
+
+    .nf-mini-footer {
+      border-top: 1px solid rgba(255, 255, 255, 0.12);
+      padding: 32px 24px 48px;
+      text-align: center;
+      background-color: #000000;
+    }
+
+    .nf-mini-footer__text {
+      color: rgba(255, 255, 255, 0.45);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    @media (max-width: 768px) {
+      .nf-header__inner { padding: 0 20px; }
+      .nf-cta-form { flex-direction: column; width: 100%; }
+      .nf-input-wrapper { min-width: auto; width: 100%; }
+      .nf-cta-btn { width: 100%; }
+      .nf-trending__inner { padding: 0 16px; }
+      .nf-rank-card__poster { width: 8.75rem; height: 12.25rem; }
+      .nf-rank-card__num { font-size: 4.8rem; }
+      .nf-slider-bar-arrow { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <!-- 顶部导航 -->
+  <header class="nf-header">
+    <div class="nf-header__inner">
+      <div class="nf-brand-logo" onclick="focusInput()">
+        <!-- 固有尺寸 370x100，渲染尺寸 148x40 (37:10) -->
+        <img src="logo.png" alt="PLOVE" class="nf-brand-logo__img" width="148" height="40" />
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero 首屏 -->
+  <section class="nf-hero">
+    <!-- 电影海报墙 (4排，大小错落，真随机) -->
+    <div class="nf-backdrop" aria-hidden="true">
+      <div class="nf-poster-wall">
+        <div id="posterGrid" class="nf-poster-grid"></div>
+      </div>
+      <div class="nf-vignette-overlay"></div>
+      <!-- 官方地平线贝塞尔弧线 -->
+      <div class="nf-curve-container">
+        <div class="nf-curve"></div>
+      </div>
+    </div>
+
+    <!-- 居中引导内容 -->
+    <div class="nf-hero__content">
+      <h1 class="nf-hero__title">大家都在聊的人氣作品</h1>
+      <p class="nf-hero__subtitle">隨時隨地，隨心暢看海量超清影視。</p>
+      <p class="nf-hero__lead">準備開始觀賞了嗎？請輸入您的激活碼，開啟專屬私人影院。</p>
+
+      <form class="nf-cta-form" onsubmit="handleActivate(event)">
+        <div class="nf-input-wrapper" id="inputWrapper">
+          <input
+            id="activateInput"
+            class="nf-input"
+            type="text"
+            placeholder=" "
+            autocomplete="off"
+            spellcheck="false"
+            onfocus="document.getElementById('inputWrapper').classList.add('is-focused')"
+            onblur="handleInputBlur()"
+            oninput="handleInput(this)"
+          />
+          <label class="nf-floating-label" for="activateInput">
+            激活碼地址 (例如: PLV-XXXX-XXXX)
+          </label>
+        </div>
+
+        <button class="nf-cta-btn" type="submit">
+          <span>開始使用</span>
+          <svg class="nf-cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      </form>
+    </div>
+  </section>
+
+  <!-- 現正熱播 (Trending Now) -->
+  <section class="nf-trending">
+    <div class="nf-trending__inner">
+      <div class="nf-trending__header">
+        <h2 class="nf-trending__title">現正熱播</h2>
+      </div>
+
+      <div class="nf-trending__stage">
+        <div id="sliderTrack" class="nf-trending__track"></div>
+        <button class="nf-slider-bar-arrow" type="button" aria-label="往後瀏覽" onclick="scrollSlider()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 极简页脚 -->
+  <footer class="nf-mini-footer">
+    <p class="nf-mini-footer__text">
+      PLOVE 影視 · 僅供內測技術學習與網絡協議研究 · 本站不存儲、不上傳任何音視頻文件
+    </p>
+  </footer>
+
+  <script>
+    // 官方 30+ 真实剧照大片库
+    const officialPosters = [
+      'https://occ-0-325-395.1.nflxso.net/dnm/api/v6/mAcAr9TxZIVbINe88xb3Teg5_OA/AAAABchOs-1XieJMoyK3mNyWioi6yUn-js6rfSCYIK6Mutbxh9I9hiHFwXtxaPJ5P9GIP6lK2xLrcWl88F70-Zd-4fS8zSum3ZDe9yyIJAV7Xlpr8kfbZDeGskrJuVKvqhl3apbs.webp?r=35e',
+      'https://occ-0-325-395.1.nflxso.net/dnm/api/v6/6AYY37jfdO6hpXcMjf9Yu5cnmO0/AAAABYtJ9rFHVd8YoHcPiepjGMHpK3gEU6BSBmuR6WVtlzJHUVlVFuevWd66lqq5L2iH93x4Av3L8IqYv8Iyhr4TV15B5vtDqh5dQlHq.webp?r=38b',
+      'https://occ-0-325-395.1.nflxso.net/dnm/api/v6/mAcAr9TxZIVbINe88xb3Teg5_OA/AAAABWLunz798Q8P9bSiw5oN8KWCv_0yXPxoCCGBhQuUl_aod8-sWqFGi2sCoo9FdudMLfv9ufBppTskqk9aE4M406bk_udAjKhu_m5256Z6cceHeqTljQTf25ElyBQUr9Yyl5UH.webp?r=d48',
+      'https://occ-0-325-395.1.nflxso.net/dnm/api/v6/6AYY37jfdO6hpXcMjf9Yu5cnmO0/AAAABRLs3licJG0Mj6F8LPxnpxeUQgoutXRD5Aq5BxN_i6MOhIXNdrYGfeOiedbbzgUCuLvlVmONpXzLE1kkzd4LV2MexXtdfUSjI2Vg.webp?r=5b2',
+      'https://occ-0-325-395.1.nflxso.net/dnm/api/v6/S4oi7EPZbv2UEPaukW54OORa0S8/AAAABQqJuyhZJCxJny-9qUSINKyR9SZcWkW2-PyYdirpftSasUwTmeKcdnHxrrRfzsarsdiNTEnnAB5wQMmKh03oLTltT01xCaKZFw.webp?r=6cd',
+      'https://occ-0-325-395.1.nflxso.net/dnm/api/v6/6AYY37jfdO6hpXcMjf9Yu5cnmO0/AAAABYREREbjyo5fYJr_P89r3Ot1NbnY2DqMOyjIFAb3hQJ5Lkp-B9dmSzqArL4DS71Y4ahk7FFB5JuNP6M3DRgiKhMRpnHTBAYt43yo.webp?r=50e',
+      'https://occ-0-325-395.1.nflxso.net/dnm/api/v6/mAcAr9TxZIVbINe88xb3Teg5_OA/AAAABYv53jhknxjcwbsI_L3Mejbt8c5Q-PCatXAIgERUUGOD59PxG_oWaxyBuAgsb-uEmSJ7o_Vlj-nfQKbt-IGAPhaQiPrCCgaF2F4.webp?r=17d',
+      'https://occ-0-325-395.1.nflxso.net/dnm/api/v6/6AYY37jfdO6hpXcMjf9Yu5cnmO0/AAAABUvePr5DLeEf16P3YCvJliB0P9vmfxFNgQA4sP45LaqGLjpsXFSlm4fmRpM04dn8BSfbvQepugyqDMfnvtx2BhWuvFt5jpM5H2O5.webp?r=f8f',
+      'https://occ-0-325-395.1.nflxso.net/dnm/api/v6/mAcAr9TxZIVbINe88xb3Teg5_OA/AAAABQIFB7F9xnugEgQ4tG-q1Hjrga4Doi6xPF2Z7QgNhdQyKkD1nHwTCnKyBV51sgHl1R--ibSmFHcFRpwEdT62P1D7iIK2H63DW9utNzv5GXCkyHI5YRH8oDMDo_Mkc30pYT59.webp?r=e8f',
+      'https://occ-0-325-395.1.nflxso.net/dnm/api/v6/S4oi7EPZbv2UEPaukW54OORa0S8/AAAABZ0zUb0lnewNxU6NHAuXsgIF2itIm5ek3jBEVGJsVsI6fdCwG7-WbEUR-nQMfAHaO9Qdne5QYfkj2aRwquxb36cjZY171k42Gi0.webp?r=bfd',
+      'https://occ-0-325-395.1.nflxso.net/dnm/api/v6/mAcAr9TxZIVbINe88xb3Teg5_OA/AAAABXgvEdyOg8fAaIucE9LGFtb7ih9R31djnJokkl46JjSwFdjsHGAmhPgNlCpEO_ed-H9VV0OIIdGe7HUdzJUrtTO7xbBpFO9XbA1pAVnd5GKLmpObhH953jil2_JHrcoDTys0.webp?r=c04',
+      'https://occ-0-325-395.1.nflxso.net/dnm/api/v6/S4oi7EPZbv2UEPaukW54OORa0S8/AAAABeMqaY3vbvFVigshSmUtoWj9csHAgR6HWbQAy-9w9hsgXCahZfE3FCsXrLp5zzdAtcY3fTjHllPl8dPMPnZGQLIOK1m_J6zh9Q.webp?r=d5c',
+      'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=450&q=80',
+      'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=450&q=80',
+      'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=450&q=80',
+      'https://images.unsplash.com/photo-1635805737707-575885ab0820?w=450&q=80',
+      'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=450&q=80',
+      'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=450&q=80',
+      'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=450&q=80',
+      'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?w=450&q=80'
+    ];
+
+    // 洗牌算法
+    function shuffle(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    // 生成海报墙
+    const gridEl = document.getElementById('posterGrid');
+    const shuffled = shuffle(officialPosters);
+    for (let i = 0; i < 70; i++) {
+      const pic = shuffled[i % shuffled.length];
+      const rand = Math.random();
+      let cls = 'is-standard';
+      if (rand < 0.22) cls = 'is-wide';
+      else if (rand < 0.32) cls = 'is-tall';
+      else if (rand < 0.40) cls = 'is-featured';
+
+      const card = document.createElement('div');
+      card.className = 'nf-poster-card ' + cls;
+      card.innerHTML = `<img src="${pic}" alt="poster" class="nf-poster-img" referrerpolicy="no-referrer" onerror="this.style.display='none'">`;
+      gridEl.appendChild(card);
+    }
+
+    // 热播前 10 部高画质片单
+    const top10 = [
+      { name: '陽光女子合唱團', pic: 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?w=450&q=80' },
+      { name: '早春晴朗', pic: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=450&q=80' },
+      { name: '挑情醜聞', pic: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=450&q=80' },
+      { name: '失約裂痕', pic: 'https://images.unsplash.com/photo-1478760329108-5c3ed9d495a0?w=450&q=80' },
+      { name: '風林火山', pic: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=450&q=80' },
+      { name: '暗夜極光', pic: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=450&q=80' },
+      { name: '深海巨獸', pic: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=450&q=80' },
+      { name: '時光旅者', pic: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=450&q=80' },
+      { name: '霓虹特工', pic: 'https://images.unsplash.com/photo-1635805737707-575885ab0820?w=450&q=80' },
+      { name: '終局決戰', pic: 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=450&q=80' }
+    ];
+
+    const trackEl = document.getElementById('sliderTrack');
+    top10.forEach((item, index) => {
+      const card = document.createElement('div');
+      card.className = 'nf-rank-card';
+      card.onclick = () => focusInput(item.name);
+      card.innerHTML = `
+        <div class="nf-rank-card__poster">
+          <img src="${item.pic}" alt="${item.name}" class="nf-rank-card__img" referrerpolicy="no-referrer">
+        </div>
+        <span class="nf-rank-card__num-wrap">
+          <span class="nf-rank-card__num" data-content="${index + 1}">${index + 1}</span>
+        </span>
+      `;
+      trackEl.appendChild(card);
+    });
+
+    function scrollSlider() {
+      trackEl.scrollBy({ left: trackEl.clientWidth * 0.7, behavior: 'smooth' });
+    }
+
+    function focusInput(title) {
+      const el = document.getElementById('activateInput');
+      el.focus();
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function handleInputBlur() {
+      const el = document.getElementById('activateInput');
+      if (!el.value) {
+        document.getElementById('inputWrapper').classList.remove('is-focused');
+      }
+    }
+
+    function handleInput(el) {
+      el.value = el.value.toUpperCase().replace(/[－—_]/g, '-');
+    }
+
+    function handleActivate(e) {
+      e.preventDefault();
+      const val = document.getElementById('activateInput').value.trim();
+      if (!val) {
+        alert('請輸入您的專屬激活碼！');
+        return;
+      }
+      alert('激活碼 ' + val + ' 正在驗證...');
+    }
+  </script>
+</body>
+</html>

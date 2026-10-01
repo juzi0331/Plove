@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-image-proxy-clear.json",
+  "description": "图片缓存清理结果。",
+  "properties": {
+    "cleared_files": {
+      "description": "清理的文件数",
+      "title": "Cleared Files",
+      "type": "integer"
+    },
+    "freed_mb": {
+      "description": "释放的磁盘空间（MB）",
+      "title": "Freed Mb",
+      "type": "number"
+    }
+  },
+  "required": [
+    "cleared_files",
+    "freed_mb"
+  ],
+  "title": "ImageProxyClearResult",
+  "type": "object"
+}

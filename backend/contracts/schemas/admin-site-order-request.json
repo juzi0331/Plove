@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-site-order-request.json",
+  "description": "重排用户端的站点顺序。\n\n给的是**完整顺序**，不是单条改动：这样一次提交就是一个一致的最终状态，\n不会出现\"改到一半\"的中间态（单条改动最怕的就是中途失败）。",
+  "properties": {
+    "keys": {
+      "description": "按用户端要显示的顺序列出全部 key",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Keys",
+      "type": "array"
+    }
+  },
+  "required": [
+    "keys"
+  ],
+  "title": "AdminSiteOrderRequest",
+  "type": "object"
+}

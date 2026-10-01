@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-device-item.json",
+  "description": "一台设备。**没有 token 字段，只有掩码前缀**（见文件头）。",
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "integer"
+    },
+    "name": {
+      "default": "",
+      "title": "Name",
+      "type": "string"
+    },
+    "token_prefix": {
+      "description": "令牌前 6 位，只为让后台能区分是哪一台",
+      "title": "Token Prefix",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "last_seen_at": {
+      "description": "最后一次心跳/请求时间",
+      "format": "date-time",
+      "title": "Last Seen At",
+      "type": "string"
+    },
+    "is_active": {
+      "description": "它是不是当前占着活跃位的那台",
+      "title": "Is Active",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "id",
+    "token_prefix",
+    "created_at",
+    "last_seen_at",
+    "is_active"
+  ],
+  "title": "DeviceItem",
+  "type": "object"
+}

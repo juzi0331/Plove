@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-issue-request.json",
+  "description": "发码。``hours`` / ``days`` 二选一。",
+  "properties": {
+    "hours": {
+      "anyOf": [
+        {
+          "maximum": 8760,
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Hours"
+    },
+    "days": {
+      "anyOf": [
+        {
+          "maximum": 365,
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Days"
+    },
+    "count": {
+      "default": 1,
+      "description": "一次发几个（上限 50，防止手滑发出 5000 个）",
+      "maximum": 50,
+      "minimum": 1,
+      "title": "Count",
+      "type": "integer"
+    },
+    "note": {
+      "default": "",
+      "description": "备注：发给谁 / 哪一批",
+      "maxLength": 255,
+      "title": "Note",
+      "type": "string"
+    }
+  },
+  "title": "IssueCodesRequest",
+  "type": "object"
+}

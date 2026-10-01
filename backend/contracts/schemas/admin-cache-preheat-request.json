@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-cache-preheat-request.json",
+  "description": "主动预热缓存请求。",
+  "properties": {
+    "site": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "若提供则预热指定站点首页，为空则预热所有启用站点",
+      "title": "Site"
+    }
+  },
+  "title": "CachePreheatRequest",
+  "type": "object"
+}

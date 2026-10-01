@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-site-category-rules-update.json",
+  "$defs": {
+    "CategoryRuleItem": {
+      "description": "单个分类的控制规则。",
+      "properties": {
+        "tid": {
+          "description": "源站分类 tid",
+          "title": "Tid",
+          "type": "string"
+        },
+        "name": {
+          "description": "源站原始名称",
+          "title": "Name",
+          "type": "string"
+        },
+        "custom_name": {
+          "default": "",
+          "description": "前台展示重命名（空则保持原名）",
+          "title": "Custom Name",
+          "type": "string"
+        },
+        "hidden": {
+          "default": false,
+          "description": "是否在前台隐藏/屏蔽该分类",
+          "title": "Hidden",
+          "type": "boolean"
+        },
+        "sort_order": {
+          "default": 0,
+          "description": "排序权重，小的在前",
+          "title": "Sort Order",
+          "type": "integer"
+        },
+        "subcategories": {
+          "description": "该分类下的子分类列表",
+          "items": {
+            "$ref": "#/$defs/SubCategoryItem"
+          },
+          "title": "Subcategories",
+          "type": "array"
+        }
+      },
+      "required": [
+        "tid",
+        "name"
+      ],
+      "title": "CategoryRuleItem",
+      "type": "object"
+    },
+    "SubCategoryItem": {
+      "description": "子分类/二级筛选标签。",
+      "properties": {
+        "tid": {
+          "description": "子分类唯一标识",
+          "title": "Tid",
+          "type": "string"
+        },
+        "name": {
+          "description": "子分类名称",
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tid",
+        "name"
+      ],
+      "title": "SubCategoryItem",
+      "type": "object"
+    }
+  },
+  "description": "更新站点分类与子分类控制规则。",
+  "properties": {
+    "rules": {
+      "description": "完整的分类规则清单",
+      "items": {
+        "$ref": "#/$defs/CategoryRuleItem"
+      },
+      "title": "Rules",
+      "type": "array"
+    },
+    "default_tid": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "默认推荐分类 tid",
+      "title": "Default Tid"
+    }
+  },
+  "title": "SiteCategoryRuleUpdateRequest",
+  "type": "object"
+}

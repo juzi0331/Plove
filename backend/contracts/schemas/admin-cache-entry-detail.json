@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-cache-entry-detail.json",
+  "description": "单条缓存的具体数据透视。",
+  "properties": {
+    "key": {
+      "description": "缓存 Key",
+      "title": "Key",
+      "type": "string"
+    },
+    "site": {
+      "description": "所属站点",
+      "title": "Site",
+      "type": "string"
+    },
+    "namespace": {
+      "description": "命名空间",
+      "title": "Namespace",
+      "type": "string"
+    },
+    "ident": {
+      "description": "定位符",
+      "title": "Ident",
+      "type": "string"
+    },
+    "remaining_seconds": {
+      "description": "剩余存活秒数",
+      "title": "Remaining Seconds",
+      "type": "number"
+    },
+    "data": {
+      "default": null,
+      "description": "缓存中存储的具体 JSON 数据内容",
+      "title": "Data"
+    }
+  },
+  "required": [
+    "key",
+    "site",
+    "namespace",
+    "ident",
+    "remaining_seconds"
+  ],
+  "title": "CacheEntryDetail",
+  "type": "object"
+}

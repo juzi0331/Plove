@@ -1,0 +1,34 @@
+{
+  "code": 200,
+  "message": "ok",
+  "data": {
+    "items": [
+      {
+        "id": 249,
+        "title": "2048原创短剧 - 我是爸爸的新妻子",
+        "coverUrl": "/uploads/images/7baf35bba6cd4e688cbf733faf3d9406.jpg",
+        "rating": 9.4,
+        "episodeCount": 7,
+        "tags": "原创,短剧",
+        "publishedAt": "2026-09-28T17:22:42",
+        "heatCount": 1354523,
+        "previewVideoId": 20560,
+        "previewVideoUrl": "jpd/trailer/aaa.m3u8",
+        "previewSourcePlatform": "gossip"
+      },
+      {
+        "id": 248,
+        "title": "2048原创短剧 - 学姐偷情回忆录",
+        "coverUrl": "https://cdn.example.com/bbb.jpg",
+        "rating": 8.8,
+        "episodeCount": 5,
+        "publishedAt": "2026-09-27T10:00:00",
+        "heatCount": 131000
+      }
+    ],
+    "total": 480,
+    "page": 1,
+    "size": 24,
+    "totalPages": 20
+  }
+}

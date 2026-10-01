@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-aggregate-search.json",
+  "$defs": {
+    "AggregateSearchSiteResult": {
+      "description": "单站搜索聚合结果。",
+      "properties": {
+        "site": {
+          "description": "站点 key",
+          "title": "Site",
+          "type": "string"
+        },
+        "site_name": {
+          "description": "站点名称",
+          "title": "Site Name",
+          "type": "string"
+        },
+        "supported": {
+          "description": "该站点爬虫是否支持搜索能力",
+          "title": "Supported",
+          "type": "boolean"
+        },
+        "count": {
+          "description": "找到的影视结果条数",
+          "title": "Count",
+          "type": "integer"
+        },
+        "elapsed_ms": {
+          "description": "该站点爬虫搜索耗时（毫秒）",
+          "title": "Elapsed Ms",
+          "type": "number"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "搜索失败时的错误信息",
+          "title": "Error"
+        },
+        "items": {
+          "description": "搜索出的前几部视频摘要条目",
+          "items": {},
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "site",
+        "site_name",
+        "supported",
+        "count",
+        "elapsed_ms"
+      ],
+      "title": "AggregateSearchSiteResult",
+      "type": "object"
+    }
+  },
+  "description": "跨源聚合搜索比对总览。",
+  "properties": {
+    "kw": {
+      "description": "搜索关键词",
+      "title": "Kw",
+      "type": "string"
+    },
+    "total_sites": {
+      "description": "参与并发搜索的站点总数",
+      "title": "Total Sites",
+      "type": "integer"
+    },
+    "total_count": {
+      "description": "全源累计命中的视频结果条数",
+      "title": "Total Count",
+      "type": "integer"
+    },
+    "results": {
+      "description": "各站点的独立比对结果",
+      "items": {
+        "$ref": "#/$defs/AggregateSearchSiteResult"
+      },
+      "title": "Results",
+      "type": "array"
+    }
+  },
+  "required": [
+    "kw",
+    "total_sites",
+    "total_count"
+  ],
+  "title": "AggregateSearchPayload",
+  "type": "object"
+}

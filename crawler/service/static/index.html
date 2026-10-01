@@ -1,0 +1,1916 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plove Universal Crawler · 智能规则采集控制台</title>
+  <!-- 现代英文字体与代码字体 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <!-- HLS.js 播放器 -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.8/dist/hls.min.js"></script>
+  <!-- Vue 3 -->
+  <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js"></script>
+
+  <style>
+    :root {
+      /* 高级现代浅色调体系 */
+      --bg-base: #f8fafc;
+      --bg-surface: #ffffff;
+      --bg-surface-subtle: #f1f5f9;
+      --bg-surface-elevated: #ffffff;
+      --border-subtle: #e2e8f0;
+      --border-focus: #6366f1;
+      
+      --accent-primary: #4f46e5;
+      --accent-primary-hover: #4338ca;
+      --accent-gradient: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%);
+      --accent-cyan: #0284c7;
+      --accent-emerald: #059669;
+      --accent-amber: #d97706;
+      --accent-rose: #e11d48;
+
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --text-dim: #94a3b8;
+
+      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', Consolas, Monaco, monospace;
+      
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 18px;
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 16px -2px rgba(15, 23, 42, 0.06), 0 2px 6px -1px rgba(15, 23, 42, 0.03);
+      --shadow-lg: 0 12px 32px -4px rgba(15, 23, 42, 0.08), 0 4px 12px -2px rgba(15, 23, 42, 0.04);
+      --shadow-glow: 0 0 24px rgba(79, 70, 229, 0.2);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      line-height: 1.5;
+      background-image: 
+        radial-gradient(at 10% 10%, rgba(79, 70, 229, 0.06) 0px, transparent 40%),
+        radial-gradient(at 90% 90%, rgba(6, 182, 212, 0.06) 0px, transparent 40%);
+      background-attachment: fixed;
+    }
+
+    /* 顶部导航 */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      background: rgba(255, 255, 255, 0.88);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 0 2rem;
+      height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+    }
+
+    .brand-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: var(--radius-md);
+      background: var(--accent-gradient);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+    }
+
+    .brand-text h1 {
+      font-size: 1.2rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--text-main);
+    }
+
+    .brand-text span {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .nav-tabs {
+      display: flex;
+      gap: 6px;
+      background: var(--bg-surface-subtle);
+      padding: 5px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .nav-tab {
+      padding: 8px 18px;
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .nav-tab:hover {
+      color: var(--text-main);
+    }
+
+    .nav-tab.active {
+      color: #ffffff;
+      background: var(--accent-primary);
+      box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      background: rgba(16, 185, 129, 0.08);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      color: var(--accent-emerald);
+      border-radius: 9999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+
+    .status-pulse {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-emerald);
+      box-shadow: 0 0 8px var(--accent-emerald);
+    }
+
+    /* 主布局容器 */
+    main {
+      max-width: 1360px;
+      margin: 2rem auto;
+      padding: 0 1.5rem 5rem;
+    }
+
+    /* ========================================================
+       🔮 核心杀手级功能：智能 URL 一键抓取主卡片
+       ======================================================== */
+    .smart-hero-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 2.25rem;
+      box-shadow: var(--shadow-lg);
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 2.5rem;
+    }
+
+    .smart-hero-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 4px;
+      background: var(--accent-gradient);
+    }
+
+    .hero-header {
+      margin-bottom: 1.5rem;
+    }
+
+    .hero-title {
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .hero-subtitle {
+      font-size: 0.92rem;
+      color: var(--text-muted);
+      margin-top: 0.35rem;
+    }
+
+    .smart-input-box {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      background: var(--bg-surface-subtle);
+      padding: 8px;
+      border-radius: var(--radius-md);
+      border: 2px solid var(--border-subtle);
+      transition: all 0.2s;
+    }
+
+    .smart-input-box:focus-within {
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+      background: #ffffff;
+    }
+
+    .smart-input {
+      flex: 1;
+      border: none;
+      background: transparent;
+      padding: 10px 14px;
+      font-size: 1.05rem;
+      color: var(--text-main);
+      font-family: var(--font-sans);
+    }
+
+    .smart-input:focus {
+      outline: none;
+    }
+
+    .smart-quick-tags {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 0.85rem;
+      font-size: 0.82rem;
+      color: var(--text-dim);
+    }
+
+    .quick-tag {
+      background: var(--bg-surface-subtle);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      padding: 3px 10px;
+      border-radius: 9999px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 500;
+    }
+
+    .quick-tag:hover {
+      background: #e2e8f0;
+      color: var(--text-main);
+    }
+
+    /* 运行进度状态栏 */
+    .smart-progress-panel {
+      margin-top: 1.5rem;
+      background: var(--bg-surface-subtle);
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .progress-step-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      max-height: 180px;
+      overflow-y: auto;
+    }
+
+    .step-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* 按钮规范 */
+    .btn {
+      padding: 10px 20px;
+      border-radius: var(--radius-sm);
+      font-size: 0.92rem;
+      font-weight: 700;
+      cursor: pointer;
+      border: 1px solid transparent;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .btn-hero {
+      background: var(--accent-gradient);
+      color: #fff;
+      padding: 12px 28px;
+      font-size: 1rem;
+      box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
+    }
+
+    .btn-hero:hover {
+      opacity: 0.92;
+      transform: translateY(-1px);
+    }
+
+    .btn-primary {
+      background: var(--accent-primary);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-primary-hover);
+    }
+
+    .btn-secondary {
+      background: var(--bg-surface);
+      border-color: var(--border-subtle);
+      color: var(--text-main);
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg-surface-subtle);
+    }
+
+    .btn-emerald {
+      background: var(--accent-emerald);
+      color: #fff;
+    }
+
+    .btn-emerald:hover {
+      background: #047857;
+    }
+
+    .btn-danger {
+      background: rgba(225, 29, 72, 0.1);
+      color: var(--accent-rose);
+      border-color: rgba(225, 29, 72, 0.2);
+    }
+
+    .btn-danger:hover {
+      background: rgba(225, 29, 72, 0.2);
+    }
+
+    /* 统计指标卡片 */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+
+    .metric-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1.25rem 1.5rem;
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .metric-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .metric-title {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .metric-value {
+      font-size: 2rem;
+      font-weight: 800;
+      margin-top: 0.35rem;
+      letter-spacing: -0.03em;
+      color: var(--text-main);
+    }
+
+    /* 站点网格卡片 */
+    .section-title {
+      font-size: 1.25rem;
+      font-weight: 800;
+      margin-bottom: 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--text-main);
+    }
+
+    .site-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .site-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.25s ease;
+    }
+
+    .site-card:hover {
+      border-color: #cbd5e1;
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .site-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+    }
+
+    .site-name {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .site-key {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: var(--bg-surface-subtle);
+      color: var(--accent-cyan);
+      margin-top: 4px;
+      font-weight: 600;
+    }
+
+    .site-tags {
+      display: flex;
+      gap: 6px;
+    }
+
+    .tag {
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .tag-json {
+      background: #e0f2fe;
+      color: #0369a1;
+    }
+
+    .tag-html {
+      background: #fef3c7;
+      color: #b45309;
+    }
+
+    .tag-direct {
+      background: #dcfce7;
+      color: #15803d;
+    }
+
+    .site-url {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin: 0.5rem 0 1rem;
+      word-break: break-all;
+    }
+
+    .site-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    /* 影片海报网格 (透视结果) */
+    .video-card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: 1.25rem;
+      margin-top: 1.25rem;
+    }
+
+    .vod-poster-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .vod-poster-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-md);
+      border-color: var(--accent-primary);
+    }
+
+    .poster-img-wrap {
+      width: 100%;
+      height: 230px;
+      background: var(--bg-surface-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .poster-img-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .vod-info {
+      padding: 10px 12px;
+    }
+
+    .vod-title {
+      font-size: 0.88rem;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--text-main);
+    }
+
+    .vod-remark {
+      font-size: 0.75rem;
+      color: var(--accent-primary);
+      font-weight: 600;
+      margin-top: 2px;
+    }
+
+    /* 播放器区域 */
+    .player-section {
+      margin-top: 2rem;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 1.75rem;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .video-wrapper {
+      width: 100%;
+      max-width: 980px;
+      aspect-ratio: 16 / 9;
+      background: #000;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      margin: 1.25rem 0;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .episodes-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      max-height: 200px;
+      overflow-y: auto;
+      margin-top: 1rem;
+      padding: 10px;
+      background: var(--bg-surface-subtle);
+      border-radius: var(--radius-sm);
+    }
+
+    .ep-badge {
+      padding: 6px 14px;
+      background: #ffffff;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-main);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .ep-badge:hover {
+      border-color: var(--accent-primary);
+      color: var(--accent-primary);
+    }
+
+    .ep-badge.active {
+      background: var(--accent-primary);
+      color: #fff;
+      border-color: var(--accent-primary);
+    }
+
+    /* 嗅探沙盒界面 */
+    .sandbox-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+
+    .panel {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1.5rem;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-subtle);
+      padding-bottom: 0.75rem;
+    }
+
+    .panel-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .form-input, .form-textarea, .form-select {
+      background: #ffffff;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: var(--text-main);
+      padding: 10px 14px;
+      font-family: inherit;
+      font-size: 0.92rem;
+      transition: all 0.2s;
+    }
+
+    .form-input:focus, .form-textarea:focus, .form-select:focus {
+      outline: none;
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+    }
+
+    .form-textarea {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      resize: vertical;
+      min-height: 180px;
+    }
+
+    .output-box {
+      background: var(--bg-surface-subtle);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 1rem;
+      font-family: var(--font-mono);
+      font-size: 0.88rem;
+      color: var(--accent-primary);
+      min-height: 140px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    /* 模态框 */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(15, 23, 42, 0.45);
+      backdrop-filter: blur(8px);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-body {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 800px;
+      max-height: 90vh;
+      overflow-y: auto;
+    /* 测试工作台步骤条 */
+    .test-step-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 0.9rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all 0.2s;
+    }
+    .test-step-card.step-passed {
+      border-color: #a7f3d0;
+      background: #f0fdf4;
+    }
+    .test-step-card.step-failed {
+      border-color: #fecdd3;
+      background: #fff1f2;
+    }
+  </style>
+
+</head>
+<body>
+  <div id="app">
+    <!-- 顶部导航 -->
+    <header>
+      <div class="brand">
+        <div class="brand-icon">🕷️</div>
+        <div class="brand-text">
+          <h1>Plove Spider Console</h1>
+          <span>Smart & Config-Driven Universal Crawler</span>
+        </div>
+      </div>
+
+      <nav class="nav-tabs">
+        <button class="nav-tab" :class="{ active: tab === 'smart' }" @click="tab = 'smart'">
+          🔮 智能 URL 探测
+        </button>
+        <button class="nav-tab" :class="{ active: tab === 'test_studio' }" @click="tab = 'test_studio'">
+          🧪 外部脚本导入与全链路测试
+        </button>
+        <button class="nav-tab" :class="{ active: tab === 'sites' }" @click="tab = 'sites'">
+          📁 站点与规则库
+        </button>
+        <button class="nav-tab" :class="{ active: tab === 'sandbox' }" @click="tab = 'sandbox'">
+          🎯 嗅探与单字段沙盒
+        </button>
+        <button class="nav-tab" :class="{ active: tab === 'live' }" @click="tab = 'live'">
+          🎬 穿透与试播
+        </button>
+      </nav>
+
+      <div class="header-actions">
+        <div class="status-badge">
+          <span class="status-pulse"></span>
+          服务就绪 :8088
+        </div>
+        <a href="/docs" target="_blank" class="btn btn-secondary" style="padding:6px 14px;font-size:0.85rem">API 中文文档</a>
+      </div>
+    </header>
+
+    <main>
+      <!-- TAB 1: 🔮 智能输入 URL 一键全自动抓取 -->
+      <section v-if="tab === 'smart'">
+        <div class="smart-hero-card">
+          <div class="hero-header">
+            <h2 class="hero-title">🔮 智能自适应采集 · 输入主页 URL 搞定一切</h2>
+            <p class="hero-subtitle">
+              无需编写任何代码，输入任意目标站点主页 URL，爬虫引擎将全自动分析网页结构、探测分类、挖掘首页推荐、深入详情页并嗅探播放流！
+            </p>
+          </div>
+
+          <div class="smart-input-box">
+            <input 
+              class="smart-input" 
+              v-model="smartUrl" 
+              placeholder="输入目标影视/短剧站主页 URL，如 https://2048ai.vip 或 http://example.com..."
+              @keyup.enter="startSmartExplore"
+            />
+            <button class="btn btn-hero" :disabled="smartLoading" @click="startSmartExplore">
+              <span v-if="!smartLoading">🚀 一键全自动抓取</span>
+              <span v-else>⏳ 正在智能分析中...</span>
+            </button>
+          </div>
+
+          <div class="smart-quick-tags">
+            <span>快速填充样例：</span>
+            <span class="quick-tag" @click="smartUrl = 'https://2048ai.vip'">2048短剧 (JSON API)</span>
+            <span class="quick-tag" @click="smartUrl = 'https://example-maccms.org'">MacCMS 影视站</span>
+            <button class="btn btn-secondary" style="margin-left:auto;padding:4px 12px;font-size:0.8rem" @click="openPromptModal">
+              🤖 难搞站点？一键生成交付给 AI 的提示词 (Prompt)
+            </button>
+          </div>
+
+
+          <!-- 动态进度日志 -->
+          <div class="smart-progress-panel" v-if="smartResult || smartLoading">
+            <div style="font-weight:700;font-size:0.88rem;margin-bottom:8px;color:var(--text-main)">
+              🚀 引擎分析与探测日志：
+            </div>
+            <div class="progress-step-list">
+              <div class="step-item" v-for="(log, idx) in (smartResult ? smartResult.steps_log : ['正在建立连接并探测目标源站...'])" :key="idx">
+                <span>⚡</span>
+                <span>{{ log }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 智能探测成功后的结果展示 -->
+        <div v-if="smartResult">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem">
+            <div>
+              <h3 style="font-size:1.35rem;font-weight:800;color:var(--text-main)">
+                🎉 自动探测成功: {{ smartResult.site_name }} ({{ smartResult.suggested_key }})
+              </h3>
+              <p style="color:var(--text-muted);font-size:0.88rem;margin-top:4px">
+                基础域名: {{ smartResult.base_url }} · 发现 {{ smartResult.categories.length }} 个分类 · 提取 {{ smartResult.recommend.length }} 部影片
+              </p>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <button class="btn btn-emerald" @click="openDeployModal">
+                🚀 一键上传部署到后端 (Deploy)
+              </button>
+              <button class="btn btn-primary" @click="showPythonModal = true">
+                🐍 查看生成的 Python 采集脚本
+              </button>
+              <button class="btn btn-secondary" @click="viewSmartRuleJson">
+                📄 查看规则 JSON
+              </button>
+            </div>
+          </div>
+
+          <!-- 生成的 Python 采集器脚本预览卡片 -->
+          <div class="panel" style="margin-bottom:1.5rem">
+            <div class="panel-head">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="panel-title">🐍 自动生成的后端标准采集器脚本: sites/{{ smartResult.suggested_key }}.py</span>
+                <span class="tag tag-direct">合规 Python 源码</span>
+              </div>
+              <div style="display:flex;gap:8px">
+                <button class="btn btn-secondary" style="padding:4px 10px;font-size:0.8rem" @click="copyPythonCode">
+                  📋 复制代码
+                </button>
+                <button class="btn btn-emerald" style="padding:4px 12px;font-size:0.8rem" @click="openDeployModal">
+                  🚀 上传到后端生效
+                </button>
+              </div>
+            </div>
+            <pre class="output-box" style="max-height:260px">{{ smartResult.generated_python_code }}</pre>
+          </div>
+
+
+          <!-- 嗅探到的播放器现场试播 -->
+          <div class="player-section" v-if="smartResult.sample_detail">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start">
+              <div>
+                <h4 style="font-size:1.25rem;font-weight:700">🎬 深入探测样本影片：《{{ smartResult.sample_detail.video.vod_name }}》</h4>
+                <div style="color:var(--accent-primary);font-size:0.85rem;margin-top:4px;font-weight:600">
+                  {{ smartResult.sample_detail.video.vod_remarks || '已嗅探选集' }} · 共 {{ smartResult.sample_detail.episodes.length }} 集
+                </div>
+                <p style="color:var(--text-muted);font-size:0.85rem;margin-top:6px;max-width:750px">
+                  {{ smartResult.sample_detail.desc || '已提取影片简介' }}
+                </p>
+              </div>
+              <span class="tag tag-direct" v-if="smartResult.sample_stream">视频流嗅探就绪</span>
+            </div>
+
+            <!-- 内置播放器 -->
+            <div class="video-wrapper">
+              <video id="smartVideoPlayer" controls autoplay></video>
+            </div>
+
+            <div v-if="smartResult.sample_stream" style="font-family:var(--font-mono);font-size:0.8rem;color:var(--accent-emerald)">
+              ✅ 嗅探到的播放流直链: {{ smartResult.sample_stream.url }}
+            </div>
+          </div>
+
+          <!-- 提取到的推荐海报卡片 -->
+          <div class="section-title" style="margin-top:2rem">
+            <span>首页自动提取的影片片单 ({{ smartResult.recommend.length }})</span>
+          </div>
+          <div class="video-card-grid">
+            <div 
+              class="vod-poster-card" 
+              v-for="vod in smartResult.recommend" 
+              :key="vod.vod_id"
+              @click="previewVod(vod)"
+            >
+              <div class="poster-img-wrap">
+                <img v-if="vod.vod_pic" :src="vod.vod_pic" :alt="vod.vod_name" onerror="this.style.display='none'">
+                <span v-else style="font-size:2rem;color:var(--text-dim)">🎬</span>
+              </div>
+              <div class="vod-info">
+                <div class="vod-title" :title="vod.vod_name">{{ vod.vod_name }}</div>
+                <div class="vod-remark">{{ vod.vod_remarks || '点击试播' }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: 站点与规则库 -->
+      <section v-if="tab === 'sites'">
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-title">已载入规则站</div>
+            <div class="metric-value">{{ sites.length }} <span style="font-size:1rem;color:var(--text-dim)">个</span></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-title">支持数据形态</div>
+            <div class="metric-value" style="color:var(--accent-cyan)">HTML + JSON</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-title">反爬闸门破除</div>
+            <div class="metric-value" style="color:var(--accent-emerald)">33ms <span style="font-size:1rem;color:var(--text-dim)">秒解</span></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-title">契约信封输出</div>
+            <div class="metric-value" style="color:var(--accent-primary)">100% 规范</div>
+          </div>
+        </div>
+
+        <div class="section-title">
+          <span>站点规则列表</span>
+          <button class="btn btn-primary" @click="openCreateModal">➕ 新增站点规则</button>
+        </div>
+
+        <div class="site-grid">
+          <div class="site-card" v-for="site in sites" :key="site.key">
+            <div>
+              <div class="site-head">
+                <div>
+                  <div class="site-name">{{ site.name }}</div>
+                  <div class="site-key">{{ site.key }}</div>
+                </div>
+                <div class="site-tags">
+                  <span class="tag" :class="'tag-' + site.data_type">{{ site.data_type }}</span>
+                  <span class="tag tag-direct">{{ site.mode }}</span>
+                </div>
+              </div>
+              <div class="site-url">🔗 {{ site.base_url }}</div>
+              <div style="font-size:0.82rem;color:var(--text-dim)">版本: v{{ site.version }}</div>
+            </div>
+
+            <div class="site-actions">
+              <button class="btn btn-primary" style="flex:1" @click="goToLiveTest(site.key)">
+                ▶ 试抓
+              </button>
+              <button class="btn btn-secondary" @click="openEditModal(site.key)">
+                ✏️ 编辑
+              </button>
+              <button class="btn btn-danger" @click="deleteSiteRule(site.key)">
+                🗑️
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: 嗅探沙盒 -->
+      <section v-if="tab === 'sandbox'">
+        <div class="sandbox-container">
+          <div class="panel">
+            <div class="panel-head">
+              <span class="panel-title">1. 输入目标源数据样本</span>
+              <div style="display:flex;gap:8px">
+                <button class="btn btn-secondary" style="padding:4px 8px;font-size:0.75rem" @click="loadSampleHtml">载入 HTML 样例</button>
+                <button class="btn btn-secondary" style="padding:4px 8px;font-size:0.75rem" @click="loadSampleJson">载入 JSON 样例</button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">数据类型</label>
+              <select class="form-select" v-model="sandbox.data_type">
+                <option value="html">HTML 网页源码</option>
+                <option value="json">JSON 接口响应</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">原始数据内容</label>
+              <textarea class="form-textarea" v-model="sandbox.sample_content" placeholder="在此粘贴目标 HTML 或 JSON..."></textarea>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Base URL (用于相对路径补齐)</label>
+              <input class="form-input" v-model="sandbox.base_url" placeholder="https://example.com" />
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <span class="panel-title">2. 配置提取规则 & 实时计算</span>
+              <button class="btn btn-primary" :disabled="loadingExtract" @click="runSandboxExtract">
+                ⚡ 执行计算提取
+              </button>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">选择器 / 路径表达式</label>
+              <input class="form-input" v-model="sandbox.rule.selector" :placeholder="sandbox.data_type === 'html' ? '.movie-list li a' : 'data.episodes[0].m3u8'" />
+            </div>
+
+            <div class="form-group" v-if="sandbox.data_type === 'html'">
+              <label class="form-label">提取属性 (留空则取标签内文本)</label>
+              <input class="form-input" v-model="sandbox.rule.attribute" placeholder="href, src, data-original..." />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">二次正则提纯 (可选，捕获组提取)</label>
+              <input class="form-input" v-model="sandbox.rule.regex" placeholder="如 /detail/(\d+)\.html" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">格式化模板 (可选)</label>
+              <input class="form-input" v-model="sandbox.rule.template" placeholder="如 第{value}集 或 https://cdn.com/{value}" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">计算提取结果</label>
+              <div class="output-box">{{ sandboxResult || '点击右上角【执行计算提取】即刻查看结果...' }}</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: 穿透与试播 -->
+      <section v-if="tab === 'live'">
+        <div style="background:var(--bg-surface);padding:1.25rem 1.5rem;border-radius:var(--radius-md);border:1px solid var(--border-subtle);display:flex;align-items:center;gap:12px;margin-bottom:1.5rem">
+          <label class="form-label" style="margin:0">已注册站点：</label>
+          <select class="form-select" v-model="live.siteKey" style="width:240px">
+            <option v-for="s in sites" :value="s.key" :key="s.key">{{ s.name }} ({{ s.key }})</option>
+          </select>
+          <button class="btn btn-primary" :disabled="liveLoading" @click="fetchLiveHome">
+            🔄 抓取首页推荐
+          </button>
+          <span v-if="liveLoading" style="color:var(--text-muted);font-size:0.85rem">正在请求目标站点...</span>
+        </div>
+
+        <!-- 播放器区域 -->
+        <div class="player-section" v-if="live.detail">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start">
+            <div>
+              <h2 style="font-size:1.35rem;font-weight:800">{{ live.detail.video.vod_name }}</h2>
+              <div style="color:var(--accent-primary);font-size:0.85rem;margin-top:4px;font-weight:600">
+                {{ live.detail.video.vod_remarks || '已就绪' }} · ID: {{ live.detail.video.vod_id }}
+              </div>
+              <p style="color:var(--text-muted);font-size:0.88rem;margin-top:8px;max-width:800px">
+                {{ live.detail.desc || '暂无剧情简介' }}
+              </p>
+            </div>
+            <button class="btn btn-secondary" @click="live.detail = null">关闭详情</button>
+          </div>
+
+          <div class="video-wrapper">
+            <video id="liveVideoPlayer" controls autoplay></video>
+          </div>
+
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div style="font-weight:700;font-size:0.95rem">选集嗅探试播 (共 {{ live.detail.episodes.length }} 集)：</div>
+            <div v-if="live.currentStreamUrl" style="font-family:var(--font-mono);font-size:0.8rem;color:var(--accent-emerald)">
+              播放流: {{ live.currentStreamUrl }}
+            </div>
+          </div>
+
+          <div class="episodes-list">
+            <div 
+              class="ep-badge" 
+              v-for="ep in live.detail.episodes" 
+              :key="ep.ep_index"
+              :class="{ active: live.currentEp === ep.ep_index }"
+              @click="playEpisode(ep)"
+            >
+              {{ ep.ep_name }}
+            </div>
+          </div>
+        </div>
+
+        <!-- 推荐列表卡片 -->
+        <div v-if="live.recommendList.length > 0">
+          <div class="section-title" style="margin-top:1.5rem">首页抓取所得影片 (点击直穿详情与播放)</div>
+          <div class="video-card-grid">
+            <div 
+              class="vod-poster-card" 
+              v-for="vod in live.recommendList" 
+              :key="vod.vod_id"
+              @click="fetchLiveDetail(vod.vod_id)"
+            >
+              <div class="poster-img-wrap">
+                <img v-if="vod.vod_pic" :src="vod.vod_pic" :alt="vod.vod_name" onerror="this.style.display='none'">
+                <span v-else style="font-size:2rem;color:var(--text-dim)">🎬</span>
+              </div>
+              <div class="vod-info">
+                <div class="vod-title" :title="vod.vod_name">{{ vod.vod_name }}</div>
+                <div class="vod-remark">{{ vod.vod_remarks || '点击播放' }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB: 🧪 外部脚本导入与全链路测试工坊 -->
+      <section v-if="tab === 'test_studio'">
+        <div style="background:var(--bg-surface);padding:1.5rem 2rem;border-radius:var(--radius-lg);border:1px solid var(--border-subtle);margin-bottom:1.5rem;box-shadow:var(--shadow-sm);display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <h2 style="font-size:1.35rem;font-weight:800;color:var(--text-main)">🧪 外部 AI 脚本导入与全链路测试工坊</h2>
+            <p style="color:var(--text-muted);font-size:0.88rem;margin-top:4px">
+              把外部 AI（ChatGPT / Claude / DeepSeek）编写的 Python 采集脚本粘贴在此。测试全绿通过前绝不上传后端，彻底守护后端稳定性！
+            </p>
+          </div>
+          <div style="display:flex;gap:10px">
+            <button class="btn btn-primary" :disabled="scriptTesting" @click="runScriptTestSuite">
+              <span v-if="!scriptTesting">⚡ 运行全链路测试 (Test)</span>
+              <span v-else>⏳ 正在隔离测试中...</span>
+            </button>
+            <button class="btn btn-emerald" :disabled="!testReport || !testReport.can_deploy" @click="openDeployFromTester">
+              🚀 确认无误，上传并部署至后端
+            </button>
+          </div>
+        </div>
+
+        <div class="sandbox-container">
+          <!-- 左侧：脚本代码编辑与导入 -->
+          <div class="panel">
+            <div class="panel-head">
+              <span class="panel-title">1. Python 采集器脚本源码 (sites/&lt;key&gt;.py)</span>
+              <div style="display:flex;gap:8px">
+                <button class="btn btn-secondary" style="padding:4px 8px;font-size:0.75rem" @click="loadSampleTesterCode">载入合规模板</button>
+                <button class="btn btn-secondary" style="padding:4px 8px;font-size:0.75rem" @click="testScriptCode = ''">清空</button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">指定/覆盖 Site Key (可选)</label>
+              <input class="form-input" v-model="testCustomKey" placeholder="留空则自动从源码探测" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">完整 Python 脚本代码</label>
+              <textarea class="form-textarea" style="min-height:480px;font-size:0.82rem" v-model="testScriptCode" placeholder="# 在此粘贴外部 AI 编写的 Python 完整脚本..."></textarea>
+            </div>
+          </div>
+
+          <!-- 右侧：测试步骤结果与体检报告 -->
+          <div class="panel">
+            <div class="panel-head">
+              <span class="panel-title">2. 全链路自动化体检报告</span>
+              <span class="tag tag-direct" v-if="testReport && testReport.all_passed">✅ 全部通过 · 允许部署</span>
+              <span class="tag tag-html" v-else-if="testReport">❌ 存在未通过项目</span>
+            </div>
+
+            <div v-if="!testReport && !scriptTesting" style="padding:2rem;text-align:center;color:var(--text-dim);font-size:0.9rem">
+              点击上方【⚡ 运行全链路测试】开始执行 AST 审计与真实子进程冒烟...
+            </div>
+
+            <div v-if="scriptTesting" style="padding:2rem;text-align:center;color:var(--accent-primary);font-size:0.95rem;font-weight:600">
+              ⏳ 正在依次执行：AST 安全审计 → meta 冒烟 → home 抓取 → detail 穿透 → play 嗅探...
+            </div>
+
+            <!-- 步骤卡片流 -->
+            <div v-if="testReport" style="display:flex;flex-direction:column;gap:10px">
+              <div 
+                class="test-step-card" 
+                v-for="step in testReport.steps" 
+                :key="step.name"
+                :class="step.passed ? 'step-passed' : 'step-failed'"
+              >
+                <div>
+                  <div style="font-weight:700;font-size:0.9rem;display:flex;align-items:center;gap:6px">
+                    <span>{{ step.passed ? '✅' : '❌' }}</span>
+                    <span>{{ step.name }}</span>
+                    <span style="font-size:0.75rem;font-weight:400;color:var(--text-dim)">({{ step.duration_ms }}ms)</span>
+                  </div>
+                  <div v-if="step.output_summary" style="font-size:0.82rem;color:var(--accent-emerald);margin-top:4px">
+                    {{ step.output_summary }}
+                  </div>
+                  <div v-if="step.error" style="font-size:0.82rem;color:var(--accent-rose);margin-top:4px;font-family:var(--font-mono)">
+                    {{ step.error }}
+                  </div>
+                </div>
+                <span class="tag" :class="step.passed ? 'tag-direct' : 'tag-html'">{{ step.passed ? 'PASS' : 'FAIL' }}</span>
+              </div>
+
+              <!-- 部署提示卡片 -->
+              <div v-if="testReport.can_deploy" style="margin-top:1rem;background:#dcfce7;border:1px solid #86efac;padding:1rem;border-radius:var(--radius-sm);color:#15803d">
+                <div style="font-weight:700">🎉 体检全流程通过！</div>
+                <div style="font-size:0.85rem;margin-top:4px">
+                  该脚本完全符合后端契约，且真实影片与播放嗅探全部成功。现在可以点击右上角【🚀 上传并部署至后端】直接上线！
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- 🤖 外部 AI 提示词生成弹窗 -->
+    <div class="modal-overlay" v-if="showPromptModal" @click.self="showPromptModal = false">
+      <div class="modal-body" style="max-width:850px">
+        <div class="panel-head">
+          <span class="panel-title">🤖 交付给外部 AI（ChatGPT / Claude / DeepSeek）的编写提示词</span>
+          <button class="btn btn-secondary" @click="showPromptModal = false">✕</button>
+        </div>
+
+        <p style="color:var(--text-muted);font-size:0.88rem;margin:0.75rem 0">
+          已自动将目标站点主页、上下文、以及 Plove 系统严格的 <code>crawler_kit</code> 契约要求整合成高精度 Prompt。复制后直接发送给任意大模型！
+        </p>
+
+        <div class="form-group">
+          <label class="form-label">补充难点说明（可选）</label>
+          <input class="form-input" v-model="promptDifficulty" placeholder="如：这个站第一集播放地址加密，需要先请求 /api/decrypt..." />
+        </div>
+
+        <div class="form-group" style="margin-top:0.75rem">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <label class="form-label">生成的提示词 (Prompt)</label>
+            <button class="btn btn-emerald" style="padding:4px 12px;font-size:0.8rem" @click="copyPromptContent">
+              📋 一键复制完整 Prompt
+            </button>
+          </div>
+          <textarea class="form-textarea" style="min-height:380px;font-size:0.82rem" readonly :value="generatedPrompt"></textarea>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- 规则创建/编辑弹窗 -->
+    <div class="modal-overlay" v-if="showModal" @click.self="showModal = false">
+      <div class="modal-body">
+        <div class="panel-head">
+          <span class="panel-title">{{ isEditing ? '编辑站点规则' : '新增/推导站点规则' }}</span>
+          <button class="btn btn-secondary" @click="showModal = false">✕</button>
+        </div>
+
+        <div class="form-group" style="margin-top:1rem">
+          <label class="form-label">规则 JSON 声明</label>
+          <textarea class="form-textarea" style="min-height:380px" v-model="modalRuleJson"></textarea>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:1.5rem">
+          <button class="btn btn-secondary" @click="showModal = false">取消</button>
+          <button class="btn btn-primary" @click="saveRuleJson">💾 保存规则落盘</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 🚀 一键部署到 Plove 后端弹窗 -->
+    <div class="modal-overlay" v-if="showDeployModal" @click.self="showDeployModal = false">
+      <div class="modal-body" style="max-width:640px">
+        <div class="panel-head">
+          <span class="panel-title">🚀 一键上传并热部署到 Plove 后端</span>
+          <button class="btn btn-secondary" @click="showDeployModal = false">✕</button>
+        </div>
+
+        <p style="color:var(--text-muted);font-size:0.88rem;margin:1rem 0">
+          系统将自动调用后端的 <code>/api/v1/admin/crawlers/validate</code> 进行 AST 安全审计，并调用 <code>/upload</code> 将采集器脚本部署落盘至后端的 <code>crawler/sites/</code>。
+        </p>
+
+        <div class="form-group">
+          <label class="form-label">后端 API 服务地址</label>
+          <input class="form-input" v-model="deployForm.backend_url" placeholder="http://127.0.0.1:8000" />
+        </div>
+
+        <div class="form-group" style="margin-top:0.75rem">
+          <label class="form-label">管理员后台令牌 (X-Admin-Token)</label>
+          <input class="form-input" type="password" v-model="deployForm.admin_token" placeholder="admin" />
+        </div>
+
+        <div class="form-group" style="margin-top:0.75rem">
+          <label class="form-label">目标采集器 Key (英文小写下划线)</label>
+          <input class="form-input" v-model="deployForm.key" placeholder="如 my_custom_site" />
+        </div>
+
+        <div v-if="deployStatusMsg" style="margin-top:1rem;padding:10px 14px;border-radius:6px;font-size:0.85rem" :style="deployStatusMsg.includes('成功') ? 'background:#dcfce7;color:#15803d' : 'background:#fee2e2;color:#b91c1c'">
+          {{ deployStatusMsg }}
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:1.5rem">
+          <button class="btn btn-secondary" @click="showDeployModal = false">取消</button>
+          <button class="btn btn-emerald" :disabled="deployLoading" @click="executeDeploy">
+            <span v-if="!deployLoading">立即校验并部署生效 ⚡</span>
+            <span v-else>正在审计并部署中...</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 🐍 全屏查看 Python 采集器脚本弹窗 -->
+    <div class="modal-overlay" v-if="showPythonModal" @click.self="showPythonModal = false">
+      <div class="modal-body" style="max-width:900px">
+        <div class="panel-head">
+          <span class="panel-title">🐍 独立采集器脚本源码 (Python)</span>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-secondary" style="padding:4px 10px;font-size:0.8rem" @click="copyPythonCode">📋 复制代码</button>
+            <button class="btn btn-secondary" @click="showPythonModal = false">✕</button>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top:1rem">
+          <textarea class="form-textarea" style="min-height:500px;font-size:0.82rem" readonly :value="smartResult ? smartResult.generated_python_code : ''"></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const { createApp, ref, onMounted } = Vue;
+
+    createApp({
+      setup() {
+        const tab = ref('smart');
+        const sites = ref([]);
+        const showModal = ref(false);
+        const isEditing = ref(false);
+        const modalRuleJson = ref('');
+
+        const showDeployModal = ref(false);
+        const showPythonModal = ref(false);
+        const showPromptModal = ref(false);
+        const promptDifficulty = ref('');
+        const generatedPrompt = ref('');
+
+        const testScriptCode = ref('');
+        const testCustomKey = ref('');
+        const scriptTesting = ref(false);
+        const testReport = ref(null);
+
+        const deployLoading = ref(false);
+        const deployStatusMsg = ref('');
+        const deployForm = ref({
+          backend_url: 'http://127.0.0.1:8000',
+          admin_token: 'admin',
+          key: '',
+        });
+
+
+
+        // 智能 URL 抓取状态
+        const smartUrl = ref('https://2048ai.vip');
+        const smartLoading = ref(false);
+        const smartResult = ref(null);
+
+        // 嗅探沙盒状态
+        const sandbox = ref({
+          data_type: 'html',
+          sample_content: '<div class="film"><a href="/play/108.html" class="title">凡人修仙传</a></div>',
+          base_url: 'https://example.com',
+          rule: {
+            type: 'css',
+            selector: '.film a.title',
+            attribute: 'href',
+            regex: '/play/(\\d+)\\.html',
+            template: '影片ID是: {value}',
+            strip: true
+          }
+        });
+        const sandboxResult = ref('');
+        const loadingExtract = ref(false);
+
+        // 试播台状态
+        const live = ref({
+          siteKey: '',
+          recommendList: [],
+          detail: null,
+          currentEp: 1,
+          currentStreamUrl: ''
+        });
+        const liveLoading = ref(false);
+
+        let hlsInstance = null;
+
+        // 获取站点列表
+        async function fetchSites() {
+          try {
+            const res = await fetch('/api/v1/rules');
+            const json = await res.json();
+            if (json.ok) {
+              sites.value = json.data;
+              if (sites.value.length > 0 && !live.value.siteKey) {
+                live.value.siteKey = sites.value[0].key;
+              }
+            }
+          } catch (e) {
+            console.error('拉取规则失败', e);
+          }
+        }
+
+        // 🔮 启动智能 URL 全自动探测
+        async function startSmartExplore() {
+          if (!smartUrl.value || !smartUrl.value.trim()) {
+            alert('请输入主页 URL！');
+            return;
+          }
+          smartLoading.value = true;
+          smartResult.value = null;
+          try {
+            const res = await fetch('/api/v1/smart/explore', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ url: smartUrl.value })
+            });
+            const json = await res.json();
+            if (json.ok) {
+              smartResult.value = json.data;
+              // 如果探测到了样本播放地址，自动挂载播放
+              if (smartResult.value.sample_stream && smartResult.value.sample_stream.url) {
+                setTimeout(() => {
+                  mountVideo(smartResult.value.sample_stream.url, 'smartVideoPlayer');
+                }, 300);
+              }
+            } else {
+              alert('智能抓取失败: ' + (json.error ? json.error.message : '未知异常'));
+            }
+          } catch (e) {
+            alert('网络连接错误: ' + e);
+          } finally {
+            smartLoading.value = false;
+          }
+        }
+
+        async function saveSmartRule() {
+          if (!smartResult.value || !smartResult.value.generated_rule) return;
+          try {
+            const res = await fetch('/api/v1/smart/save-rule', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ rule: smartResult.value.generated_rule })
+            });
+            const json = await res.json();
+            if (json.ok) {
+              alert(json.data.message);
+              fetchSites();
+            } else {
+              alert('保存失败: ' + json.error.message);
+            }
+          } catch (e) {
+            alert('保存异常: ' + e);
+          }
+        }
+
+        function viewSmartRuleJson() {
+          if (!smartResult.value) return;
+          modalRuleJson.value = JSON.stringify(smartResult.value.generated_rule, null, 2);
+          isEditing.value = false;
+          showModal.value = true;
+        }
+
+        function previewVod(vod) {
+          alert(`选中影片: ${vod.vod_name}\nID: ${vod.vod_id}\n状态: ${vod.vod_remarks || '正常'}`);
+        }
+
+        function openCreateModal() {
+          isEditing.value = false;
+          modalRuleJson.value = JSON.stringify({
+            key: "my_site",
+            name: "新影视源",
+            version: "1.0.0",
+            base_url: "https://mysite.com",
+            mode: "direct",
+            data_type: "html",
+            home: {
+              path: "/",
+              recommend_container: ".items .item",
+              recommend_item: {
+                vod_id: { selector: "a", attribute: "href" },
+                vod_name: { selector: ".title" }
+              }
+            }
+          }, null, 2);
+          showModal.value = true;
+        }
+
+        async function openEditModal(key) {
+          isEditing.value = true;
+          try {
+            const res = await fetch(`/api/v1/rules/${key}`);
+            const json = await res.json();
+            if (json.ok) {
+              modalRuleJson.value = JSON.stringify(json.data, null, 2);
+              showModal.value = true;
+            }
+          } catch (e) {
+            alert('获取规则详情失败: ' + e);
+          }
+        }
+
+        async function saveRuleJson() {
+          try {
+            const parsed = JSON.parse(modalRuleJson.value);
+            const res = await fetch('/api/v1/rules', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(parsed)
+            });
+            const result = await res.json();
+            if (result.ok) {
+              showModal.value = false;
+              fetchSites();
+            } else {
+              alert('保存失败: ' + result.error.message);
+            }
+          } catch (e) {
+            alert('JSON 语法错误: ' + e);
+          }
+        }
+
+        async function deleteSiteRule(key) {
+          if (!confirm(`确定删除规则 ${key} 吗？`)) return;
+          try {
+            await fetch(`/api/v1/rules/${key}`, { method: 'DELETE' });
+            fetchSites();
+          } catch (e) {
+            alert('删除失败: ' + e);
+          }
+        }
+
+        // 嗅探沙盒提取
+        async function runSandboxExtract() {
+          loadingExtract.value = true;
+          sandboxResult.value = '正在运算...';
+          try {
+            const res = await fetch('/api/v1/rules/test', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                sample_content: sandbox.value.sample_content,
+                data_type: sandbox.value.data_type,
+                rule: sandbox.value.rule,
+                base_url: sandbox.value.base_url
+              })
+            });
+            const json = await res.json();
+            if (json.ok) {
+              sandboxResult.value = json.data.extracted_value || '(提取结果为空)';
+            } else {
+              sandboxResult.value = '错误: ' + json.error.message;
+            }
+          } catch (e) {
+            sandboxResult.value = '请求失败: ' + e;
+          } finally {
+            loadingExtract.value = false;
+          }
+        }
+
+        function loadSampleHtml() {
+          sandbox.value.data_type = 'html';
+          sandbox.value.sample_content = '<div class="film-card"><a href="/detail/9981.html"><img src="/covers/pic.jpg"><span class="title">雪中悍刀行</span></a></div>';
+          sandbox.value.rule.selector = '.film-card a';
+          sandbox.value.rule.attribute = 'href';
+          sandbox.value.rule.regex = '/detail/(\\d+)\\.html';
+          sandbox.value.rule.template = '提取到的ID是: {value}';
+        }
+
+        function loadSampleJson() {
+          sandbox.value.data_type = 'json';
+          sandbox.value.sample_content = JSON.stringify({
+            code: 200,
+            data: {
+              title: "霸道总裁爱上我",
+              episodes: [
+                { episodeNo: 1, m3u8Url: "https://stream.net/ep1.m3u8" },
+                { episodeNo: 2, m3u8Url: "https://stream.net/ep2.m3u8" }
+              ]
+            }
+          }, null, 2);
+          sandbox.value.rule.selector = 'data.episodes[0].m3u8Url';
+          sandbox.value.rule.attribute = '';
+          sandbox.value.rule.regex = '';
+          sandbox.value.rule.template = '';
+        }
+
+        function goToLiveTest(key) {
+          live.value.siteKey = key;
+          tab.value = 'live';
+          fetchLiveHome();
+        }
+
+        async function fetchLiveHome() {
+          if (!live.value.siteKey) return;
+          liveLoading.value = true;
+          live.value.recommendList = [];
+          live.value.detail = null;
+          try {
+            const res = await fetch(`/api/v1/scrape/${live.value.siteKey}/home`, { method: 'POST' });
+            const json = await res.json();
+            if (json.ok && json.data) {
+              live.value.recommendList = json.data.recommend || [];
+            } else {
+              alert('抓取首页失败: ' + (json.error ? json.error.message : '未知错误'));
+            }
+          } catch (e) {
+            alert('网络错误: ' + e);
+          } finally {
+            liveLoading.value = false;
+          }
+        }
+
+        async function fetchLiveDetail(id) {
+          liveLoading.value = true;
+          try {
+            const res = await fetch(`/api/v1/scrape/${live.value.siteKey}/detail?id=${encodeURIComponent(id)}`, { method: 'POST' });
+            const json = await res.json();
+            if (json.ok && json.data) {
+              live.value.detail = json.data;
+              if (live.value.detail.episodes && live.value.detail.episodes.length > 0) {
+                playEpisode(live.value.detail.episodes[0]);
+              }
+            } else {
+              alert('抓取详情失败: ' + (json.error ? json.error.message : '未知'));
+            }
+          } catch (e) {
+            alert('网络错误: ' + e);
+          } finally {
+            liveLoading.value = false;
+          }
+        }
+
+        async function playEpisode(ep) {
+          live.value.currentEp = ep.ep_index;
+          try {
+            const playUrl = `/api/v1/scrape/${live.value.siteKey}/play?id=${encodeURIComponent(live.value.detail.video.vod_id)}&ep=${ep.ep_index}&play_id=${encodeURIComponent(ep.play_id || '')}&line=${encodeURIComponent(ep.line || '')}`;
+            const res = await fetch(playUrl, { method: 'POST' });
+            const json = await res.json();
+            if (json.ok && json.data && json.data.url) {
+              const streamUrl = json.data.url;
+              live.value.currentStreamUrl = streamUrl;
+              mountVideo(streamUrl, 'liveVideoPlayer');
+            } else {
+              alert('提取播放地址失败: ' + (json.error ? json.error.message : '无播放流'));
+            }
+          } catch (e) {
+            alert('播放嗅探失败: ' + e);
+          }
+        }
+
+        function mountVideo(url, videoId) {
+          const video = document.getElementById(videoId);
+          if (!video) return;
+
+          if (Hls.isSupported() && url.includes('.m3u8')) {
+            if (hlsInstance) {
+              hlsInstance.destroy();
+            }
+            hlsInstance = new Hls();
+            hlsInstance.loadSource(url);
+            hlsInstance.attachMedia(video);
+            hlsInstance.on(Hls.Events.MANIFEST_PARSED, function () {
+              video.play().catch(() => {});
+            });
+          } else {
+            video.src = url;
+            video.play().catch(() => {});
+          }
+        }
+
+        async function openPromptModal() {
+          showPromptModal.value = true;
+          generatedPrompt.value = '正在根据目标源站特征合成专属提示词...';
+          try {
+            const res = await fetch('/api/v1/smart/generate-prompt', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                url: smartUrl.value || 'https://example.com',
+                site_name: smartResult.value ? smartResult.value.site_name : '',
+                site_key: smartResult.value ? smartResult.value.suggested_key : '',
+                difficulty_note: promptDifficulty.value,
+              })
+            });
+            const json = await res.json();
+            if (json.ok) {
+              generatedPrompt.value = json.data.prompt;
+            }
+          } catch (e) {
+            generatedPrompt.value = '生成提示词失败: ' + e;
+          }
+        }
+
+        function copyPromptContent() {
+          if (!generatedPrompt.value) return;
+          navigator.clipboard.writeText(generatedPrompt.value);
+          alert('已成功复制 AI 专用提示词！您可以直接粘贴发送给 ChatGPT / Claude / DeepSeek。');
+        }
+
+        function loadSampleTesterCode() {
+          if (smartResult.value && smartResult.value.generated_python_code) {
+            testScriptCode.value = smartResult.value.generated_python_code;
+            testCustomKey.value = smartResult.value.suggested_key;
+          } else {
+            testScriptCode.value = `#!/usr/bin/env python
+from crawler_kit import Client, cli
+
+class CustomDemo:
+    key = "custom_demo"
+    name = "演示影视源"
+    version = "1.0.0"
+    base_url = "https://example.com"
+    mode = "direct"
+    capabilities = ("meta", "home")
+
+    def meta(self):
+        return {
+            "key": self.key,
+            "name": self.name,
+            "version": self.version,
+            "base_url": self.base_url,
+            "mode": self.mode,
+            "capabilities": list(self.capabilities),
+        }
+
+    def home(self):
+        return {"categories": [{"tid": "1", "name": "电影"}], "recommend": []}
+
+if __name__ == "__main__":
+    cli.main(CustomDemo())
+`;
+            testCustomKey.value = "custom_demo";
+          }
+        }
+
+        async function runScriptTestSuite() {
+          if (!testScriptCode.value || testScriptCode.value.trim().length < 20) {
+            alert('请先输入或粘贴外部 AI 编写的 Python 脚本！');
+            return;
+          }
+          scriptTesting.value = true;
+          testReport.value = null;
+          try {
+            const res = await fetch('/api/v1/smart/test-script', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                code: testScriptCode.value,
+                custom_key: testCustomKey.value || null
+              })
+            });
+            const json = await res.json();
+            if (json.ok) {
+              testReport.value = json.data;
+            } else {
+              alert('运行测试失败: ' + (json.error ? json.error.message : '未知异常'));
+            }
+          } catch (e) {
+            alert('测试连接异常: ' + e);
+          } finally {
+            scriptTesting.value = false;
+          }
+        }
+
+        function openDeployFromTester() {
+          if (!testReport.value || !testReport.value.can_deploy) {
+            alert('测试尚未完全通过，请检查测试报告！');
+            return;
+          }
+          deployForm.value.key = testReport.value.key;
+          deployStatusMsg.value = '';
+          showDeployModal.value = true;
+        }
+
+        function openDeployModal() {
+          if (!smartResult.value) return;
+          deployForm.value.key = smartResult.value.suggested_key;
+          deployStatusMsg.value = '';
+          showDeployModal.value = true;
+        }
+
+        function copyPythonCode() {
+          if (!smartResult.value || !smartResult.value.generated_python_code) return;
+          navigator.clipboard.writeText(smartResult.value.generated_python_code);
+          alert('已成功复制采集器 Python 源代码到剪贴板！');
+        }
+
+        async function executeDeploy() {
+          const deployCode = (testReport.value && testReport.value.can_deploy && testScriptCode.value)
+            ? testScriptCode.value
+            : (smartResult.value ? smartResult.value.generated_python_code : testScriptCode.value);
+
+          if (!deployCode) {
+            alert('没有可部署的代码内容！');
+            return;
+          }
+
+          deployLoading.value = true;
+          deployStatusMsg.value = '';
+          try {
+            const res = await fetch('/api/v1/smart/deploy-to-backend', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                backend_url: deployForm.value.backend_url,
+                admin_token: deployForm.value.admin_token,
+                key: deployForm.value.key,
+                code: deployCode,
+                overwrite: true
+              })
+            });
+            const json = await res.json();
+            if (json.ok) {
+              deployStatusMsg.value = '🎉 ' + json.data.message;
+              fetchSites();
+            } else {
+              deployStatusMsg.value = '❌ 部署失败: ' + json.error.message;
+            }
+          } catch (e) {
+            deployStatusMsg.value = '❌ 连接异常: ' + e;
+          } finally {
+            deployLoading.value = false;
+          }
+        }
+
+        onMounted(() => {
+          fetchSites();
+        });
+
+        return {
+          tab,
+          sites,
+          showModal,
+          isEditing,
+          modalRuleJson,
+          showDeployModal,
+          showPythonModal,
+          showPromptModal,
+          promptDifficulty,
+          generatedPrompt,
+          testScriptCode,
+          testCustomKey,
+          scriptTesting,
+          testReport,
+          deployLoading,
+          deployStatusMsg,
+          deployForm,
+          smartUrl,
+          smartLoading,
+          smartResult,
+          sandbox,
+          sandboxResult,
+          loadingExtract,
+          live,
+          liveLoading,
+          openDeployModal,
+          openDeployFromTester,
+          copyPythonCode,
+          executeDeploy,
+          openPromptModal,
+          copyPromptContent,
+          loadSampleTesterCode,
+          runScriptTestSuite,
+          startSmartExplore,
+          saveSmartRule,
+          viewSmartRuleJson,
+          previewVod,
+          openCreateModal,
+          openEditModal,
+          saveRuleJson,
+          deleteSiteRule,
+          runSandboxExtract,
+          loadSampleHtml,
+          loadSampleJson,
+          goToLiveTest,
+          fetchLiveHome,
+          fetchLiveDetail,
+          playEpisode
+        };
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>
+
+

@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-crawler-validate-request.json",
+  "description": "请求验证采集器脚本代码。",
+  "properties": {
+    "code": {
+      "description": "Python 采集器源码",
+      "minLength": 10,
+      "title": "Code",
+      "type": "string"
+    },
+    "key": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "可选的站点 key（若不提供则从代码中探测）",
+      "title": "Key"
+    }
+  },
+  "required": [
+    "code"
+  ],
+  "title": "CrawlerValidateRequest",
+  "type": "object"
+}

@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-site-detail-policy.json",
+  "description": "详情页显示与清洗策略。",
+  "properties": {
+    "site_key": {
+      "description": "站点 key",
+      "title": "Site Key",
+      "type": "string"
+    },
+    "ad_patterns": {
+      "description": "广告清理词汇/正则列表，命中将从标题、备注、简介和集数中清洗",
+      "items": {
+        "type": "string"
+      },
+      "title": "Ad Patterns",
+      "type": "array"
+    },
+    "line_name_overrides": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "线路名称别名映射表，如 {'lzm3u8': '超清极速专线'}",
+      "title": "Line Name Overrides",
+      "type": "object"
+    },
+    "ep_naming_rule": {
+      "default": "auto",
+      "description": "剧集名称显示规则：auto (智能清洗剧名重复), standard (统一第N集), raw (源站原样)",
+      "enum": [
+        "auto",
+        "standard",
+        "raw"
+      ],
+      "title": "Ep Naming Rule",
+      "type": "string"
+    },
+    "default_poster": {
+      "default": "",
+      "description": "兜底海报 URL（海报为空或源站防盗链失效时兜底）",
+      "title": "Default Poster",
+      "type": "string"
+    },
+    "hide_fields": {
+      "description": "隐藏字段列表，例如 ['vod_actor', 'vod_director']",
+      "items": {
+        "type": "string"
+      },
+      "title": "Hide Fields",
+      "type": "array"
+    }
+  },
+  "required": [
+    "site_key"
+  ],
+  "title": "SiteDetailPolicyPayload",
+  "type": "object"
+}

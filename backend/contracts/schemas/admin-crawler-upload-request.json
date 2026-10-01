@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-crawler-upload-request.json",
+  "description": "上传采集器脚本。",
+  "properties": {
+    "key": {
+      "description": "站点 key，如 custom_site",
+      "pattern": "^[a-z_][a-z0-9_]{1,63}$",
+      "title": "Key",
+      "type": "string"
+    },
+    "code": {
+      "description": "Python 源码",
+      "minLength": 10,
+      "title": "Code",
+      "type": "string"
+    },
+    "overwrite": {
+      "default": false,
+      "description": "若站点已存在是否允许覆盖",
+      "title": "Overwrite",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "key",
+    "code"
+  ],
+  "title": "CrawlerUploadRequest",
+  "type": "object"
+}

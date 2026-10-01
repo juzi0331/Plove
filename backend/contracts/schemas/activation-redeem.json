@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/activation-redeem.json",
+  "description": "激活请求。两种用法：\n\n* **首次激活**：只给 ``code``；\n* **被踢后抢回**（\"在此设备继续\"）：给 ``device_token``，``code`` 可省。\n\n为什么把这两件事合成一个动作？因为它们本质是同一件事：\n**\"把活跃位指到这台上\"**。分开做会多一套状态和一堆边界情况。",
+  "properties": {
+    "code": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Code"
+    },
+    "device_token": {
+      "anyOf": [
+        {
+          "maxLength": 128,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Device Token"
+    },
+    "device_name": {
+      "default": "",
+      "description": "客户端自报的展示名，仅用于后台查看",
+      "maxLength": 120,
+      "title": "Device Name",
+      "type": "string"
+    }
+  },
+  "title": "RedeemRequest",
+  "type": "object"
+}

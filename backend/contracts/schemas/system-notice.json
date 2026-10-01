@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/system-notice.json",
+  "description": "全站公告内容与弹窗策略。",
+  "properties": {
+    "enabled": {
+      "default": false,
+      "description": "是否发布并生效",
+      "title": "Enabled",
+      "type": "boolean"
+    },
+    "title": {
+      "default": "",
+      "description": "公告标题",
+      "title": "Title",
+      "type": "string"
+    },
+    "content": {
+      "default": "",
+      "description": "公告详细正文",
+      "title": "Content",
+      "type": "string"
+    },
+    "level": {
+      "default": "info",
+      "description": "展示等级：info 提示, warning 警告, danger 紧急",
+      "enum": [
+        "info",
+        "warning",
+        "danger"
+      ],
+      "title": "Level",
+      "type": "string"
+    },
+    "display_type": {
+      "default": "banner",
+      "description": "展示形式：banner 顶部条幅, modal 首次强弹窗, both 两者兼具",
+      "enum": [
+        "banner",
+        "modal",
+        "both"
+      ],
+      "title": "Display Type",
+      "type": "string"
+    },
+    "dismissible": {
+      "default": true,
+      "description": "用户是否可手动点击关闭",
+      "title": "Dismissible",
+      "type": "boolean"
+    },
+    "updated_at": {
+      "default": "",
+      "description": "最后更新时间",
+      "title": "Updated At",
+      "type": "string"
+    }
+  },
+  "title": "SystemNoticePayload",
+  "type": "object"
+}

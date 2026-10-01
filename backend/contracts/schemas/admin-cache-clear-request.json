@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-cache-clear-request.json",
+  "description": "清除缓存请求。",
+  "properties": {
+    "site": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "若提供则仅清空该站点的缓存；若为空则清空全站",
+      "title": "Site"
+    },
+    "key": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "若提供则精准删除指定 key",
+      "title": "Key"
+    }
+  },
+  "title": "CacheClearRequest",
+  "type": "object"
+}
