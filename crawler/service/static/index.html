@@ -1397,8 +1397,8 @@
               <span class="panel-title" style="font-size:1.15rem;font-weight:800;color:var(--text-main)">sites/{{ viewSourceKey }}.py</span>
               <span class="tag tag-python">Python 采集器</span>
             </div>
-            <div style="font-size:0.8rem;color:var(--text-dim);margin-top:4px;font-family:var(--font-mono)" v-if="viewSourceCode">
-              {{ viewSourceCode.split('\n').length }} 行 · {{ (new TextEncoder().encode(viewSourceCode).length / 1024).toFixed(1) }} KB · UTF-8
+            <div style="font-size:0.8rem;color:var(--text-dim);margin-top:4px;font-family:var(--font-mono)" v-if="viewSourceStats">
+              {{ viewSourceStats }}
             </div>
           </div>
           <div style="display:flex;gap:8px">
@@ -1575,6 +1575,17 @@
         const showSourceModal = ref(false);
         const viewSourceKey = ref('');
         const viewSourceCode = ref('');
+        const viewSourceStats = computed(() => {
+          if (!viewSourceCode.value) return '';
+          const lines = viewSourceCode.value.split('\n').length;
+          let bytes = 0;
+          try {
+            bytes = new TextEncoder().encode(viewSourceCode.value).length;
+          } catch (e) {
+            bytes = viewSourceCode.value.length;
+          }
+          return `${lines} 行 · ${(bytes / 1024).toFixed(1)} KB · UTF-8`;
+        });
 
         // 部署弹窗
         const showDeployModal = ref(false);
@@ -2277,6 +2288,7 @@ if __name__ == "__main__":
           saveScriptToLocalLibrary,
           saveScriptToLibraryFromSmart,
           viewScriptCodeModal,
+          viewSourceStats,
           copySourceBtnText,
           copySourceCodeModal,
           loadViewSourceToStudio,
