@@ -333,9 +333,12 @@ async function handleToggleMaintenance(): Promise<void> {
 
 <style scoped>
 .system-view {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 24px 32px 64px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
 }
 
 .header-section {
@@ -343,19 +346,26 @@ async function handleToggleMaintenance(): Promise<void> {
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 16px;
+  padding: 20px 24px;
+  background: var(--a-card, #ffffff);
+  border: 1px solid var(--a-border, #e2e8f0);
+  border-radius: var(--a-radius, 8px);
+  box-shadow: var(--a-shadow-xs, 0 1px 3px rgba(0, 0, 0, 0.05));
 }
 
 .title {
   margin: 0;
   font-size: 20px;
   font-weight: 700;
+  color: var(--a-text, #1e293b);
+  letter-spacing: -0.01em;
 }
 
 .subtitle {
   margin: 4px 0 0;
   font-size: 13px;
-  color: var(--el-text-color-secondary);
+  color: var(--a-text-2, #64748b);
 }
 
 .maint-card {

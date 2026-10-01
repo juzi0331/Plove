@@ -77,10 +77,11 @@ def get_category_rules_payload(
     except Exception:
         pass
 
+    is_new_config = not saved.get("rules")
     rules: list[CategoryRuleItem] = []
     # 优先使用真实拉到的分类
     seen_tids = set()
-    for cat in real_categories:
+    for idx, cat in enumerate(real_categories):
         tid = str(cat.tid)
         seen_tids.add(tid)
         saved_item = saved_rules_map.get(tid, {})
@@ -104,6 +105,13 @@ def get_category_rules_payload(
                 )
                 for s in cat.subcategories
             ]
+        
+        # 新接入站点未在后台配置过时：默认全开前 3 个
+        if is_new_config:
+            show_home = (idx < 3)
+        else:
+            show_home = bool(saved_item.get("show_on_home", False))
+
         rules.append(
             CategoryRuleItem(
                 tid=tid,
@@ -111,6 +119,7 @@ def get_category_rules_payload(
                 custom_name=str(saved_item.get("custom_name", "")),
                 hidden=bool(saved_item.get("hidden", False)),
                 sort_order=int(saved_item.get("sort_order", 0)),
+                show_on_home=show_home,
                 subcategories=subcats,
             )
         )
@@ -135,6 +144,7 @@ def get_category_rules_payload(
                     custom_name=str(saved_item.get("custom_name", "")),
                     hidden=bool(saved_item.get("hidden", False)),
                     sort_order=int(saved_item.get("sort_order", 0)),
+                    show_on_home=bool(saved_item.get("show_on_home", False)),
                     subcategories=subcats,
                 )
             )
@@ -144,6 +154,52 @@ def get_category_rules_payload(
         rules=rules,
         default_tid=saved.get("default_tid"),
     )
+
+
+def get_home_display_category_plans(
+    key: str,
+    categories: list[VodCategory],
+    store: SiteSettingsStore,
+) -> list[dict[str, Any]]:
+    """计算应在首页以横幅展示的分类计划列表。
+
+    规则：
+    1. 若后台配置过规则，则选出所有 show_on_home=True 且未隐藏的分类，按 sort_order 升序排序；
+    2. 若未配置过规则，默认兜底展示前 3 个未隐藏分类。
+    """
+    config = store.config(key)
+    saved = _load_cat_rules_json(config.category_rules_json)
+    saved_rules_list = saved.get("rules", [])
+
+    plans: list[dict[str, Any]] = []
+
+    if saved_rules_list:
+        rules_map = {
+            str(item.get("tid")): item
+            for item in saved_rules_list
+            if isinstance(item, dict) and item.get("tid")
+        }
+        for cat in categories:
+            tid = str(cat.tid)
+            rule = rules_map.get(tid)
+            if not rule or rule.get("hidden"):
+                continue
+            if rule.get("show_on_home"):
+                custom = str(rule.get("custom_name", "")).strip()
+                title = format_category_display_name(cat.name or tid, custom)
+                order = int(rule.get("sort_order", 0))
+                plans.append({"tid": tid, "title": title, "order": order})
+        plans.sort(key=lambda x: x["order"])
+    else:
+        # 新站点兜底：取前 3 个有效未隐藏分类
+        for cat in categories[:3]:
+            plans.append({
+                "tid": str(cat.tid),
+                "title": cat.name or str(cat.tid),
+                "order": 0,
+            })
+
+    return plans
 
 
 def save_category_rules_payload(

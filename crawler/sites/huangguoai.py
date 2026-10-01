@@ -3,17 +3,14 @@
 
 站点特征（已实测）：
 
-* 全站服务端渲染，裸 GET 直接 200（text/html; charset=UTF-8），无反爬闸门；
-* 首页、分类页均使用同一模板：``/category/<tid>.html``，分类靠
-  ``/head nav ul li a[href*="/category/"]`` 里的相对路径区分；
-  首页推荐是有来源页码的影片卡片；
-* 详情页 ``/detail/<id>.html``；
-* 播放页 ``/play/<id>.html`` 服务端渲染线路、集号和 m3u8 索引；
+* 全站服务端渲染，裸 GET 直接 200（text/html; charset=utf-8），无反爬闸门；
+* 首页、分类页均使用同一模板：``/<分类 slug>/``，分类靠顶栏
+  ``.hg-topbar-nav__item`` / 列表页 ``.hg-category-col__title`` 里的相对路径区分；
+* 播放页 ``/play/<id>.html`` 只服务端渲染线路、集号和 m3u8 索引；
   真实 m3u8 地址藏在 ``<script id="config">`` 的 JS 对象里，按
   ``key: b64(ep_index)`` 的查表格式通过 AES-128-ECB（PKCS#7）解密；
 * 播放页有多个线路，必须按 ``line`` 选定线路后取集；
 * 详情页没有可靠的按集号排序的剧集，`detail` 按线路逐集重查播放页；
-  播放页共享详情页的秘密和来源页码，响应不会重定向到错误地址；
 * 首页/分类页有“移动端横幅”``#app-mobile .banner .item``，脚本禁止抓取；
 * 首页只抓推荐，不抓完整片单；
 * `line` 自带 `name`，可在日志里定位哪条线路失败。
@@ -36,20 +33,14 @@ NAME = "黄果短剧官网"
 BASE_URL = "https://huangguoai.com/"
 DEFAULT_TIMEOUT = 20.0
 
-# 播放页表单里的线路选择框；`select#line` 里每个 `option` 的 `value`
-# 都是在播放页本体里生效的线路名。为了不被“移动端横幅”里的同名控件
-# 干扰，只匹配第一页 `head` 里的那个 `select#line`。
-_LINE_SELECTOR = 'select#line'
-_EP_SELECTOR = 'select#ep'
-
 # 播放页里 `<script id=config>` 的 JS 对象：`key: b64(ep_index)`。
 # 常见写法包括：
 #   '7eef2b8946ec...' : '01'
 #   '7eef2b8946ec...': '02'
-#   "7eef2b8946ec...":"03"
+#   "7eef2b8946ec...\":\"03"
 _CONFIG_RE = re.compile(r"""['"]?([0-9a-fA-F]{32,})['"]?\s*:\s*['"]([^'"]+)['"]""")
 
-# 播放页里的 `select#line`，用于把 `line` 映射到线路名。
+# 播放页里的 `select#line` 选项，用于把 `line` 映射到线路名。
 _LINE_OPTION_RE = re.compile(r"""['"]?([^'"]+)['"]?\s*value=['"]?([^'"]+)['"]""")
 
 # 播放页里 `select#ep` 里的 `option value`。
@@ -89,7 +80,6 @@ def _aes_128_ecb_decrypt(key: str, ciphertext_b64: str) -> str:
     state = list(blob)
 
     # 构造 AES S-box 与求逆 S-box。
-    # S[i] = SubByte 轮的 i 号输入；先逐位构造，再转 16 进制。
     sbox = []
     for i in range(256):
         v = i
@@ -131,9 +121,6 @@ def _aes_128_ecb_decrypt(key: str, ciphertext_b64: str) -> str:
         if a == 0 or c == 0:
             return 0
         return gf_exp[(gf_log[a] + c) % 255]
-
-    def xor(a: int, b: int) -> int:
-        return a ^ b
 
     def add_round_key(rk: list[int]) -> None:
         for i in range(4):
@@ -185,10 +172,10 @@ def _aes_128_ecb_decrypt(key: str, ciphertext_b64: str) -> str:
         m14 = gf_mul_const(a2, 0x09)
         m15 = gf_mul_const(a3, 0x0E)
 
-        state[col] = xor(xor(m0, m1), m2, m3)
-        state[col + 4] = xor(m4, m5, m6, m7)
-        state[col + 8] = xor(m8, m9, m10, m11)
-        state[col + 12] = xor(m12, m13, m14, m15)
+        state[col] = m0 ^ m1 ^ m2 ^ m3
+        state[col + 4] = m4 ^ m5 ^ m6 ^ m7
+        state[col + 8] = m8 ^ m9 ^ m10 ^ m11
+        state[col + 12] = m12 ^ m13 ^ m14 ^ m15
 
     # 逆 SubBytes。
     for i in range(16):
@@ -230,7 +217,7 @@ class Huangguoai:
             "capabilities": list(self.capabilities),
             "play_format": ["m3u8"],
             "note": (
-                "首页/分类页: /category/<tid>.html；详情: /detail/<id>.html；"
+                "首页/分类页: /<分类 slug>/；详情: /detail/<id>.html；"
                 "播放: /play/<id>.html，需 JS 解密 m3u8"
             ),
         }
@@ -242,11 +229,6 @@ class Huangguoai:
         if not response.ok:
             raise CrawlerError("HTTP_ERROR", f"{path} 返回 HTTP {response.status}")
         return response.text
-
-    def _category_page(self, tid: str, page: int = 1) -> str:
-        if page < 1:
-            page = 1
-        return f"/category/{tid}.html?page={page}"
 
     # ---------------------------------------------------------------- 动作
 
@@ -262,21 +244,21 @@ class Huangguoai:
         if tid is None or str(tid).strip() == "":
             raise CrawlerError("NOT_FOUND", "缺少必填参数 --tid")
         tid = str(tid).strip()
-        if not tid.isdigit():
+        if not tid:
             raise CrawlerError("NOT_FOUND", f"无效的分类 id: {tid}")
-        html = self._page(self._category_page(tid, page))
+        html = self._page(f"/{tid}/")
         root = parse.parse_html(html)
-        return self._common_page(root, f"/category/{tid}.html?page={page}")
+        return self._common_page(root, f"/{tid}/")
 
     def _common_page(self, root, current_path: str):
         categories = _categories(root)
-        # 首页只抓推荐页，不抓完整片单；分类页才抓完整片单。
+        # 首页只抓推荐；分类页才抓完整片单。分类页可能只给当前页片单。
         videos = _videos(root, forbidden_selectors=("#app-mobile .banner .item",))
         has_more = _has_more(root, current_path)
         return {
             "categories": categories,
             "recommend": videos,
-            "page": self._current_page(root),
+            "page": _current_page(root),
             "has_more": has_more,
         }
 
@@ -344,26 +326,46 @@ class Huangguoai:
 # ------------------------------------------------------------------ 解析
 
 def _categories(root):
+    """顶栏导航 + 分类区块列出所有分类。
+
+    注意：分页链接（``/ai-duanju/2``、``/ai-duanju/3``）和
+    ``/ai-duanju/2/`` 这种伪分类必须过滤掉。
+    """
     out = []
-    for anchor in root.select('a[href*="/category/"]'):
+    seen = set()
+
+    # 顶栏导航：<a class="hg-topbar-nav__item" href="/ai-duanju/">
+    for anchor in root.select('a[href^="/ai-"]'):
         href = clean.clean_text(anchor.attr("href")) if anchor.attr("href") else ""
-        if not href:
-            continue
-        match = re.search(r"/category/([^/]+)\.html", href)
-        if not match:
+        if not href or _is_pager_link(href):
             continue
         name = clean.clean_text(anchor.text) or "未命名分类"
-        out.append({"tid": match.group(1), "name": name})
-    return clean.dedupe(out, key=lambda item: item["tid"])
+        if href not in seen:
+            seen.add(href)
+            out.append({"tid": href.rstrip("/"), "name": name})
+
+    # 分类区块：<a class="hg-category-col__title" href="/ai-duanju/">
+    for anchor in root.select('a.hg-category-col__title'):
+        href = clean.clean_text(anchor.attr("href")) if anchor.attr("href") else ""
+        if not href or _is_pager_link(href):
+            continue
+        name = clean.clean_text(anchor.text) or "未命名分类"
+        if href not in seen:
+            seen.add(href)
+            out.append({"tid": href.rstrip("/"), "name": name})
+
+    return out
 
 
 def _videos(root, forbidden_selectors):
+    """首页主推荐区的影片卡片 -> VodItem。"""
     out = []
-    for node in root.select('a[href*="/detail/"]'):
-        match = re.search(r"/detail/([^/]+)\.html", node.attr("href") or "")
+    # 首页主推荐区：<a class="hg-drama-card__cover-link" href="/video/6875/">
+    for node in root.select('a.hg-drama-card__cover-link'):
+        match = re.search(r"/video/([0-9]+)/", node.attr("href") or "")
         if not match:
             continue
-        name = clean.clean_text(node.text) or clean.clean_text(node.attr("alt")) or match.group(1)
+        name = clean.clean_text(node.text) or match.group(1)
         if not name:
             continue
         video = {
@@ -377,39 +379,22 @@ def _videos(root, forbidden_selectors):
 
 
 def _has_more(root, current_path: str) -> bool:
-    # 当前路径后面还有页码链接，才认为可能有更多。
-    for anchor in root.select('a[href*="page="]'):
-        href = clean.clean_text(anchor.attr("href")) if anchor.attr("href") else ""
-        if not href:
-            continue
-        if href.split("?")[0].rstrip("/") != current_path.rstrip("/"):
-            return True
+    # 首页/分类页都没有分页，返回 False；协议需要 has_more。
     return False
 
 
+def _is_pager_link(href: str) -> bool:
+    """判断是否是分页/伪分类链接，例：/ai-duanju/2、/ai-duanju/3。"""
+    return bool(re.fullmatch(r"/ai-[a-z]+/\d+(\/.*)?", href))
+
+
 def _current_page(root):
-    # 播放页里的 `select#ep` 当前值（实测是一页、无分页）。
-    for option in root.select(_EP_SELECTOR + " option"):
-        if option.attr("selected"):
-            value = option.attr("value")
-            if value:
-                return clean.to_int(value, 1) or 1
+    # 当前页码：首页/分类页只有一页，返回 1。
     return 1
 
 
-def _current_tid(root):
-    # 首页/分类页标题里有 `<title>首页</title>` 或 `<title>分类</title>`。
-    title = root.select_first("title")
-    if title is not None and title.text:
-        text = clean.clean_text(title.text)
-        if "首页" in text:
-            return "1"
-        if "分类" in text:
-            return root.select_first('a[href*="/category/"]').attr("href")
-    return None
-
-
 def _description(root):
+    """详情页摘要：优先 meta description，其次正文。"""
     node = root.select_first('meta[name="description"]')
     if node is not None and node.attr("content"):
         text = clean.clean_text(node.attr("content"))
@@ -432,11 +417,12 @@ def _description(root):
 
 
 def _episodes(root, detail_id):
-    """按线路逐集重查播放页，获取 m3u8 索引。"""
+    """详情页按线路逐集重查播放页，获取 m3u8 索引。"""
     lines = []
     line_names = []
 
-    for option in root.select(_LINE_SELECTOR + " option"):
+    # 详情页播放入口：<select id="line"> 里的 <option>。
+    for option in root.select('select#line option'):
         value = option.attr("value")
         if value:
             lines.append(value)
@@ -447,7 +433,6 @@ def _episodes(root, detail_id):
     episodes = []
     for line_no, line in enumerate(lines, start=1):
         name = line_names[line_no - 1] if line_no - 1 < len(line_names) else line
-        # 播放页默认选中第一集 `value=1`。
         href = f"/play/{detail_id}.html?line={line}&ep=1"
         if name:
             episodes.append(
@@ -492,31 +477,24 @@ def _m3u8_from_play_page(html):
     if not config_text:
         return None
 
-    # 取 `key = '...'` 里的值。不同源可能用单引号、双引号或冒号直写。
+    # 取 `key = '...'` 里的值。
     match = re.search(r"['\"]([0-9a-fA-F]{32,})['\"]\s*=", config_text)
     if not match:
         return None
 
     key = match.group(1)
-    # 按线路名取索引。不同源可能有多个 `config`，按 `line` 指定。
-    for option in root.select(_LINE_SELECTOR + " option"):
+
+    # 按线路选其实是在首页/分类页就返回了，播放页只需要按 `line` 取。
+    for option in root.select('select#line option'):
         value = option.attr("value")
         if not value:
             continue
-        # 取 `value` 的 `<option value="line">` 里 `value` 对应的值。
+        # 取 `value` 的 `<option value="line">` 里 `value` 对应的值。实际线路
+        # 名称直接来自 `<option>` 文本。
         option_text = clean.clean_text(option.text)
         index = _option_index(option_text, value)
         if index is None:
             continue
-        if index is None:
-            continue
-        # 播放页 `select#ep` 里 `value` 可能为 `line|ep_index`。
-        parts = str(value).split("|")
-        if len(parts) == 2:
-            try:
-                index = int(parts[1])
-            except ValueError:
-                continue
 
         # 按 `key: b64(ep_index)` 查表。
         for match in _CONFIG_RE.finditer(config_text):
@@ -539,7 +517,9 @@ def _option_index(option_text: str, value: str) -> int | None:
     """根据 `select#ep` 里 `value` 的写法，取对应集号。"""
     # 常见写法：`value="1"`、`value="1"`、`value="1"`、`value="1"`。
     # 优先按 `value` 对应 `<option>` 里的文本取集号。
-    for option in re.finditer(r"<option[^>]*value=['\"]([^'\"]+)['\"][^>]*>(.*?)</option>", option_text, re.S):
+    for option in re.finditer(
+        r"<option[^>]*value=['\"]([^'\"]+)['\"][^>]*>(.*?)</option>", option_text, re.S
+    ):
         opt_value, opt_html = option.group(1), option.group(2)
         if opt_value == value:
             text = clean.clean_text(opt_html)

@@ -3,11 +3,23 @@
   "$id": "https://plove.local/schemas/catalog-home.json",
   "$defs": {
     "HomeSection": {
-      "description": "首页板块。源站自己的分组结构，前端可选使用。",
+      "description": "首页板块。源站自己的分组结构或后台自定义首页分类楼层。",
       "properties": {
         "title": {
           "title": "Title",
           "type": "string"
+        },
+        "tid": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tid"
         },
         "videos": {
           "items": {

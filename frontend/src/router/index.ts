@@ -1,4 +1,4 @@
-﻿import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory } from 'vue-router'
 
 import { getDeviceToken } from '@/api/session'
 import { hasAdminToken } from '@/admin/token'
@@ -14,7 +14,6 @@ const router = createRouter({
       meta: { public: true },
     },
     { path: '/', name: 'home', component: () => import('@/views/HomeView.vue') },
-    { path: '/sites', name: 'sites', component: () => import('@/views/SitesView.vue') },
     {
       path: '/category/:tid',
       name: 'category',

@@ -33,6 +33,12 @@
           "title": "Sort Order",
           "type": "integer"
         },
+        "show_on_home": {
+          "default": false,
+          "description": "是否在首页横幅中展示该分类",
+          "title": "Show On Home",
+          "type": "boolean"
+        },
         "subcategories": {
           "description": "该分类下的子分类列表",
           "items": {

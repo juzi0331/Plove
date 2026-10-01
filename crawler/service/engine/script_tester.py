@@ -22,16 +22,11 @@ import time
 from typing import Any, Optional
 from pydantic import BaseModel
 
+from crawler_kit.audit import audit_script_ast, get_crawler_runner_env
+
 from ..core.log import get_logger
 
 logger = get_logger("script_tester")
-
-_DANGEROUS_MODULES = frozenset({
-    "subprocess", "ctypes", "socket", "pty", "multiprocessing", "shutil", "importlib",
-})
-_DANGEROUS_ATTRIBUTES = frozenset({
-    "system", "popen", "exec", "eval", "spawn", "fork", "kill",
-})
 
 
 class StepTestResult(BaseModel):
@@ -59,30 +54,7 @@ class ScriptTester:
         self.custom_key = custom_key or "test_site"
 
     def audit_ast(self) -> tuple[bool, Optional[str]]:
-        try:
-            tree = ast.parse(self.code)
-        except SyntaxError as exc:
-            return False, f"Python 语法错误 (第 {exc.lineno} 行): {exc.msg}"
-
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Import):
-                for alias in node.names:
-                    root_pkg = alias.name.split(".")[0]
-                    if root_pkg in _DANGEROUS_MODULES:
-                        return False, f"禁止导入受限模块: {alias.name}"
-            elif isinstance(node, ast.ImportFrom):
-                if node.module:
-                    root_pkg = node.module.split(".")[0]
-                    if root_pkg in _DANGEROUS_MODULES:
-                        return False, f"禁止导入受限模块: {node.module}"
-            elif isinstance(node, ast.Attribute):
-                if node.attr in _DANGEROUS_ATTRIBUTES:
-                    return False, f"禁止调用受限方法/属性: {node.attr}"
-            elif isinstance(node, ast.Name):
-                if node.id in {"eval", "exec", "__import__"}:
-                    return False, f"禁止直接使用危险内置函数: {node.id}"
-
-        return True, None
+        return audit_script_ast(self.code)
 
     def run_subcommand(self, script_path: Path, command: str, **options: Any) -> tuple[bool, Optional[dict], Optional[str]]:
         argv = [sys.executable, str(script_path), command]
@@ -90,24 +62,11 @@ class ScriptTester:
             if v is not None:
                 argv.extend([f"--{k}", str(v)])
 
-        env = os.environ.copy()
-        env["PYTHONIOENCODING"] = "utf-8"
-        env["PYTHONUTF8"] = "1"
+        env = get_crawler_runner_env()
 
         # 注入代理配置（如启用）
         from .proxy_manager import proxy_manager
         env.update(proxy_manager.get_env())
-
-        # 注入 crawler_kit 所在目录与项目根目录
-        crawler_dir = Path(__file__).resolve().parents[2]
-        project_root = crawler_dir.parent
-        sites_dir = crawler_dir / "sites"
-        if crawler_dir.is_dir():
-            crawler_root = str(crawler_dir)
-            env["CRAWLER_KIT_PATH"] = crawler_root
-            existing = env.get("PYTHONPATH", "")
-            pp_parts = [crawler_root, str(project_root)]
-            if existing:
                 pp_parts.append(existing)
             env["PYTHONPATH"] = os.pathsep.join(pp_parts)
 

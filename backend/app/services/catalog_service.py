@@ -98,6 +98,44 @@ def home(
     raw = cache.home(key, lambda: _load(HomePayload, registry, key, "home"), force=force)
     actual_store = store or site_settings.store()
     filtered_categories = site_control_service.apply_category_rules(key, raw.categories, actual_store)
+
+    # 计算应在首页展示的分类计划（后台勾选 或 新站点默认前 3 个）
+    plans = site_control_service.get_home_display_category_plans(key, filtered_categories, actual_store)
+    custom_sections: list[HomeSection] = []
+    from app.schemas.catalog import HomeSection
+
+    for plan in plans:
+        try:
+            cat_res = category(
+                registry,
+                cache,
+                key,
+                tid=plan["tid"],
+                page=1,
+                store=actual_store,
+                force=force,
+            )
+            if cat_res and cat_res.videos:
+                # 严格只展示前 10 个视频
+                custom_sections.append(
+                    HomeSection(
+                        title=plan["title"],
+                        tid=plan["tid"],
+                        videos=cat_res.videos[:10],
+                    )
+                )
+        except Exception:
+            pass
+
+    if custom_sections:
+        # 用户确认选择方案 A（前台完全替代）：以真实分类横幅注入 sections
+        return raw.model_copy(
+            update={
+                "categories": filtered_categories,
+                "sections": custom_sections,
+            }
+        )
+
     return raw.model_copy(update={"categories": filtered_categories})
 
 

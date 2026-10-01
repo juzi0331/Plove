@@ -1273,7 +1273,7 @@ async function saveDetailPolicy(): Promise<void> {
     >
       <div v-loading="categoryLoading" class="category-drawer-content">
         <div class="drawer-tip">
-          源站分类由爬虫返回。您可以在此<strong>屏蔽敏感/不需要的分类</strong>、<strong>重命名分类名称</strong>，或<strong>挂载二级子分类与筛选标签</strong>。
+          源站分类由爬虫返回。您可以在此<strong>决定哪些分类在首页以横幅展示（每分类横向展示10部）</strong>、<strong>屏蔽不需要的分类</strong>、<strong>重命名分类名称</strong>，或<strong>挂载二级子分类与筛选标签</strong>。
         </div>
 
         <div class="default-tid-bar">
@@ -1302,6 +1302,7 @@ async function saveDetailPolicy(): Promise<void> {
                 <span class="cat-tid a-mono">#{{ rule.tid }}</span>
                 <span class="cat-raw-name">{{ rule.name }}</span>
                 <ElTag v-if="rule.hidden" type="danger" size="small">已隐藏</ElTag>
+                <ElTag v-else-if="rule.show_on_home" type="success" size="small">首页横幅 (10部)</ElTag>
               </div>
 
               <div class="rule-actions">
@@ -1319,13 +1320,21 @@ async function saveDetailPolicy(): Promise<void> {
             <div v-if="!rule.hidden" class="rule-body">
               <div class="rule-row">
                 <span class="label">前台别名：</span>
-                <ElInput v-model="rule.custom_name" placeholder="留空保持原名" size="small" style="width: 170px;" clearable />
+                <ElInput v-model="rule.custom_name" placeholder="留空保持原名" size="small" style="width: 150px;" clearable />
                 <span class="cat-preview-text">
                   前台显示：<strong :class="{ 'has-custom': !!rule.custom_name?.trim() }">{{ formatCategoryPreview(rule.name, rule.custom_name) }}</strong>
                 </span>
 
-                <span class="label ml">排序权重：</span>
-                <ElInputNumber v-model="rule.sort_order" size="small" :step="1" style="width: 110px;" />
+                <span class="label ml">排序：</span>
+                <ElInputNumber v-model="rule.sort_order" size="small" :step="1" style="width: 90px;" />
+
+                <span class="label ml">首页横幅：</span>
+                <ElSwitch
+                  v-model="rule.show_on_home"
+                  active-text="上首页"
+                  inactive-text="不展示"
+                  size="small"
+                />
               </div>
 
               <!-- 二级子分类标签 -->

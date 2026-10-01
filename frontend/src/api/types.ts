@@ -152,6 +152,7 @@ export interface CategoryRuleItem {
   custom_name?: string
   hidden?: boolean
   sort_order?: number
+  show_on_home?: boolean
   subcategories?: SubCategoryItem[]
 }
 
@@ -295,9 +296,10 @@ export interface HomePayload {
   sections?: HomeSection[]
 }
 
-/** 首页板块。源站自己的分组结构，前端可选使用。 */
+/** 首页板块。源站自己的分组结构或后台自定义首页分类楼层。 */
 export interface HomeSection {
   title: string
+  tid?: string | null
   videos?: VodItem[]
 }
 
