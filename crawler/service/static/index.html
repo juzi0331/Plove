@@ -1408,6 +1408,9 @@
             <button class="btn btn-secondary" style="padding:6px 12px;font-size:0.82rem" @click="copySourceCodeModal">
               {{ copySourceBtnText }}
             </button>
+            <button class="btn btn-emerald" style="padding:6px 14px;font-size:0.82rem" @click="openDeployFromViewer">
+              推送到后端
+            </button>
             <button class="btn btn-secondary" style="padding:6px 12px;font-size:0.82rem" @click="downloadScriptFile(viewSourceKey, viewSourceCode)">
               下载文件
             </button>
@@ -1940,9 +1943,18 @@
         }
 
         // 部署弹窗
+        function openDeployFromViewer() {
+          if (!viewSourceCode.value) return;
+          deployForm.value.key = viewSourceKey.value;
+          deployForm.value.code = viewSourceCode.value;
+          deployStatusMsg.value = '';
+          showDeployModal.value = true;
+        }
+
         function openDeployFromTester() {
           if (!testReport.value || !testReport.value.can_deploy) return;
           deployForm.value.key = testReport.value.key;
+          deployForm.value.code = testScriptCode.value;
           deployStatusMsg.value = '';
           showDeployModal.value = true;
         }
@@ -1950,14 +1962,15 @@
         function openDeployModal() {
           if (!smartResult.value) return;
           deployForm.value.key = smartResult.value.suggested_key;
+          deployForm.value.code = smartResult.value.generated_python_code;
           deployStatusMsg.value = '';
           showDeployModal.value = true;
         }
 
         async function executeDeploy() {
-          const deployCode = (testReport.value && testReport.value.can_deploy && testScriptCode.value)
-            ? testScriptCode.value
-            : (smartResult.value ? smartResult.value.generated_python_code : testScriptCode.value);
+          const deployCode = deployForm.value.code
+            || (testReport.value && testReport.value.can_deploy && testScriptCode.value ? testScriptCode.value : null)
+            || (smartResult.value ? smartResult.value.generated_python_code : testScriptCode.value);
 
           if (!deployCode) {
             alert('缺少可部署代码');
@@ -2298,6 +2311,7 @@ if __name__ == "__main__":
           openPromptModal,
           refreshPromptContent,
           copyPromptContent,
+          openDeployFromViewer,
           openDeployFromTester,
           openDeployModal,
           executeDeploy,
