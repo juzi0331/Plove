@@ -57,7 +57,7 @@ _PORTAL_HTML = """<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Plove Backend Service · 后端服务中枢 :4001</title>
+  <title>Plove Backend Service · 后端服务与端口中枢 :4001</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -65,12 +65,17 @@ _PORTAL_HTML = """<!DOCTYPE html>
     :root {
       --bg-base: #f8fafc;
       --bg-surface: #ffffff;
+      --bg-card-inner: #f8fafc;
+      --bg-card-hover: #f1f5f9;
       --border-subtle: #e2e8f0;
+      --border-focus: #4f46e5;
       --accent-primary: #4f46e5;
       --accent-emerald: #059669;
       --accent-cyan: #0284c7;
+      --accent-amber: #d97706;
       --text-main: #0f172a;
       --text-muted: #475569;
+      --text-dim: #64748b;
       --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       --font-mono: 'JetBrains Mono', Consolas, Monaco, monospace;
     }
@@ -83,48 +88,166 @@ _PORTAL_HTML = """<!DOCTYPE html>
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      padding: 2rem;
+      justify-content: flex-start;
+      padding: 2.5rem 1.5rem 5rem;
       background-image: 
-        radial-gradient(at 15% 15%, rgba(79, 70, 229, 0.06) 0px, transparent 40%),
-        radial-gradient(at 85% 85%, rgba(2, 132, 199, 0.06) 0px, transparent 40%);
+        radial-gradient(at 10% 10%, rgba(79, 70, 229, 0.08) 0px, transparent 40%),
+        radial-gradient(at 90% 80%, rgba(2, 132, 199, 0.08) 0px, transparent 40%),
+        radial-gradient(at 50% 30%, rgba(5, 150, 105, 0.04) 0px, transparent 40%);
     }
-    .portal-card {
+
+    /* 容器布局 */
+    .portal-container {
+      max-width: 1080px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    /* 锁屏卡片 (纯净高质感白底) */
+    #lock-screen {
+      max-width: 440px;
+      width: 100%;
+      margin: 10vh auto 0;
       background: var(--bg-surface);
       border: 1px solid var(--border-subtle);
       border-radius: 20px;
-      padding: 2.5rem;
-      max-width: 860px;
-      width: 100%;
-      box-shadow: 0 16px 36px -4px rgba(15, 23, 42, 0.08);
+      padding: 2.5rem 2rem;
+      box-shadow: 0 20px 40px -15px rgba(15, 23, 42, 0.1), 0 0 1px 1px rgba(15, 23, 42, 0.05);
+      text-align: center;
     }
-    .head {
+    .lock-icon-wrap {
+      width: 62px;
+      height: 62px;
+      margin: 0 auto 1.25rem;
+      border-radius: 18px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6rem;
+      color: #2563eb;
+    }
+    .lock-title {
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: var(--text-main);
+      margin-bottom: 0.5rem;
+    }
+    .lock-sub {
+      font-size: 0.86rem;
+      color: var(--text-muted);
+      line-height: 1.55;
+      margin-bottom: 1.75rem;
+    }
+    .lock-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .lock-input {
+      width: 100%;
+      padding: 0.85rem 1.1rem;
+      border-radius: 12px;
+      background: #f8fafc;
+      border: 1.5px solid #cbd5e1;
+      color: var(--text-main);
+      font-size: 0.95rem;
+      outline: none;
+      transition: all 0.2s;
+      text-align: center;
+      letter-spacing: 2px;
+      font-weight: 600;
+    }
+    .lock-input:focus {
+      background: #ffffff;
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+    }
+    .lock-btn {
+      padding: 0.85rem;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #4f46e5 0%, #0284c7 100%);
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.95rem;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3);
+      transition: all 0.2s;
+    }
+    .lock-btn:hover {
+      opacity: 0.94;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 18px rgba(79, 70, 229, 0.38);
+    }
+    .quick-hint {
+      margin-top: 1.1rem;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+    }
+    .quick-hint span {
+      color: var(--accent-primary);
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+    .shake {
+      animation: shake 0.4s ease-in-out;
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-8px); }
+      40%, 80% { transform: translateX(8px); }
+    }
+
+    /* 主界面（解锁后） */
+    #main-dashboard {
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* 顶部导航头 */
+    .dashboard-header {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 20px;
+      padding: 1.6rem 2rem;
+      margin-bottom: 1.75rem;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      border-bottom: 1px solid var(--border-subtle);
-      padding-bottom: 1.5rem;
-      margin-bottom: 1.75rem;
+      box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05);
+      position: relative;
     }
-    .brand-wrap {
+    .brand-group {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 16px;
     }
-    .brand-logo {
+    .brand-badge {
       width: 48px;
       height: 48px;
       border-radius: 14px;
       background: linear-gradient(135deg, #4f46e5 0%, #0284c7 100%);
-      color: #fff;
       display: flex;
       align-items: center;
       justify-content: center;
       font-weight: 800;
       font-size: 1.25rem;
-      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.28);
     }
-    .status-badge {
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .status-pill {
       display: inline-flex;
       align-items: center;
       gap: 8px;
@@ -136,146 +259,828 @@ _PORTAL_HTML = """<!DOCTYPE html>
       color: #065f46;
       border: 1px solid #a7f3d0;
     }
-    .pulse {
+    .status-dot {
       width: 8px;
       height: 8px;
       border-radius: 50%;
       background: #10b981;
       box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
     }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 1.25rem;
-      margin-top: 1.5rem;
+    .btn-ghost {
+      padding: 7px 15px;
+      border-radius: 10px;
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      color: #334155;
+      font-size: 0.82rem;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
     }
-    .card {
-      border: 1px solid var(--border-subtle);
-      border-radius: 14px;
-      padding: 1.25rem 1.5rem;
+    .btn-ghost:hover {
       background: #ffffff;
-      text-decoration: none;
-      color: inherit;
-      transition: all 0.2s ease;
+      border-color: #94a3b8;
+      color: #0f172a;
+    }
+
+    /* 端口与地址提示卡片 (浅亮蓝背景) */
+    .notice-banner {
+      background: linear-gradient(90deg, #eff6ff 0%, #f0fdfa 100%);
+      border: 1px solid #bfdbfe;
+      border-radius: 14px;
+      padding: 1.1rem 1.4rem;
+      margin-bottom: 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.9rem;
+      color: #1e3a8a;
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.04);
+    }
+    .notice-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .notice-code {
+      background: #ffffff;
+      padding: 5px 12px;
+      border-radius: 8px;
+      border: 1px solid #93c5fd;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: #0284c7;
+      font-size: 0.92rem;
+    }
+
+    /* 三大模块网格 */
+    .modules-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    @media (max-width: 980px) {
+      .modules-grid { grid-template-columns: 1fr; }
+    }
+
+    .service-panel {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 18px;
+      padding: 1.6rem 1.4rem;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 4px 15px -2px rgba(15, 23, 42, 0.04);
+      transition: all 0.25s ease;
     }
-    .card:hover {
-      border-color: var(--accent-primary);
-      box-shadow: 0 8px 20px -2px rgba(79, 70, 229, 0.1);
+    .service-panel:hover {
+      border-color: #cbd5e1;
+      box-shadow: 0 10px 25px -4px rgba(15, 23, 42, 0.08);
       transform: translateY(-2px);
     }
-    .card-title {
-      font-size: 1.05rem;
+    .service-panel::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+    }
+    .panel-backend::before { background: linear-gradient(90deg, #4f46e5, #818cf8); }
+    .panel-spider::before { background: linear-gradient(90deg, #059669, #34d399); }
+    .panel-frontend::before { background: linear-gradient(90deg, #0284c7, #38bdf8); }
+
+    .service-head {
+      margin-bottom: 1.25rem;
+    }
+    .service-role {
+      font-size: 0.74rem;
       font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .role-backend { color: #4f46e5; }
+    .role-spider { color: #059669; }
+    .role-frontend { color: #0284c7; }
+
+    .service-title {
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .service-port {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      background: #f1f5f9;
+      padding: 2px 8px;
+      border-radius: 6px;
+      color: #334155;
+      font-weight: 700;
+      border: 1px solid #e2e8f0;
+    }
+    .service-desc {
+      font-size: 0.84rem;
+      color: var(--text-muted);
+      line-height: 1.55;
+      margin-top: 8px;
+      min-height: 48px;
+    }
+
+    /* 链接与端点列表 */
+    .links-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+    .link-row {
+      background: var(--bg-card-inner);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 0.75rem 0.9rem;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      color: var(--text-main);
+      gap: 8px;
+      transition: all 0.2s;
     }
-    .card-desc {
-      font-size: 0.84rem;
+    .link-row:hover {
+      background: var(--bg-card-hover);
+      border-color: #cbd5e1;
+    }
+    .link-meta {
+      flex: 1;
+      overflow: hidden;
+    }
+    .link-label {
+      font-size: 0.76rem;
+      font-weight: 700;
       color: var(--text-muted);
-      margin: 8px 0 12px;
-      line-height: 1.5;
-    }
-    .card-link {
-      font-size: 0.8rem;
-      font-family: var(--font-mono);
-      font-weight: 600;
-      color: var(--accent-primary);
       display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .link-tag {
+      font-size: 0.68rem;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-weight: 700;
+      background: #e2e8f0;
+      color: #334155;
+    }
+    .link-url {
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      color: var(--text-main);
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 3px;
+    }
+    .link-btns {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .action-btn {
+      padding: 5px 10px;
+      border-radius: 8px;
+      font-size: 0.74rem;
+      font-weight: 700;
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+      color: #334155;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+      display: inline-flex;
       align-items: center;
       gap: 4px;
     }
-    .info-bar {
-      margin-top: 2rem;
-      padding: 1rem 1.25rem;
-      border-radius: 10px;
-      background: #f8fafc;
-      border: 1px solid var(--border-subtle);
+    .action-btn:hover {
+      background: #f1f5f9;
+      border-color: #94a3b8;
+      color: #0f172a;
+    }
+    .action-btn.primary {
+      background: #4f46e5;
+      border-color: #4f46e5;
+      color: #ffffff;
+      box-shadow: 0 2px 6px rgba(79, 70, 229, 0.25);
+    }
+    .action-btn.primary:hover {
+      background: #4338ca;
+      border-color: #4338ca;
+      color: #fff;
+    }
+
+    /* 悬浮说明按钮 (清爽亮色光泽) */
+    .fab-guide-btn {
+      position: fixed;
+      bottom: 2rem;
+      right: 2.5rem;
+      background: linear-gradient(135deg, #4f46e5 0%, #0284c7 100%);
+      color: #fff;
+      border: none;
+      border-radius: 999px;
+      padding: 0.85rem 1.4rem;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 10px 25px -4px rgba(79, 70, 229, 0.4);
+      transition: all 0.25s;
+      z-index: 100;
+    }
+    .fab-guide-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 30px -4px rgba(79, 70, 229, 0.55);
+    }
+    .fab-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #a7f3d0;
+      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.4);
+      animation: pulseDot 2s infinite;
+    }
+    @keyframes pulseDot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
+
+    /* 滑出式文档抽屉 (清爽明亮白底面板) */
+    .drawer-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(15, 23, 42, 0.4);
+      backdrop-filter: blur(4px);
+      z-index: 999;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+    }
+    .drawer-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+    .drawer-panel {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 620px;
+      max-width: 90vw;
+      height: 100vh;
+      background: #ffffff;
+      border-left: 1px solid var(--border-subtle);
+      box-shadow: -10px 0 40px rgba(15, 23, 42, 0.15);
+      transform: translateX(100%);
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+    }
+    .drawer-overlay.active .drawer-panel {
+      transform: translateX(0);
+    }
+    .drawer-header {
+      padding: 1.5rem 1.75rem;
+      border-bottom: 1px solid var(--border-subtle);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      font-size: 0.8rem;
+      background: #f8fafc;
+    }
+    .drawer-title {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+    .drawer-close {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      background: #ffffff;
+      border: 1px solid var(--border-subtle);
+      color: var(--text-dim);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      transition: all 0.2s;
+    }
+    .drawer-close:hover {
+      background: #fee2e2;
+      color: #dc2626;
+      border-color: #fecaca;
+    }
+    .drawer-body {
+      padding: 1.75rem;
+      overflow-y: auto;
+      flex: 1;
       color: var(--text-muted);
+      font-size: 0.9rem;
+      line-height: 1.65;
+    }
+    .doc-section {
+      margin-bottom: 1.75rem;
+      background: #f8fafc;
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 1.25rem 1.4rem;
+    }
+    .doc-section h3 {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: var(--text-main);
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .doc-section p {
+      margin-bottom: 0.75rem;
+      font-size: 0.88rem;
+    }
+    .doc-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 0.5rem;
+      font-size: 0.82rem;
+    }
+    .doc-table th, .doc-table td {
+      border: 1px solid #e2e8f0;
+      padding: 8px 10px;
+      text-align: left;
+    }
+    .doc-table th {
+      background: #f1f5f9;
+      color: #334155;
+      font-weight: 700;
+    }
+    .doc-table td {
+      background: #ffffff;
+      color: #334155;
+    }
+    .flow-diagram {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      padding: 1rem;
       font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: #0369a1;
+      line-height: 1.6;
+      margin: 0.75rem 0;
+      overflow-x: auto;
+    }
+
+    /* Toast 通知 (高质感白底浮窗) */
+    #toast {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(30px);
+      background: #ffffff;
+      border: 1.5px solid #4f46e5;
+      color: #0f172a;
+      padding: 0.65rem 1.4rem;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12);
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.25s ease;
+      z-index: 2000;
+    }
+    #toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
     }
   </style>
 </head>
 <body>
-  <div class="portal-card">
-    <div class="head">
-      <div class="brand-wrap">
-        <div class="brand-logo">PV</div>
-        <div>
-          <h1 style="font-size:1.35rem;font-weight:800;color:var(--text-main)">Plove Backend Service</h1>
-          <p style="font-size:0.82rem;color:var(--text-muted);margin-top:2px">高性能影视聚合中枢服务端 · 端口 :4001</p>
-        </div>
-      </div>
-      <div class="status-badge">
-        <span class="pulse"></span>
-        服务端正常就绪
-      </div>
-    </div>
 
-    <p style="color:var(--text-muted);font-size:0.9rem;line-height:1.6">
-      后端微服务正以 <code>0.0.0.0:4001</code> 全网卡模式稳定运行中。前端应用与本地爬虫均已完成与后端的通道对接。您可通过下方导航卡片直达各个管理与调试终端：
-    </p>
-
-    <div class="grid">
-      <a href="/docs" class="card">
-        <div>
-          <div class="card-title">
-            <span>在线 API 交互文档</span>
-            <span style="font-size:0.75rem;color:var(--accent-primary)">Swagger UI</span>
-          </div>
-          <div class="card-desc">直连查看并在线调试全部 4001 接口：影视抓取、分类推荐、流地址穿透与鉴权管理。</div>
-        </div>
-        <div class="card-link">打开 :4001/docs &rarr;</div>
-      </a>
-
-      <a href="http://127.0.0.1:4000/_manage/sites" target="_blank" class="card">
-        <div>
-          <div class="card-title">
-            <span>影视源与系统管理后台</span>
-            <span style="font-size:0.75rem;color:var(--accent-cyan)">Vite Admin</span>
-          </div>
-          <div class="card-desc">前端应用内嵌的管理后台：查看各影视站健康状态、热重载配置、手动触发预热与监控。</div>
-        </div>
-        <div class="card-link">前往 :4000/_manage/sites &rarr;</div>
-      </a>
-
-      <a href="http://127.0.0.1:8088/" target="_blank" class="card">
-        <div>
-          <div class="card-title">
-            <span>智能爬虫规则控制台</span>
-            <span style="font-size:0.75rem;color:var(--accent-emerald)">Spider Studio</span>
-          </div>
-          <div class="card-desc">本地纯隔离爬虫系统：目标站点智能探测、全链路自动化体检、本地网络代理与一键热部署。</div>
-        </div>
-        <div class="card-link">前往 :8088 &rarr;</div>
-      </a>
-
-      <a href="http://127.0.0.1:4000/" target="_blank" class="card">
-        <div>
-          <div class="card-title">
-            <span>前端影视播放门户</span>
-            <span style="font-size:0.75rem;color:#d97706)">Client Portal</span>
-          </div>
-          <div class="card-desc">面向终端用户的播放与浏览前端：响应式影视推荐、多线路智能切换与 HLS 直播试播。</div>
-        </div>
-        <div class="card-link">前往 :4000 &rarr;</div>
-      </a>
-    </div>
-
-    <div class="info-bar">
-      <span>API PREFIX: /api/v1</span>
-      <span>CORS: ENABLED</span>
-      <span>AUTH HEADER: X-Admin-Token</span>
+  <!-- 锁屏卡片 (纯净高质感白底) -->
+  <div id="lock-screen">
+    <div class="lock-icon-wrap">🔒</div>
+    <div class="lock-title">后端服务与中枢管理</div>
+    <div class="lock-sub">本页面汇聚 Plove 全套服务的核心端点、API 文档与协作中枢。请输入管理口令以解锁访问：</div>
+    <form class="lock-form" onsubmit="handleUnlock(event)">
+      <input type="password" id="pwd-input" class="lock-input" placeholder="请输入访问密码" autocomplete="off" autofocus />
+      <button type="submit" class="lock-btn">验证口令并进入</button>
+    </form>
+    <div class="quick-hint">
+      提示：默认开发口令为 <span onclick="fillDefaultPwd()">admin888</span>（点击可自动填入）
     </div>
   </div>
+
+  <!-- 解锁后的主面板 -->
+  <div id="main-dashboard" class="portal-container">
+    
+    <!-- 头部横幅 -->
+    <div class="dashboard-header">
+      <div class="brand-group">
+        <div class="brand-badge">PV</div>
+        <div>
+          <h1 style="font-size:1.35rem;font-weight:800;color:var(--text-main)">Plove 后端微服务与系统矩阵</h1>
+          <p style="font-size:0.82rem;color:var(--text-muted);margin-top:2px">中央服务运行中 · 端口 :4001 · 汇聚爬虫与前端终端</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="status-pill">
+          <span class="status-dot"></span>
+          后端服务在线
+        </div>
+        <button class="btn-ghost" onclick="toggleDrawer(true)">系统说明书</button>
+        <button class="btn-ghost" onclick="handleLock()">锁定退出</button>
+      </div>
+    </div>
+
+    <!-- 关键解答横幅 -->
+    <div class="notice-banner">
+      <div class="notice-left">
+        <strong>爬虫推送到后端时，“后端 API 服务地址”应该怎么填？</strong>
+        <span class="notice-code" id="main-addr">http://127.0.0.1:4001</span>
+      </div>
+      <button class="action-btn primary" onclick="copyText('http://127.0.0.1:4001')">一键复制后端地址</button>
+    </div>
+
+    <!-- 三大服务矩阵卡片 -->
+    <div class="modules-grid">
+      
+      <!-- 1. 后端核心服务 :4001 -->
+      <div class="service-panel panel-backend">
+        <div>
+          <div class="service-head">
+            <div class="service-role role-backend">中央服务枢纽</div>
+            <div class="service-title">
+              后端 API 服务
+              <span class="service-port">:4001</span>
+            </div>
+            <div class="service-desc">基于 FastAPI 构建的高性能中枢。负责影视聚合、多源代理缓存、规则脚本持久化与热重载。</div>
+          </div>
+
+          <div class="links-group">
+            <div class="link-row">
+              <div class="link-meta">
+                <div class="link-label">
+                  <span class="link-tag">SWAGGER</span>
+                  后端交互式文档
+                </div>
+                <div class="link-url">http://127.0.0.1:4001/docs</div>
+              </div>
+              <div class="link-btns">
+                <button class="action-btn" onclick="copyText('http://127.0.0.1:4001/docs')">复制</button>
+                <a href="/docs" target="_blank" class="action-btn primary">直达</a>
+              </div>
+            </div>
+
+            <div class="link-row">
+              <div class="link-meta">
+                <div class="link-label">
+                  <span class="link-tag">OPENAPI</span>
+                  规范 JSON 数据
+                </div>
+                <div class="link-url">http://127.0.0.1:4001/openapi.json</div>
+              </div>
+              <div class="link-btns">
+                <button class="action-btn" onclick="copyText('http://127.0.0.1:4001/openapi.json')">复制</button>
+                <a href="/openapi.json" target="_blank" class="action-btn">查看</a>
+              </div>
+            </div>
+
+            <div class="link-row">
+              <div class="link-meta">
+                <div class="link-label">
+                  <span class="link-tag" style="color:#d97706">UPLOAD</span>
+                  爬虫热部署接收端点
+                </div>
+                <div class="link-url">/api/v1/admin/crawlers/upload</div>
+              </div>
+              <div class="link-btns">
+                <button class="action-btn" onclick="copyText('http://127.0.0.1:4001/api/v1/admin/crawlers/upload')">复制</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. 爬虫服务控制台 :8088 -->
+      <div class="service-panel panel-spider">
+        <div>
+          <div class="service-head">
+            <div class="service-role role-spider">独立隔离沙箱</div>
+            <div class="service-title">
+              智能爬虫控制台
+              <span class="service-port">:8088</span>
+            </div>
+            <div class="service-desc">Spider Studio 本地微服务。支持脚本全链路体检、站点规则热测、本地网络代理与一键推送到后端。</div>
+          </div>
+
+          <div class="links-group">
+            <div class="link-row">
+              <div class="link-meta">
+                <div class="link-label">
+                  <span class="link-tag">STUDIO</span>
+                  爬虫图形化控制台
+                </div>
+                <div class="link-url">http://127.0.0.1:8088/</div>
+              </div>
+              <div class="link-btns">
+                <button class="action-btn" onclick="copyText('http://127.0.0.1:8088/')">复制</button>
+                <a href="http://127.0.0.1:8088/" target="_blank" class="action-btn primary">直达</a>
+              </div>
+            </div>
+
+            <div class="link-row">
+              <div class="link-meta">
+                <div class="link-label">
+                  <span class="link-tag">DOCS</span>
+                  爬虫交互式 API 文档
+                </div>
+                <div class="link-url">http://127.0.0.1:8088/docs</div>
+              </div>
+              <div class="link-btns">
+                <button class="action-btn" onclick="copyText('http://127.0.0.1:8088/docs')">复制</button>
+                <a href="http://127.0.0.1:8088/docs" target="_blank" class="action-btn">直达</a>
+              </div>
+            </div>
+
+            <div class="link-row">
+              <div class="link-meta">
+                <div class="link-label">
+                  <span class="link-tag">OPENAPI</span>
+                  爬虫规范 JSON
+                </div>
+                <div class="link-url">http://127.0.0.1:8088/openapi.json</div>
+              </div>
+              <div class="link-btns">
+                <button class="action-btn" onclick="copyText('http://127.0.0.1:8088/openapi.json')">复制</button>
+                <a href="http://127.0.0.1:8088/openapi.json" target="_blank" class="action-btn">查看</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. 前端应用门户 :4000 -->
+      <div class="service-panel panel-frontend">
+        <div>
+          <div class="service-head">
+            <div class="service-role role-frontend">界面与管理台</div>
+            <div class="service-title">
+              前端客户端与后台
+              <span class="service-port">:4000</span>
+            </div>
+            <div class="service-desc">基于 Vite 与 Vue 3 打造。包含终端用户观影播放体验，以及内嵌的影视源站点与缓存管理后台。</div>
+          </div>
+
+          <div class="links-group">
+            <div class="link-row">
+              <div class="link-meta">
+                <div class="link-label">
+                  <span class="link-tag">MANAGE</span>
+                  影视源管理后台
+                </div>
+                <div class="link-url">http://127.0.0.1:4000/_manage/sites</div>
+              </div>
+              <div class="link-btns">
+                <button class="action-btn" onclick="copyText('http://127.0.0.1:4000/_manage/sites')">复制</button>
+                <a href="http://127.0.0.1:4000/_manage/sites" target="_blank" class="action-btn primary">直达</a>
+              </div>
+            </div>
+
+            <div class="link-row">
+              <div class="link-meta">
+                <div class="link-label">
+                  <span class="link-tag">CLIENT</span>
+                  前端播放体验首页
+                </div>
+                <div class="link-url">http://127.0.0.1:4000/</div>
+              </div>
+              <div class="link-btns">
+                <button class="action-btn" onclick="copyText('http://127.0.0.1:4000/')">复制</button>
+                <a href="http://127.0.0.1:4000/" target="_blank" class="action-btn">直达</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- 常驻悬浮说明按钮 -->
+  <button class="fab-guide-btn" onclick="toggleDrawer(true)">
+    <span class="fab-dot"></span>
+    系统架构与端口指南
+  </button>
+
+  <!-- 滑出式侧边文档抽屉 (清爽明亮白底面板) -->
+  <div id="guide-drawer" class="drawer-overlay" onclick="handleOverlayClick(event)">
+    <div class="drawer-panel">
+      <div class="drawer-header">
+        <div class="drawer-title">Plove 全套服务端口与协作文档</div>
+        <button class="drawer-close" onclick="toggleDrawer(false)">&times;</button>
+      </div>
+      <div class="drawer-body">
+        
+        <div class="doc-section">
+          <h3>1. 为什么有 4001、8088、4000 三个端口？</h3>
+          <p>为了保障影视核心服务的安全与稳定，架构进行了职责解耦：</p>
+          <table class="doc-table">
+            <tr>
+              <th>端口</th>
+              <th>服务角色</th>
+              <th>主要职责与访问场景</th>
+            </tr>
+            <tr>
+              <td><code>:4001</code></td>
+              <td>后端 API 中枢</td>
+              <td>核心 FastAPI 服务。所有影视数据拉取、缓存、爬虫规则接收都在这里。</td>
+            </tr>
+            <tr>
+              <td><code>:8088</code></td>
+              <td>智能爬虫控制台</td>
+              <td>用于开发、调试、测试单个站点爬虫脚本。隔离沙箱环境，防止测试崩溃影响主后端。</td>
+            </tr>
+            <tr>
+              <td><code>:4000</code></td>
+              <td>前端应用门户</td>
+              <td>Vue 3 界面。包含 <code>/</code> 播放主站以及 <code>/_manage/sites</code> 源站管理后台。</td>
+            </tr>
+          </table>
+        </div>
+
+        <div class="doc-section">
+          <h3>2. 后端 API 服务地址到底该怎么填写？</h3>
+          <p><strong>答案：直接填写 <code>http://127.0.0.1:4001</code></strong></p>
+          <p>在爬虫控制台 (:8088) 中，点击【推送到后端】弹窗时，系统需要知道把测试通过的 Python 脚本上传到哪台服务器。此时填入 <code>http://127.0.0.1:4001</code> 即可。</p>
+          <p>弹窗内部已经贴心增加了<strong>【填入默认后端 (http://127.0.0.1:4001)】</strong>快捷按钮，点击即可秒级填入，免去手动输入的烦恼。</p>
+        </div>
+
+        <div class="doc-section">
+          <h3>3. 全链路协同工作流程</h3>
+          <div class="flow-diagram">
++-------------------------------------------------------+
+|  1. 爬虫控制台 (:8088) 编写/导入 Python 脚本           |
+|     - 执行全链路自动化体检 (首页/详情/直链)            |
+|     - 本地网络代理测试 (如 v2rayN 127.0.0.1:10809)    |
++--------------------------+----------------------------+
+                           |
+                           | 点击【推送到后端】上传脚本
+                           v
++-------------------------------------------------------+
+|  2. 后端服务中枢 (:4001)                              |
+|     - 接收 POST /api/v1/admin/crawlers/upload 接口    |
+|     - 自动持久化保存到 backend/crawlers 规则库       |
+|     - 毫秒级热重载，无需重启整个服务                   |
++--------------------------+----------------------------+
+                           |
+                           | 实时提供 API 数据
+                           v
++-------------------------------------------------------+
+|  3. 前端应用 (:4000)                                  |
+|     - 访问 /_manage/sites 即可看到新增的影视站并开启  |
+|     - 访问 / 用户端即可流畅检索和观看影视视频         |
++-------------------------------------------------------+
+          </div>
+        </div>
+
+        <div class="doc-section">
+          <h3>4. 常用鉴权与 API 密钥说明</h3>
+          <p>后端管理接口（如热重载、上传爬虫等）受令牌保护：</p>
+          <ul style="padding-left:1.25rem;font-size:0.85rem;color:var(--text-muted);line-height:1.8">
+            <li>请求头 Header 名称：<code>X-Admin-Token</code></li>
+            <li>默认令牌：<code>admin</code>（在爬虫控制台中系统已自动携带，无需手动填写）</li>
+            <li>当前页面口令：<code>admin888</code>（用于保护本后端中枢入口）</li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast 提示 -->
+  <div id="toast">已成功复制到剪贴板</div>
+
+  <script>
+    const AUTH_KEY = 'plove_backend_portal_auth_v1';
+    const CORRECT_PWD = 'admin888';
+
+    // 检查登录状态
+    window.addEventListener('DOMContentLoaded', () => {
+      const isAuth = localStorage.getItem(AUTH_KEY);
+      if (isAuth === 'true') {
+        showDashboard();
+      }
+    });
+
+    function fillDefaultPwd() {
+      const input = document.getElementById('pwd-input');
+      input.value = CORRECT_PWD;
+      input.focus();
+    }
+
+    function handleUnlock(e) {
+      if (e) e.preventDefault();
+      const input = document.getElementById('pwd-input');
+      const val = input.value.trim();
+      if (val === CORRECT_PWD) {
+        localStorage.setItem(AUTH_KEY, 'true');
+        showDashboard();
+      } else {
+        const card = document.getElementById('lock-screen');
+        card.classList.add('shake');
+        input.value = '';
+        input.placeholder = '密码错误，请重新输入';
+        setTimeout(() => {
+          card.classList.remove('shake');
+        }, 500);
+      }
+    }
+
+    function showDashboard() {
+      document.getElementById('lock-screen').style.display = 'none';
+      document.getElementById('main-dashboard').style.display = 'block';
+    }
+
+    function handleLock() {
+      localStorage.removeItem(AUTH_KEY);
+      document.getElementById('main-dashboard').style.display = 'none';
+      document.getElementById('lock-screen').style.display = 'block';
+      const input = document.getElementById('pwd-input');
+      input.value = '';
+      input.placeholder = '请输入访问密码';
+      input.focus();
+    }
+
+    // 抽屉说明开关
+    function toggleDrawer(open) {
+      const drawer = document.getElementById('guide-drawer');
+      if (open) {
+        drawer.classList.add('active');
+        document.body.style.overflow = 'hidden';
+      } else {
+        drawer.classList.remove('active');
+        document.body.style.overflow = '';
+      }
+    }
+
+    function handleOverlayClick(e) {
+      if (e.target.id === 'guide-drawer') {
+        toggleDrawer(false);
+      }
+    }
+
+    // 复制剪贴板
+    function copyText(text) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => showToast('已成功复制：' + text));
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+          document.execCommand('copy');
+          showToast('已成功复制：' + text);
+        } catch(err) {
+          showToast('复制失败，请手动选择复制');
+        }
+        document.body.removeChild(ta);
+      }
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 2500);
+    }
+  </script>
 </body>
 </html>
 """
