@@ -10,10 +10,11 @@
 
 from __future__ import annotations
 
-from . import clean, cli, errors, gate, http, log, parse
+from . import audit, clean, cli, errors, gate, http, log, parse
+from .audit import audit_script_ast, get_crawler_runner_env
 from .errors import CrawlerError
 from .gate import CookieGate
-from .http import Client, Response
+from .http import Client, CurlClient, Response
 from .parse import (
     Node,
     find_m3u8,
@@ -29,6 +30,7 @@ __version__ = "1.0.0"
 
 __all__ = [
     "Client",
+    "CurlClient",
     "CookieGate",
     "CrawlerError",
     "Node",

@@ -183,10 +183,10 @@ def require_active(session: Session, device_token: str | None) -> Device:
     if record.active_device_id != device.id:
         raise AppError(ErrorCode.SESSION_KICKED, "该激活码已在其他设备登录")
 
-    # 顺带刷新一下"最后出现时间"，后台要靠它看谁在线。
-    # 只写这一列，代价很低；但它让后台的"活跃会话"有意义。
-    device.last_seen_at = utcnow()
-    session.flush()
+    # 内容接口只做鉴权，不在这里写 last_seen_at。
+    # 播放器会并发请求 playback + detail；SQLite 下如果两个鉴权请求同时
+    # UPDATE 同一设备行，很容易出现 database is locked。在线时间由独立
+    # heartbeat 接口按 heartbeat_interval_seconds 统一刷新即可。
     return device
 
 

@@ -42,10 +42,14 @@ pp JSON 里取，不存在"拿上层传来的地址直接 fetch"的 SSRF 面。
 
 from __future__ import annotations
 
+import concurrent.futures
 import json
 import os
 import re
+import shutil
 import sys
+import time
+import urllib.parse
 
 
 def _boot_fail(message: str):
@@ -96,7 +100,7 @@ def _load_crawler_kit():
 
 _load_crawler_kit()
 
-from crawler_kit import Client, CrawlerError, clean, cli, log, parse  # noqa: E402
+from crawler_kit import Client, CurlClient, CrawlerError, clean, cli, log, parse  # noqa: E402
 
 KEY = "xiaoyakankan"
 NAME = "小鸭看看"
@@ -106,6 +110,19 @@ BASE_URL = "https://xiaoyakankan.com"
 PAGE_SIZE = 36
 #: 主动限速：单命令内多次请求时的最小间隔（秒）
 MIN_REQUEST_INTERVAL = 0.4
+#: PC hls.js 只能直连允许跨域的 CDN；按 2026-10-01 实机抽测的稳定性/首响应排序。
+_PREFERRED_DIRECT_HOST_SUFFIXES = (
+    "gsuus.com",
+    "bfvvs.com",
+    "kuktxu.com",
+    "wgslsw.com",
+    "modujx11.com",
+    "ppqrrs.com",
+)
+#: 详情页只展示前 6 条优选线路，避免几十条重复线路把手机端选择器挤满。
+_MAX_VISIBLE_LINES = 6
+#: 自动线路并行测速的候选数；并行探测，最慢只受单条 3.5s 探测超时约束。
+_MAX_PLAY_PROBES = 6
 
 _POST_HREF_RE = re.compile(r"/post/([0-9a-f]{6,})\.html", re.I)
 _PAGE_HREF_RE = re.compile(r"/cat/(\d+)-(\d+)\.html")
@@ -216,6 +233,37 @@ def _nav_categories(root):
     return clean.dedupe(out, key=lambda item: item["tid"])
 
 
+def _home_sections(root):
+    """按首页真实板块拆分 ``电影 / 连续剧 / 综艺 / 动漫 / 福利``。
+
+    源站 DOM 是连续的 ``.m4-meta`` + ``.m4-list`` 兄弟节点；不能直接对整页
+    ``.item`` 一锅端，否则前端只会得到一个“热播推荐”大列表。
+    """
+    main = root.select_first(".m4-main")
+    if main is None:
+        return []
+    sections = []
+    current_title = ""
+    for node in main.children:
+        if node.is_text:
+            continue
+        if "m4-meta" in node.class_list:
+            heading = (
+                node.select_first("h1")
+                or node.select_first("h2")
+                or node.select_first("h3")
+                or node.select_first("h4")
+            )
+            current_title = clean.collapse(heading.text) if heading is not None else ""
+            continue
+        if "m4-list" in node.class_list and current_title:
+            videos = _cards(node.select(".item"))
+            if videos:
+                sections.append({"title": current_title, "videos": videos})
+            current_title = ""
+    return sections
+
+
 def _max_page(root, tid):
     """分页条 ``.m4-page`` 里链接到的最大页码；没有带页码的链接就是末页。"""
     best = 1
@@ -322,7 +370,7 @@ class Xiaoyakankan:
     mode = "direct"
     capabilities = ("meta", "home", "category", "detail", "play")
 
-    def __init__(self, client=None):
+    def __init__(self, client=None, probe_client=None):
         self.http = client or Client(
             base_url=BASE_URL,
             timeout=15.0,
@@ -333,6 +381,23 @@ class Xiaoyakankan:
             },
             min_interval=MIN_REQUEST_INTERVAL,
         )
+        if probe_client is not None:
+            self.probe = probe_client
+        elif client is not None:
+            # 单测/注入模式沿用假客户端，不额外触网。
+            self.probe = client
+        else:
+            curl_binary = shutil.which("curl.exe" if os.name == "nt" else "curl")
+            probe_cls = CurlClient if curl_binary else Client
+            kwargs = {
+                "base_url": "",
+                "timeout": 3.5,
+                "retries": 0,
+                "headers": {"Accept": "application/vnd.apple.mpegurl,application/x-mpegURL,*/*"},
+            }
+            if curl_binary:
+                kwargs["curl_binary"] = curl_binary
+            self.probe = probe_cls(**kwargs)
 
     # ---------------------------------------------------------------- 基础
 
@@ -426,6 +491,87 @@ class Xiaoyakankan:
             return group["ep_names"][index - 1]
         return "正片" if len(group["urls"]) == 1 else f"第{index:02d}集"
 
+    @staticmethod
+    def _direct_rank(url):
+        host = (urllib.parse.urlsplit(url).hostname or "").lower()
+        for index, suffix in enumerate(_PREFERRED_DIRECT_HOST_SUFFIXES):
+            if host == suffix or host.endswith("." + suffix):
+                return index
+        return len(_PREFERRED_DIRECT_HOST_SUFFIXES) + 10
+
+    def _direct_playable(self, url):
+        """验证 URL 是否适合 Plove 浏览器直接播放。
+
+        hls.js 是浏览器 XHR，除了清单本身 200，还必须允许跨域；只允许
+        ``xiaoyakankan.com`` 的线路在源站网页能播，在 Plove 里会被 CORS 拦掉。
+        """
+        try:
+            response = self.probe.get(url, headers={"Range": "bytes=0-4095"})
+        except Exception as exc:
+            log.warn(f"播放线路探测失败: {url[:100]} ({exc})")
+            return False
+        if not response.ok or not response.text.lstrip().startswith("#EXTM3U"):
+            return False
+        cors = (response.headers.get("access-control-allow-origin") or "").strip()
+        return cors == "*"
+
+    def _probe_direct_latency(self, url):
+        started = time.perf_counter()
+        if not self._direct_playable(url):
+            return None
+        return time.perf_counter() - started, url
+
+    def _choose_direct_url(self, primary, candidates, *, prefer_fastest=False):
+        """选择浏览器可直连的 HLS。
+
+        默认播放（没有显式线路/play_id）会并行测速优选 CDN，取首响应最快的；
+        用户手动切线时则优先尊重当前线路，仅在当前线路不可播放时自动兜底。
+        """
+        unique = []
+        seen = set()
+        for url in [primary, *candidates]:
+            if not url or url in seen:
+                continue
+            seen.add(url)
+            unique.append(url)
+        if not unique:
+            return primary
+
+        if prefer_fastest:
+            probes = sorted(unique, key=self._direct_rank)[:_MAX_PLAY_PROBES]
+            results = []
+            with concurrent.futures.ThreadPoolExecutor(max_workers=len(probes)) as pool:
+                futures = [pool.submit(self._probe_direct_latency, url) for url in probes]
+                for future in concurrent.futures.as_completed(futures):
+                    try:
+                        result = future.result()
+                    except Exception as exc:
+                        log.warn(f"自动线路测速异常: {exc}")
+                        continue
+                    if result is not None:
+                        results.append(result)
+            if results:
+                latency, best = min(results, key=lambda item: item[0])
+                log.info(
+                    "自动线路选择: "
+                    f"{urllib.parse.urlsplit(best).hostname} {latency * 1000:.0f}ms"
+                )
+                return best
+
+        fallback = sorted(unique[1:], key=self._direct_rank)
+        probes = [unique[0], *fallback][:_MAX_PLAY_PROBES]
+        for candidate in probes:
+            if self._direct_playable(candidate):
+                if candidate != primary:
+                    log.warn(
+                        "当前线路不可跨域直播，已自动切换备用 CDN: "
+                        f"{urllib.parse.urlsplit(primary).hostname} -> "
+                        f"{urllib.parse.urlsplit(candidate).hostname}"
+                    )
+                return candidate
+        # 没探测到 ACAO:* 时保留原线路：Safari/iOS 原生 HLS 仍可能可播。
+        return primary
+
     # ---------------------------------------------------------------- 命令
 
     def meta(self):
@@ -442,9 +588,16 @@ class Xiaoyakankan:
 
     def home(self):
         root = parse.parse_html(self._fetch("/"))
+        sections = _home_sections(root)
+        recommend = []
+        for section in sections:
+            recommend.extend(section["videos"])
+        if not recommend:
+            recommend = _cards(root.select(".item"))
         return {
             "categories": _nav_categories(root),
-            "recommend": _cards(root.select(".item")),
+            "recommend": clean.dedupe(recommend, key=lambda item: item["vod_id"]),
+            "sections": sections,
         }
 
     def category(self, tid=None, page=1):
@@ -504,6 +657,12 @@ class Xiaoyakankan:
         raws = self._raw_lines(pp)
         labels, names = self._source_labels(root)
         groups = self._display_lines(raws, labels, names)
+        # 只把稳定、直连友好的优选线路展示给用户；完整 raw 线路仍保留给
+        # play 阶段做自动测速/故障兜底，不会因为 UI 精简而丢失备用源。
+        groups = sorted(
+            groups,
+            key=lambda group: min(self._direct_rank(url) for url in group["urls"]),
+        )[:_MAX_VISIBLE_LINES]
         no = str(pp["no"])
 
         episodes = []
@@ -534,7 +693,7 @@ class Xiaoyakankan:
             "lines": lines,
         }
 
-    def play(self, id=None, ep=1, line=1, play_id=None):
+    def play(self, id=None, ep=1, line=None, play_id=None):
         """取某一集的 m3u8。
 
         两条等价路径，都只需一次详情页请求（直链都在 pp JSON 里）：
@@ -544,6 +703,7 @@ class Xiaoyakankan:
         * 只带 ``id``：按线路号 + 集号在去重后的展示线路里取。
         """
         ep_no = clean.to_int(ep, 1) or 1
+        auto_fastest = line is None and not play_id
         line_no = clean.to_int(line, 1) or 1
 
         token_vod = token_line = token_ep = None
@@ -561,12 +721,14 @@ class Xiaoyakankan:
         no = str(pp["no"])
 
         url = ""
+        candidates = []
+        raws = self._raw_lines(pp)
         if token_vod is not None:
             if token_vod != no:
                 raise CrawlerError(
                     "NOT_FOUND", f"play_id 与影片不匹配: {token_vod} != {no}"
                 )
-            raw = next((r for r in self._raw_lines(pp) if r["id"] == token_line), None)
+            raw = next((r for r in raws if r["id"] == token_line), None)
             if raw is None:
                 raise CrawlerError("NOT_FOUND", f"play_id 指向的线路不存在: {token_line}")
             if not 1 <= token_ep <= len(raw["urls"]):
@@ -574,11 +736,19 @@ class Xiaoyakankan:
                     "NOT_FOUND", f"play_id 指向的集数不存在: {token_ep}/{len(raw['urls'])}"
                 )
             url = raw["urls"][token_ep - 1]
+            candidates = [
+                item["urls"][token_ep - 1]
+                for item in raws
+                if token_ep <= len(item["urls"])
+            ]
         else:
             root = parse.parse_html(html)
-            raws = self._raw_lines(pp)
             labels, names = self._source_labels(root)
             groups = self._display_lines(raws, labels, names)
+            groups = sorted(
+                groups,
+                key=lambda group: min(self._direct_rank(url) for url in group["urls"]),
+            )[:_MAX_VISIBLE_LINES]
             if not 1 <= line_no <= len(groups):
                 raise CrawlerError(
                     "NOT_FOUND", f"线路 {line_no} 不存在（共 {len(groups)} 条线路）"
@@ -590,14 +760,23 @@ class Xiaoyakankan:
                     f"线路 {line_no} 第 {ep_no} 集不存在（共 {len(group['urls'])} 集）",
                 )
             url = group["urls"][ep_no - 1]
+            candidates = [
+                item["urls"][ep_no - 1]
+                for item in groups
+                if ep_no <= len(item["urls"])
+            ]
 
         if not url:
             raise CrawlerError("PARSE_ERROR", "没有解析到可播放的地址")
+        url = self._choose_direct_url(
+            clean.absolute(url, BASE_URL), candidates, prefer_fastest=auto_fastest
+        )
         return {
-            "url": clean.absolute(url, BASE_URL),
+            "url": url,
             "format": "m3u8",
-            # 实测无 Referer 也能取到清单；带上以防 CDN 日后加防盗链
-            "headers": {"Referer": BASE_URL + "/"},
+            # 该 CDN 的主清单、子清单、AES key 与 TS 分片均允许跨域且不校验
+            # Referer。浏览器禁止主动设置 Referer，因此不要把无用头交给 hls.js。
+            "headers": {},
         }
 
     @staticmethod

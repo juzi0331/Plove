@@ -47,6 +47,8 @@ const detail = ref<DetailPayload | null>(null)
 const videoEl = ref<HTMLVideoElement | null>(null)
 const playerContainerRef = ref<HTMLElement | null>(null)
 let hls: Hls | null = null
+const failedStartupLines = new Set<number>()
+const MAX_AUTO_LINE_FAILOVERS = 3
 
 /** 当前集数名与副标题 */
 const epLabel = ref('')
@@ -138,6 +140,25 @@ function destroyPlayer(): void {
   }
 }
 
+function tryAutoLineFailover(): boolean {
+  const video = videoEl.value
+  // 只处理“刚开始就播不起来”的线路；已经正常播放过的不因瞬时抖动自动换源。
+  if (video && video.currentTime > 5) return false
+  if (failedStartupLines.size >= MAX_AUTO_LINE_FAILOVERS) return false
+
+  failedStartupLines.add(currentLine.value)
+  const epIndex = Number(props.ep) || 1
+  const episodes = detail.value?.episodes ?? []
+  const candidate = availableLines.value.find((line) => {
+    if (failedStartupLines.has(line.line)) return false
+    return episodes.some((episode) => episode.line === line.line && episode.ep_index === epIndex)
+  })
+  if (!candidate) return false
+
+  switchLine(candidate.line)
+  return true
+}
+
 function attachPlayer(result: Playback): void {
   const video = videoEl.value
   if (!video || isUnmounted) {
@@ -185,7 +206,11 @@ function attachPlayer(result: Playback): void {
     if (data.fatal) {
       switch (data.type) {
         case Hls.ErrorTypes.NETWORK_ERROR:
-          error.value = '網絡串流載入中斷，建議嘗試重試或切換線路'
+          if (tryAutoLineFailover()) {
+            error.value = null
+            return
+          }
+          error.value = '網絡串流載入中斷，已嘗試可用備用線路，請重試或手動切換'
           hls?.startLoad()
           break
         case Hls.ErrorTypes.MEDIA_ERROR:
@@ -279,12 +304,18 @@ function switchEpisode(episode: Episode): void {
 
 function switchLine(lineId: number): void {
   isLineMenuOpen.value = false
+  const epIndex = Number(props.ep) || 1
+  const targetEpisode = (detail.value?.episodes ?? []).find(
+    (episode) => episode.line === lineId && episode.ep_index === epIndex,
+  )
   void router.push({
     name: 'play',
-    params: { vodId: props.vodId, ep: props.ep },
+    params: { vodId: props.vodId, ep: String(targetEpisode?.ep_index ?? epIndex) },
     query: {
-      ...route.query,
       line: lineId,
+      // 线路变化时必须同步换成该线路自己的 play_id，不能沿用上一条线路的定位符。
+      play_id: targetEpisode?.play_id || undefined,
+      name: targetEpisode?.ep_name || undefined,
     },
   })
 }
@@ -355,7 +386,8 @@ onBeforeUnmount(() => {
   document.removeEventListener('fullscreenchange', onFullscreenChange)
 })
 
-watch(() => [props.vodId, props.ep, route.query.line], () => void load())
+watch(() => [props.vodId, props.ep], () => failedStartupLines.clear())
+watch(() => [props.vodId, props.ep, route.query.line, route.query.play_id], () => void load())
 watch(() => device.restoredAt, () => void load())
 </script>
 

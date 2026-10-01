@@ -5,7 +5,10 @@
 
 from __future__ import annotations
 
+from sqlalchemy import select
+
 from app.api.deps import DEVICE_TOKEN_HEADER
+from app.models.device import Device
 
 #: 所有需要守卫的接口（每加一个内容接口都应该在这里补一条）
 GUARDED_PATHS = (
@@ -60,3 +63,18 @@ def test_guard_result_is_discarded_by_the_router(authed_client):
     """守卫只负责放行/拒绝，路由签名里不该看到它返回的 Device。"""
     response = authed_client.get("/api/v1/sites")
     assert response.json()["data"]["sites"][0]["key"] == "fake"
+
+
+def test_content_guard_does_not_write_last_seen(authed_client, activation, db_session):
+    """内容请求只鉴权；在线时间只由 heartbeat 更新，避免并发播放时 SQLite 写锁。"""
+    device = db_session.scalar(select(Device).where(Device.token == activation["token"]))
+    assert device is not None
+    before = device.last_seen_at
+
+    response = authed_client.get("/api/v1/sites")
+    assert response.status_code == 200
+
+    db_session.expire_all()
+    refreshed = db_session.scalar(select(Device).where(Device.token == activation["token"]))
+    assert refreshed is not None
+    assert refreshed.last_seen_at == before

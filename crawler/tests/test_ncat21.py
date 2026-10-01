@@ -306,9 +306,9 @@ class PlayTests(unittest.TestCase):
             make_site().play()
         self.assertEqual(ctx.exception.code, "NOT_FOUND")
 
-    def test_referer_header_provided(self):
+    def test_browser_direct_play_does_not_require_forbidden_referer_header(self):
         result = make_site().play(id="318185", ep=1, line=1)
-        self.assertEqual(result["headers"]["Referer"], "https://www.ncat21.com/")
+        self.assertEqual(result["headers"], {})
 
     def test_missing_episode(self):
         with self.assertRaises(CrawlerError) as ctx:

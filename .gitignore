@@ -18,9 +18,12 @@ venv/
 node_modules/
 dist/
 
-# 本地数据（数据库文件不进仓库）
+# 本地数据与缓存（数据库文件与图片代理缓存不进仓库）
 *.db
 *.sqlite3
+backend/data/
+backend/data/img_cache/
+**/img_cache/
 
 # 编辑器 / 系统
 .idea/

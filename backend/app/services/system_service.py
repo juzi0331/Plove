@@ -104,11 +104,14 @@ def init_system_settings_cache(db: Session) -> None:
 
 
 def get_public_system_status(db: Session) -> SystemStatusPayload:
-    """供前台公开调用的系统状态接口。"""
-    m = get_maintenance(db)
+    """供前台公开调用的系统状态接口。
+
+    维护模式本来就有进程内缓存，公开状态不应每次再查数据库；这既减少首页
+    热路径的数据库访问，也避免数据库尚未完成初始化时把整个公共状态接口打成 500。
+    """
     n = get_notice(db)
     return SystemStatusPayload(
-        maintenance=m.enabled,
-        maintenance_message=m.message,
+        maintenance=bool(_cached_status["maintenance_enabled"]),
+        maintenance_message=str(_cached_status["maintenance_message"]),
         notice=n if n.enabled else None,
     )

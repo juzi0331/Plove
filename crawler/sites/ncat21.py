@@ -26,15 +26,21 @@
 
 from __future__ import annotations
 
+import concurrent.futures
 import hashlib
 import os
 import re
+import ssl
+import shutil
+import subprocess
 import sys
+import time
+import urllib.parse
 
 if __package__ in (None, ""):  # 允许直接 `python sites/ncat21.py` 运行
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from crawler_kit import CookieGate, Client, CrawlerError, clean, cli, log, parse  # noqa: E402
+from crawler_kit import CookieGate, Client, CurlClient, CrawlerError, clean, cli, log, parse  # noqa: E402
 
 KEY = "ncat21"
 NAME = "网飞猫"
@@ -46,10 +52,39 @@ CHALLENGE_STATUS = 850
 MIN_REQUEST_INTERVAL = 1.0
 #: 闸门期望命中概率是 1/65536，实测约 5 万次；上限放到 200 万次兜底
 SOLVE_MAX_ITERATIONS = 2_000_000
+#: 线路优先级来自 2026-10-01 Windows 实机首响应/CORS 抽测；前 6 条足够日常手动兜底。
+_PREFERRED_LINE_MARKERS = ("HN线路", "超清2", "LZ线路", "蓝光9", "FF线路", "蓝光1", "蓝光3", "蓝光", "WJ线路", "GS线路")
+_MAX_VISIBLE_LINES = 6
+
+# 源站 LazyImageLoader 读取 window.RDUL，并用 /vod1/heartbeat.check 并发测速。
+# 当前列表来自源站 rdul.js；IP 节点放前面只作为全部探测失败时的兜底顺序。
+_RDUL_HOSTS = (
+    "https://103.39.111.180:51050",
+    "https://103.39.111.184:51050",
+    "https://vres.cyscyy.com",
+    "https://vres.enbymae.com",
+    "https://vres.zyxpedu.com",
+)
+_RDUL_HEARTBEAT = "/vod1/heartbeat.check"
+_RDUL_BASE_CACHE: str | None = None
 
 _SECRET_RE = re.compile(r"['\"]([0-9A-Fa-f]{40})['\"]")
 _DETAIL_HREF_RE = re.compile(r"/detail/(\d+)\.html")
 _CHANNEL_HREF_RE = re.compile(r"/channel/(\d+)\.html")
+
+
+def _ncat_ssl_context():
+    """兼容网飞猫当前的 TLS 重协商行为。
+
+    2026-10-01 在 Windows/Python 3.12 实测：默认 OpenSSL 会卡在服务器主动
+    renegotiation 阶段直到握手超时；固定 TLS 1.2 并拒绝 renegotiation 后可正常
+    收到 HTTP 850 挑战页。只给该源使用，不改变其他站点的 TLS 策略。
+    """
+    context = ssl.create_default_context()
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
+    context.maximum_version = ssl.TLSVersion.TLSv1_2
+    context.options |= getattr(ssl, "OP_NO_RENEGOTIATION", 0)
+    return context
 
 
 # ------------------------------------------------------------------ 闸门求解
@@ -101,18 +136,28 @@ class Ncat21:
     capabilities = ("meta", "home", "category", "detail", "play", "selftest")
 
     def __init__(self, client=None, gate=None):
-        self.http = client or Client(
-            base_url=BASE_URL,
-            timeout=15.0,
-            retries=1,
-            headers={
-                "Referer": BASE_URL + "/",
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            },
-            # 主动限速：请求打太快时源站会在 TLS 层直接丢包，客户端只看到
-            # "handshake timed out"，看不出原因。具体阈值未实测，先保守取 1s。
-            min_interval=MIN_REQUEST_INTERVAL,
-        )
+        if client is not None:
+            self.http = client
+        else:
+            common = {
+                "base_url": BASE_URL,
+                # 每个 CLI 命令都会先过一次 850 挑战再拿正文，单请求留 8 秒、
+                # 不在 HTTP 层重复重试，保证整条命令仍能落在后端 20 秒预算内。
+                "timeout": 8.0,
+                "retries": 0,
+                "headers": {
+                    "Referer": BASE_URL + "/",
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                },
+                "min_interval": MIN_REQUEST_INTERVAL,
+            }
+            curl_binary = shutil.which("curl.exe" if os.name == "nt" else "curl")
+            if curl_binary:
+                # 网飞猫当前 CDN 的 TLS renegotiation 与 Python/OpenSSL 不稳定；
+                # 系统 curl 在 Windows 走 Schannel，实测 850 -> cookie -> 200 稳定。
+                self.http = CurlClient(**common, curl_binary=curl_binary)
+            else:
+                self.http = Client(**common, ssl_context=_ncat_ssl_context())
         self.gate = gate or CookieGate(
             solve_cdndefend, CHALLENGE_COOKIE, challenge_status=CHALLENGE_STATUS
         )
@@ -244,8 +289,9 @@ class Ncat21:
         return {
             "url": url,
             "format": "m3u8",
-            # 源站有防盗链，带上 Referer
-            "headers": {"Referer": BASE_URL + "/"},
+            # 当前优选线路的 m3u8/TS 实测均 ACAO:* 且不校验 Referer；
+            # 浏览器不能主动设置 Referer，返回空头兼容 hls.js 与 Safari 原生 HLS。
+            "headers": {},
         }
 
     def selftest(self):
@@ -331,15 +377,33 @@ def _nav_categories(root):
     return clean.dedupe(out, key=lambda item: item["tid"])
 
 
+def _line_priority(name: str) -> int:
+    text = clean.collapse(name)
+    for index, marker in enumerate(_PREFERRED_LINE_MARKERS):
+        if marker in text:
+            return index
+    return len(_PREFERRED_LINE_MARKERS) + 10
+
+
 def _episodes(root):
-    """把多线路剧集列表摊平成 episodes + lines。"""
-    episodes = []
-    lines = []
-    for line_no, group in enumerate(root.select(".episode-list"), start=1):
+    """把多线路剧集列表摊平成 episodes + lines，并优先展示实测更快的线路。"""
+    groups = []
+    for original_no, group in enumerate(root.select(".episode-list"), start=1):
         anchors = parse.visible(group.select("a.episode-item")) or group.select("a.episode-item")
         if not anchors:
             continue
-        lines.append({"line": line_no, "name": _line_label(root, line_no), "count": len(anchors)})
+        label = _line_label(root, original_no)
+        groups.append((original_no, label, anchors))
+
+    # 网飞猫常有十几条重复/慢线路；按实测优先级排序，只给前端展示前 6 条。
+    # play_id 仍是源站完整路径，因此重排/重新编号不会影响精确播放定位。
+    groups.sort(key=lambda item: (_line_priority(item[1]), item[0]))
+    groups = groups[:_MAX_VISIBLE_LINES]
+
+    episodes = []
+    lines = []
+    for line_no, (_original_no, label, anchors) in enumerate(groups, start=1):
+        lines.append({"line": line_no, "name": label, "count": len(anchors)})
         for order, anchor in enumerate(anchors, start=1):
             href = anchor.attr("href") or ""
             if not href:

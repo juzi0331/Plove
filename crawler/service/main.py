@@ -5,6 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from .api.routes_proxy import router as proxy_router
 from .api.routes_rules import router as rules_router
 from .api.routes_scrape import router as scrape_router
 from .api.routes_smart import router as smart_router
@@ -111,6 +112,7 @@ app.include_router(rules_router)
 app.include_router(scrape_router)
 app.include_router(smart_router)
 app.include_router(tasks_router)
+app.include_router(proxy_router)
 
 
 

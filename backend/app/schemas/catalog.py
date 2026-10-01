@@ -12,9 +12,10 @@ from app.schemas.vod import VodCategory, VodItem
 
 
 class HomeSection(BaseModel):
-    """首页板块。源站自己的分组结构，前端可选使用。"""
+    """首页板块。源站自己的分组结构或后台自定义首页分类楼层。"""
 
     title: str
+    tid: str | None = None
     videos: list[VodItem] = Field(default_factory=list)
 
 

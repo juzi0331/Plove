@@ -19,6 +19,7 @@ import {
   Refresh,
   Setting,
   Upload,
+  UploadFilled,
 } from '@element-plus/icons-vue'
 import {
   ElButton,
@@ -33,6 +34,7 @@ import {
   ElMessage,
   ElMessageBox,
   ElOption,
+  ElPopover,
   ElRadio,
   ElRadioButton,
   ElRadioGroup,
@@ -163,12 +165,77 @@ const uploadOverwrite = ref(false)
 const validating = ref(false)
 const uploading = ref(false)
 const validateResult = ref<CrawlerValidateResult | null>(null)
+const selectedFileName = ref('')
+const selectedFileSize = ref(0)
+const fileInputRef = ref<HTMLInputElement | null>(null)
+
+function triggerFileInput(): void {
+  fileInputRef.value?.click()
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
+}
+
+function processFile(file: File): void {
+  if (!file.name.endsWith('.py')) {
+    ElMessage.warning('请选择 .py 格式的 Python 采集器脚本文件')
+    return
+  }
+  selectedFileName.value = file.name
+  selectedFileSize.value = file.size
+
+  // 自动从文件名提取 key，如 xiaoyakankan.py -> xiaoyakankan
+  const inferredKey = file.name.replace(/\.py$/i, '').trim()
+  if (inferredKey && (!uploadKey.value || uploadKey.value === '')) {
+    uploadKey.value = inferredKey
+  }
+
+  const reader = new FileReader()
+  reader.onload = (event) => {
+    const text = event.target?.result as string
+    if (text) {
+      uploadCode.value = text
+      ElMessage.success(`已成功载入文件：${file.name}`)
+      // 载入成功后，自动执行一次在线校验，给用户最直接的审计反馈
+      handleValidateCrawler()
+    }
+  }
+  reader.onerror = () => {
+    ElMessage.error('读取文件内容失败，请重试')
+  }
+  reader.readAsText(file, 'utf-8')
+}
+
+function handleFileDrop(e: DragEvent): void {
+  const files = e.dataTransfer?.files
+  if (!files || files.length === 0) return
+  processFile(files[0])
+}
+
+function handleFileChange(e: Event): void {
+  const target = e.target as HTMLInputElement
+  const files = target.files
+  if (!files || files.length === 0) return
+  processFile(files[0])
+}
+
+function clearSelectedFile(): void {
+  selectedFileName.value = ''
+  selectedFileSize.value = 0
+  if (fileInputRef.value) fileInputRef.value.value = ''
+}
 
 function openUploadDialog(): void {
   uploadKey.value = ''
   uploadCode.value = ''
   uploadOverwrite.value = false
   validateResult.value = null
+  selectedFileName.value = ''
+  selectedFileSize.value = 0
+  if (fileInputRef.value) fileInputRef.value.value = ''
   isUploadVisible.value = true
 }
 
@@ -384,13 +451,29 @@ const categoryPayload = ref<SiteCategoryRulePayload>({
 })
 
 // 为每个分类维护新增子分类的临时输入
-const subCatInputs = ref<Record<string, { tid: string; name: string }>>({})
+const subCatInputs = ref<Record<string, { tid: string; name: string; custom_name?: string }>>({})
 
-function getSubInput(tid: string): { tid: string; name: string } {
+function getSubInput(tid: string): { tid: string; name: string; custom_name?: string } {
   if (!subCatInputs.value[tid]) {
-    subCatInputs.value[tid] = { tid: '', name: '' }
+    subCatInputs.value[tid] = { tid: '', name: '', custom_name: '' }
   }
   return subCatInputs.value[tid]!
+}
+
+function formatCategoryPreview(rawName: string, customName?: string): string {
+  if (!customName || !customName.trim()) {
+    return rawName
+  }
+  let c = customName.trim()
+  if ((c.startsWith('(') && c.endsWith(')')) || (c.startsWith('（') && c.endsWith('）'))) {
+    c = c.slice(1, -1).trim()
+  }
+  if (!c) return rawName
+  return `${rawName}（${c}）`
+}
+
+function toggleSubCategoryHidden(sub: SubCategoryItem): void {
+  sub.hidden = !sub.hidden
 }
 
 async function openCategoryDrawer(site: AdminSiteItem): Promise<void> {
@@ -408,7 +491,11 @@ async function openCategoryDrawer(site: AdminSiteItem): Promise<void> {
       site_key: res.site_key,
       rules: (res.rules ?? []).map((r) => ({
         ...r,
-        subcategories: r.subcategories ?? [],
+        subcategories: (r.subcategories ?? []).map((s) => ({
+          ...s,
+          custom_name: s.custom_name ?? '',
+          hidden: !!s.hidden,
+        })),
       })),
       default_tid: res.default_tid ?? null,
     }
@@ -433,9 +520,12 @@ function addSubCategory(rule: CategoryRuleItem): void {
   rule.subcategories.push({
     tid: input.tid.trim(),
     name: input.name.trim(),
+    custom_name: input.custom_name?.trim() || '',
+    hidden: false,
   })
   input.tid = ''
   input.name = ''
+  input.custom_name = ''
 }
 
 function removeSubCategory(rule: CategoryRuleItem, sub: SubCategoryItem): void {
@@ -920,11 +1010,43 @@ async function saveDetailPolicy(): Promise<void> {
       destroy-on-close
     >
       <ElForm label-position="top">
+        <!-- 本地文件选择与拖拽上传区域 -->
+        <div
+          class="file-upload-dropzone"
+          @dragover.prevent
+          @drop.prevent="handleFileDrop"
+          @click="triggerFileInput"
+        >
+          <input
+            ref="fileInputRef"
+            type="file"
+            accept=".py"
+            style="display: none;"
+            @change="handleFileChange"
+          />
+          <div class="dropzone-content">
+            <el-icon class="dropzone-icon"><UploadFilled /></el-icon>
+            <div class="dropzone-text">
+              <strong>点击选择本地 .py 文件</strong> 或直接拖拽文件到这里
+            </div>
+            <div class="dropzone-sub">
+              选择后将自动提取站点 Key、载入完整源代码并自动执行全链路安全冒烟校验
+            </div>
+          </div>
+          <div v-if="selectedFileName" class="selected-file-badge" @click.stop>
+            <span class="file-name-tag">
+              📄 已载入文件：<strong>{{ selectedFileName }}</strong>（{{ formatFileSize(selectedFileSize) }}）
+            </span>
+            <ElButton size="small" type="primary" link @click.stop="triggerFileInput">更换文件</ElButton>
+            <ElButton size="small" type="danger" link @click.stop="clearSelectedFile">清除</ElButton>
+          </div>
+        </div>
+
         <ElFormItem label="站点 Key（英文小写下划线，对应 crawler/sites/<key>.py）" required>
           <ElInput v-model="uploadKey" placeholder="如：my_vod_site" />
         </ElFormItem>
 
-        <ElFormItem label="采集器 Python 源代码" required>
+        <ElFormItem label="采集器 Python 源代码（支持上方直接选文件载入，或在此手动粘贴与微调）" required>
           <ElInput
             v-model="uploadCode"
             type="textarea"
@@ -1151,7 +1273,7 @@ async function saveDetailPolicy(): Promise<void> {
     >
       <div v-loading="categoryLoading" class="category-drawer-content">
         <div class="drawer-tip">
-          源站分类由爬虫返回。您可以在此<strong>屏蔽敏感/不需要的分类</strong>、<strong>重命名分类名称</strong>，或<strong>挂载二级子分类与筛选标签</strong>。
+          源站分类由爬虫返回。您可以在此<strong>决定哪些分类在首页以横幅展示（每分类横向展示10部）</strong>、<strong>屏蔽不需要的分类</strong>、<strong>重命名分类名称</strong>，或<strong>挂载二级子分类与筛选标签</strong>。
         </div>
 
         <div class="default-tid-bar">
@@ -1180,6 +1302,7 @@ async function saveDetailPolicy(): Promise<void> {
                 <span class="cat-tid a-mono">#{{ rule.tid }}</span>
                 <span class="cat-raw-name">{{ rule.name }}</span>
                 <ElTag v-if="rule.hidden" type="danger" size="small">已隐藏</ElTag>
+                <ElTag v-else-if="rule.show_on_home" type="success" size="small">首页横幅 (10部)</ElTag>
               </div>
 
               <div class="rule-actions">
@@ -1197,26 +1320,81 @@ async function saveDetailPolicy(): Promise<void> {
             <div v-if="!rule.hidden" class="rule-body">
               <div class="rule-row">
                 <span class="label">前台别名：</span>
-                <ElInput v-model="rule.custom_name" placeholder="留空保持原名" size="small" style="width: 200px;" />
+                <ElInput v-model="rule.custom_name" placeholder="留空保持原名" size="small" style="width: 150px;" clearable />
+                <span class="cat-preview-text">
+                  前台显示：<strong :class="{ 'has-custom': !!rule.custom_name?.trim() }">{{ formatCategoryPreview(rule.name, rule.custom_name) }}</strong>
+                </span>
 
-                <span class="label ml">排序权重：</span>
-                <ElInputNumber v-model="rule.sort_order" size="small" :step="1" style="width: 110px;" />
+                <span class="label ml">排序：</span>
+                <ElInputNumber v-model="rule.sort_order" size="small" :step="1" style="width: 90px;" />
+
+                <span class="label ml">首页横幅：</span>
+                <ElSwitch
+                  v-model="rule.show_on_home"
+                  active-text="上首页"
+                  inactive-text="不展示"
+                  size="small"
+                />
               </div>
 
               <!-- 二级子分类标签 -->
               <div class="subcategories-wrap">
-                <div class="sub-label">二级子分类/筛选标签：</div>
+                <div class="sub-label-row">
+                  <span class="sub-label">二级子分类/筛选标签：</span>
+                  <span class="sub-tip-desc">（点击胶囊切换显隐：变红即隐藏；点击 ✏️ 可重命名）</span>
+                </div>
                 <div class="sub-tags">
-                  <ElTag
+                  <div
                     v-for="sub in (rule.subcategories || [])"
                     :key="sub.tid"
-                    size="small"
-                    closable
-                    effect="plain"
-                    @close="removeSubCategory(rule, sub)"
+                    class="sub-item-pill"
+                    :class="{ 'is-hidden': sub.hidden }"
                   >
-                    {{ sub.name }} ({{ sub.tid }})
-                  </ElTag>
+                    <div
+                      class="sub-tag-body"
+                      :title="sub.hidden ? '当前已隐藏（前台不展示），点击恢复展示' : '当前正常展示，点击切换为隐藏（变红）'"
+                      @click="toggleSubCategoryHidden(sub)"
+                    >
+                      <span class="sub-status-dot" :class="sub.hidden ? 'dot-danger' : 'dot-success'" />
+                      <span class="sub-title" :style="{ textDecoration: sub.hidden ? 'line-through' : 'none' }">
+                        {{ formatCategoryPreview(sub.name, sub.custom_name) }}
+                      </span>
+                      <span class="sub-tid">#{{ sub.tid }}</span>
+                      <span v-if="sub.hidden" class="sub-hidden-label">已隐藏</span>
+                    </div>
+
+                    <!-- 重命名二级分类 popover -->
+                    <ElPopover trigger="click" :width="280" placement="top">
+                      <template #reference>
+                        <button class="sub-icon-btn edit-btn" type="button" title="重命名二级分类" @click.stop>
+                          ✏️
+                        </button>
+                      </template>
+                      <div class="sub-popover-content">
+                        <div class="popover-title">重命名二级分类</div>
+                        <div class="popover-orig">原名：{{ sub.name }} (#{{ sub.tid }})</div>
+                        <ElInput
+                          v-model="sub.custom_name"
+                          placeholder="前台别名（留空保持原名）"
+                          size="small"
+                          clearable
+                        />
+                        <div class="popover-preview">
+                          前台显示：<strong>{{ formatCategoryPreview(sub.name, sub.custom_name) }}</strong>
+                        </div>
+                      </div>
+                    </ElPopover>
+
+                    <!-- 彻底删除按钮 -->
+                    <button
+                      class="sub-icon-btn remove-btn"
+                      type="button"
+                      title="从列表中彻底移除该子分类"
+                      @click.stop="removeSubCategory(rule, sub)"
+                    >
+                      ×
+                    </button>
+                  </div>
                   <span v-if="!(rule.subcategories && rule.subcategories.length)" class="a-muted no-sub">无子分类</span>
                 </div>
 
@@ -1226,13 +1404,19 @@ async function saveDetailPolicy(): Promise<void> {
                     v-model="getSubInput(rule.tid).tid"
                     placeholder="子分类 TID"
                     size="small"
-                    style="width: 120px;"
+                    style="width: 100px;"
                   />
                   <ElInput
                     v-model="getSubInput(rule.tid).name"
-                    placeholder="标签名称"
+                    placeholder="分类原名"
                     size="small"
-                    style="width: 140px;"
+                    style="width: 120px;"
+                  />
+                  <ElInput
+                    v-model="getSubInput(rule.tid).custom_name"
+                    placeholder="别名（选填）"
+                    size="small"
+                    style="width: 110px;"
                   />
                   <ElButton
                     size="small"
@@ -1480,6 +1664,78 @@ async function saveDetailPolicy(): Promise<void> {
   background: var(--el-fill-color-light);
 }
 
+.file-upload-dropzone {
+  border: 1px dashed var(--el-border-color);
+  border-radius: 8px;
+  background-color: var(--el-fill-color-blank);
+  text-align: center;
+  padding: 14px 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 14px;
+}
+
+.file-upload-dropzone:hover {
+  border-color: var(--el-color-primary);
+  background-color: var(--el-color-primary-light-9);
+}
+
+.dropzone-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.dropzone-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-bottom: 4px;
+  color: var(--el-color-primary);
+}
+
+.dropzone-icon :deep(svg),
+.dropzone-icon svg {
+  width: 26px !important;
+  height: 26px !important;
+  max-width: 26px !important;
+  max-height: 26px !important;
+}
+
+.dropzone-text {
+  font-size: 13px;
+  color: var(--el-text-color-regular);
+  margin-bottom: 2px;
+}
+
+.dropzone-text strong {
+  color: var(--el-color-primary);
+}
+
+.dropzone-sub {
+  font-size: 11px;
+  color: var(--el-text-color-secondary);
+}
+
+.selected-file-badge {
+  margin-top: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--el-fill-color-light);
+  border: 1px solid var(--el-border-color-lighter);
+  padding: 4px 12px;
+  border-radius: 14px;
+  font-size: 12px;
+}
+
+.file-name-tag strong {
+  color: var(--el-color-primary);
+}
+
 .upload-options {
   display: flex;
   align-items: center;
@@ -1579,22 +1835,165 @@ async function saveDetailPolicy(): Promise<void> {
 
 .subcategories-wrap {
   margin-top: 8px;
-  padding: 8px 10px;
+  padding: 8px 12px;
   background: var(--el-fill-color-light);
   border-radius: 6px;
+}
+
+.cat-preview-text {
+  margin-left: 8px;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
+
+.cat-preview-text strong {
+  color: var(--el-text-color-primary);
+}
+
+.cat-preview-text strong.has-custom {
+  color: #409eff;
+}
+
+.sub-label-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
 }
 
 .sub-label {
   font-size: 12px;
   font-weight: 500;
-  margin-bottom: 6px;
+}
+
+.sub-tip-desc {
+  font-size: 11px;
+  color: var(--el-text-color-secondary);
 }
 
 .sub-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.sub-item-pill {
+  display: inline-flex;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #dcdfe6;
+  border-radius: 16px;
+  padding: 2px 6px 2px 10px;
+  font-size: 12px;
+  color: #303133;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.sub-item-pill:hover {
+  border-color: #c0c4cc;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* 隐藏状态：变红 */
+.sub-item-pill.is-hidden {
+  background: #fef0f0;
+  border-color: #fde2e2;
+  color: #f56c6c;
+}
+
+.sub-tag-body {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+.sub-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dot-success {
+  background-color: #67c23a;
+  box-shadow: 0 0 4px rgba(103, 194, 58, 0.4);
+}
+
+.dot-danger {
+  background-color: #f56c6c;
+  box-shadow: 0 0 4px rgba(245, 108, 108, 0.4);
+}
+
+.sub-title {
+  font-weight: 500;
+}
+
+.sub-tid {
+  color: #909399;
+  font-size: 11px;
+}
+
+.sub-hidden-label {
+  background: #f56c6c;
+  color: #fff;
+  font-size: 10px;
+  border-radius: 4px;
+  padding: 0 4px;
+  margin-left: 2px;
+}
+
+.sub-icon-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  margin-left: 4px;
+  font-size: 12px;
+  opacity: 0.65;
+  transition: opacity 0.2s;
+  border-radius: 50%;
+}
+
+.sub-icon-btn:hover {
+  opacity: 1;
+}
+
+.sub-icon-btn.remove-btn {
+  font-size: 14px;
+  font-weight: bold;
+  color: #909399;
+}
+
+.sub-icon-btn.remove-btn:hover {
+  color: #f56c6c;
+}
+
+.sub-popover-content {
+  font-size: 12px;
+}
+
+.popover-title {
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #303133;
+}
+
+.popover-orig {
+  color: #909399;
   margin-bottom: 8px;
+}
+
+.popover-preview {
+  margin-top: 8px;
+  color: #606266;
+}
+
+.popover-preview strong {
+  color: #409eff;
 }
 
 .no-sub {

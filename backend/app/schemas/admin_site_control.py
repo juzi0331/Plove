@@ -83,6 +83,8 @@ class SubCategoryItem(BaseModel):
 
     tid: str = Field(description="子分类唯一标识")
     name: str = Field(description="子分类名称")
+    custom_name: str = Field(default="", description="前台展示重命名（空则保持原名）")
+    hidden: bool = Field(default=False, description="是否在前台隐藏/屏蔽该二级分类")
 
 
 class CategoryRuleItem(BaseModel):
@@ -93,6 +95,7 @@ class CategoryRuleItem(BaseModel):
     custom_name: str = Field(default="", description="前台展示重命名（空则保持原名）")
     hidden: bool = Field(default=False, description="是否在前台隐藏/屏蔽该分类")
     sort_order: int = Field(default=0, description="排序权重，小的在前")
+    show_on_home: bool = Field(default=False, description="是否在首页横幅中展示该分类")
     subcategories: list[SubCategoryItem] = Field(default_factory=list, description="该分类下的子分类列表")
 
 

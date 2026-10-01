@@ -143,7 +143,7 @@ class Settings(BaseSettings):
     @field_validator("crawler_dir", mode="before")
     @classmethod
     def _blank_crawler_dir_uses_default(cls, value: object) -> object:
-        """.env 里留空表示使用仓库默认 crawler/，不能被 Path('') 解析成当前目录。"""
+        """.env 留空时使用仓库默认 crawler/，避免 Path('') 落到当前目录。"""
         if value is None or (isinstance(value, str) and not value.strip()):
             return PROJECT_DIR / "crawler"
         return value
@@ -151,7 +151,7 @@ class Settings(BaseSettings):
     @field_validator("contracts_dir", mode="before")
     @classmethod
     def _blank_contracts_dir_uses_default(cls, value: object) -> object:
-        """.env 里留空表示使用 backend/contracts/。"""
+        """.env 留空时使用 backend/contracts/。"""
         if value is None or (isinstance(value, str) and not value.strip()):
             return BACKEND_DIR / "contracts"
         return value

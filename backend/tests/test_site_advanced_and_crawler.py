@@ -182,7 +182,10 @@ def test_site_categories_control(authed_client: TestClient):
             "hidden": False,
             "custom_name": "超级剧集",
             "sort_order": 1,
-            "subcategories": [{"tid": "sub_action", "name": "动作剧"}],
+            "subcategories": [
+                {"tid": "sub_action", "name": "动作剧", "custom_name": "猛男必看", "hidden": False},
+                {"tid": "sub_hidden", "name": "隐藏子类", "custom_name": "", "hidden": True},
+            ],
         },
     ]
 
@@ -201,12 +204,17 @@ def test_site_categories_control(authed_client: TestClient):
     assert "1" not in tids
     assert "2" in tids
     cat2 = next(c for c in home_cats if c["tid"] == "2")
-    assert cat2["name"] == "超级剧集"
+    assert cat2["name"] == "分类二（超级剧集）"
     assert len(cat2["subcategories"]) == 1
-    assert cat2["subcategories"][0]["name"] == "动作剧"
+    assert cat2["subcategories"][0]["name"] == "动作剧（猛男必看）"
+    assert cat2["subcategories"][0]["tid"] == "sub_action"
 
-    # 4. 尝试直接请求被隐藏的分类 1，验证被明确拦截
+    # 4. 尝试直接请求被隐藏的主分类 1 与被隐藏的子分类 sub_hidden，验证均被明确拦截
     resp = authed_client.get("/api/v1/sites/fake/category?tid=1")
+    assert resp.status_code == 403
+    assert resp.json()["error"]["code"] == ErrorCode.FORBIDDEN.value
+
+    resp = authed_client.get("/api/v1/sites/fake/category?tid=sub_hidden")
     assert resp.status_code == 403
     assert resp.json()["error"]["code"] == ErrorCode.FORBIDDEN.value
 

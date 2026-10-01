@@ -40,6 +40,8 @@ const scrolled = ref(false)
 
 /** 当前选中的播放线路 */
 const activeLine = ref<number | undefined>(undefined)
+/** 用户是否主动点过线路；未主动选择时走“自动最快线路”。 */
+const lineManuallySelected = ref(false)
 
 const video = computed(() => detail.value?.video ?? null)
 const lines = computed(() => detail.value?.lines ?? [])
@@ -79,6 +81,7 @@ async function loadDetail(): Promise<void> {
     const result = await api.getDetail(key, props.vodId)
     detail.value = result
     activeLine.value = result.lines?.length ? result.lines[0]?.line : undefined
+    lineManuallySelected.value = false
 
     // 顺便拉取首页推荐作为底部的“更多类似好片”
     void loadRelated(key)
@@ -99,15 +102,24 @@ async function loadRelated(key: string): Promise<void> {
   }
 }
 
+function selectLine(lineId: number): void {
+  activeLine.value = lineId
+  lineManuallySelected.value = true
+}
+
 function play(episode: Episode | null): void {
   if (!episode) return
   const label = epLabel(episode)
+  const manualLine = lineManuallySelected.value
+  // 小鸭的详情页内嵌几十条 CDN，可在 play 阶段并行测速后选最快；
+  // 网飞猫等源则保留详情返回的优选 play_id，避免为了自动选线再抓一次详情页。
+  const autoProbe = !manualLine && sites.currentKey === 'xiaoyakankan'
   void router.push({
     name: 'play',
     params: { vodId: props.vodId, ep: String(episode.ep_index) },
     query: {
-      line: episode.line ?? activeLine.value,
-      play_id: episode.play_id || undefined,
+      line: autoProbe ? undefined : (episode.line ?? activeLine.value),
+      play_id: autoProbe ? undefined : (episode.play_id || undefined),
       name: label === `第 ${episode.ep_index} 集` ? undefined : label,
     },
   })
@@ -290,7 +302,7 @@ function scrollRow(direction: 'left' | 'right'): void {
                   class="nf-line-tab"
                   :class="{ 'is-active': activeLine === line.line }"
                   type="button"
-                  @click="activeLine = line.line"
+                  @click="selectLine(line.line)"
                 >
                   <span class="nf-line-dot" />
                   <span>{{ line.name || `高速線路 ${line.line}` }}</span>

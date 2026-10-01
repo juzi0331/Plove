@@ -39,10 +39,43 @@ const page = ref(1)
 
 const scrolled = ref(false)
 
-// 当前分类名称
+function formatCatDisplay(name?: string, custom?: string): string {
+  if (!name) return ''
+  if (!custom || !custom.trim()) return name
+  let c = custom.trim()
+  if ((c.startsWith('(') && c.endsWith(')')) || (c.startsWith('（') && c.endsWith('）'))) {
+    c = c.slice(1, -1).trim()
+  }
+  if (!c) return name
+  const suffix = `（${c}）`
+  if (name.endsWith(suffix)) return name
+  return `${name}${suffix}`
+}
+
+// 当前主分类与二级分类关系解析
+const currentParentCategory = computed(() => {
+  const direct = allCategories.value.find((c) => String(c.tid) === String(props.tid))
+  if (direct) return direct
+  return allCategories.value.find((c) => c.subcategories?.some((s) => String(s.tid) === String(props.tid))) || null
+})
+
+const currentSubcategories = computed(() => {
+  const subs = currentParentCategory.value?.subcategories || []
+  return subs.filter((s) => !s.hidden)
+})
+
+// 当前分类名称（支持显示 "大类 · 小类"）
 const categoryTitle = computed(() => {
-  const found = allCategories.value.find((c) => String(c.tid) === String(props.tid))
-  return found?.name || `分類 #${props.tid}`
+  for (const c of allCategories.value) {
+    if (String(c.tid) === String(props.tid)) {
+      return formatCatDisplay(c.name, c.custom_name) || `分類 #${props.tid}`
+    }
+    const sub = c.subcategories?.find((s) => String(s.tid) === String(props.tid))
+    if (sub) {
+      return `${formatCatDisplay(c.name, c.custom_name)} · ${formatCatDisplay(sub.name, sub.custom_name)}`
+    }
+  }
+  return `分類 #${props.tid}`
 })
 
 // ==========================================
@@ -214,11 +247,7 @@ function openDetail(item: { vod_id?: string | number }): void {
 
 function goBack(): void {
   saveState()
-  if (window.history.length > 1) {
-    router.back()
-  } else {
-    void router.push({ name: 'home' })
-  }
+  void router.push({ name: 'home' })
 }
 </script>
 
@@ -249,11 +278,11 @@ function goBack(): void {
             v-for="cat in allCategories"
             :key="cat.tid"
             class="nf-cat-item"
-            :class="{ 'is-active': String(cat.tid) === String(props.tid) }"
+            :class="{ 'is-active': currentParentCategory ? String(currentParentCategory.tid) === String(cat.tid) : String(cat.tid) === String(props.tid) }"
             type="button"
             @click="switchCategory(cat.tid)"
           >
-            {{ cat.name || cat.tid }}
+            {{ formatCatDisplay(cat.name, cat.custom_name) || cat.tid }}
           </button>
         </nav>
       </div>
@@ -280,6 +309,20 @@ function goBack(): void {
         <p class="nf-cat-header__desc">
           16:9 高清旗艦寬銀幕視界 · 無線流式瀑布加載
         </p>
+
+        <!-- 二级分类胶囊筛选栏 (Pill Filters) -->
+        <div v-if="currentSubcategories.length > 0" class="nf-subcat-bar">
+          <button
+            v-for="sub in currentSubcategories"
+            :key="sub.tid"
+            class="nf-subcat-pill"
+            :class="{ 'is-active': String(sub.tid) === String(props.tid) }"
+            type="button"
+            @click="switchCategory(sub.tid)"
+          >
+            {{ formatCatDisplay(sub.name, sub.custom_name) }}
+          </button>
+        </div>
       </section>
 
       <!-- 首屏 16:9 横版 Netflix 微光流光骨架屏 -->
@@ -615,6 +658,46 @@ function goBack(): void {
   font-size: 13px;
   color: rgba(255, 255, 255, 0.4);
   letter-spacing: 0.5px;
+}
+
+/* 二级分类胶囊筛选栏 (Pill Filters) */
+.nf-subcat-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 18px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.nf-subcat-bar::-webkit-scrollbar {
+  display: none;
+}
+.nf-subcat-pill {
+  flex-shrink: 0;
+  padding: 6px 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.nf-subcat-pill:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
+}
+.nf-subcat-pill.is-active {
+  color: #ffffff;
+  font-weight: 700;
+  background: #e50914;
+  border-color: #e50914;
+  box-shadow: 0 4px 12px rgba(229, 9, 20, 0.4);
 }
 
 @media (max-width: 900px) {

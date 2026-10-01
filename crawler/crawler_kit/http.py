@@ -13,7 +13,9 @@
 from __future__ import annotations
 
 import json as _json
+import os
 import socket
+import subprocess
 import time
 import urllib.error
 import urllib.parse
@@ -84,6 +86,7 @@ class Client:
         cookies=None,
         proxy: str | None = None,
         min_interval: float = 0.0,
+        ssl_context=None,
     ):
         self.base_url = base_url.rstrip("/")
         self.default_headers = _normalize(headers)
@@ -100,9 +103,22 @@ class Client:
         self._last_request_at = 0.0
 
         handlers = []
-        if proxy:
+        if ssl_context is not None:
+            handlers.append(urllib.request.HTTPSHandler(context=ssl_context))
+        effective_proxy = proxy
+        if not effective_proxy:
+            import os
+            effective_proxy = (
+                os.environ.get("HTTPS_PROXY")
+                or os.environ.get("HTTP_PROXY")
+                or os.environ.get("https_proxy")
+                or os.environ.get("http_proxy")
+                or os.environ.get("ALL_PROXY")
+                or os.environ.get("all_proxy")
+            )
+        if effective_proxy:
             handlers.append(
-                urllib.request.ProxyHandler({"http": proxy, "https": proxy})
+                urllib.request.ProxyHandler({"http": effective_proxy, "https": effective_proxy})
             )
         self._opener = urllib.request.build_opener(*handlers)
 
@@ -134,10 +150,14 @@ class Client:
     def _throttle(self) -> None:
         if self.min_interval <= 0:
             return
-        waited = time.monotonic() - self._last_request_at
-        remaining = self.min_interval - waited
-        if self._last_request_at and remaining > 0:
-            time.sleep(remaining)
+        if self._last_request_at:
+            # Windows 的 sleep/调度可能会提前几毫秒唤醒；睡一次后必须再校验，
+            # 否则声明 300ms 的限速实际可能只有 297ms，容易触发源站 IP 限流。
+            while True:
+                remaining = self.min_interval - (time.monotonic() - self._last_request_at)
+                if remaining <= 0:
+                    break
+                time.sleep(remaining)
         self._last_request_at = time.monotonic()
 
     def _headers(self, extra=None) -> dict:
@@ -241,3 +261,132 @@ class Client:
                 "HTTP_ERROR", f"{url} 返回 HTTP {response.status}"
             )
         return response.text
+
+
+class CurlClient(Client):
+    """使用系统 curl 的 Client 兼容实现。
+
+    主要给少数与 Python/OpenSSL TLS 栈不兼容、但系统 TLS 栈可以正常访问的
+    源使用。参数始终以 argv 列表传给 subprocess，不经过 shell，避免命令注入。
+    """
+
+    def __init__(self, *args, curl_binary: str | None = None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.curl_binary = curl_binary or ("curl.exe" if os.name == "nt" else "curl")
+
+    def request(
+        self,
+        method: str,
+        url: str,
+        params=None,
+        headers=None,
+        data=None,
+        json_body=None,
+    ) -> Response:
+        full = self._build_url(url, params)
+
+        body = None
+        extra_headers = dict(headers or {})
+        if json_body is not None:
+            body = _json.dumps(json_body, ensure_ascii=False).encode("utf-8")
+            extra_headers.setdefault("Content-Type", "application/json")
+        elif data is not None:
+            if isinstance(data, (bytes, bytearray)):
+                body = bytes(data)
+            else:
+                body = urllib.parse.urlencode(data).encode("utf-8")
+                extra_headers.setdefault(
+                    "Content-Type", "application/x-www-form-urlencoded"
+                )
+
+        attempt = 0
+        while attempt <= self.retries:
+            attempt += 1
+            self._throttle()
+            cmd = [
+                self.curl_binary,
+                "-sS",
+                "--http1.1",
+                "--max-time",
+                str(max(1.0, self.timeout)),
+                "-D",
+                "-",
+                "-X",
+                method.upper(),
+            ]
+            for key, value in self._headers(extra_headers).items():
+                cmd.extend(["-H", f"{key}: {value}"])
+            if body is not None:
+                cmd.extend(["--data-binary", "@-"])
+            cmd.append(full)
+
+            try:
+                proc = subprocess.run(
+                    cmd,
+                    input=body,
+                    capture_output=True,
+                    timeout=max(2.0, self.timeout + 3.0),
+                    check=False,
+                )
+            except (subprocess.TimeoutExpired, OSError) as exc:
+                if attempt <= self.retries:
+                    log.warn(f"curl 网络错误，第 {attempt} 次重试: {full} ({exc})")
+                    time.sleep(self.backoff * attempt)
+                    continue
+                raise CrawlerError(TIMEOUT, f"请求失败: {full} ({exc})") from exc
+
+            if proc.returncode != 0:
+                message = proc.stderr.decode("utf-8", errors="replace").strip()
+                if attempt <= self.retries:
+                    log.warn(
+                        f"curl 返回 {proc.returncode}，第 {attempt} 次重试: {full} ({message})"
+                    )
+                    time.sleep(self.backoff * attempt)
+                    continue
+                raise CrawlerError(
+                    TIMEOUT,
+                    f"请求失败: {full} (curl {proc.returncode}: {message})",
+                )
+
+            raw = proc.stdout
+            header_blob, sep, payload = raw.partition(b"\r\n\r\n")
+            if not sep:
+                header_blob, sep, payload = raw.partition(b"\n\n")
+            if not sep:
+                raise CrawlerError(PARSE_ERROR, f"curl 响应头解析失败: {full}")
+
+            lines = header_blob.replace(b"\r\n", b"\n").split(b"\n")
+            status_match = None
+            if lines:
+                import re as _re
+                status_match = _re.match(rb"HTTP/\S+\s+(\d{3})", lines[0])
+            if not status_match:
+                raise CrawlerError(PARSE_ERROR, f"curl 状态码解析失败: {full}")
+            status = int(status_match.group(1))
+
+            parsed_headers = {}
+            set_cookies = []
+            for raw_line in lines[1:]:
+                if b":" not in raw_line:
+                    continue
+                raw_key, raw_value = raw_line.split(b":", 1)
+                key = raw_key.decode("latin1", errors="replace").strip().lower()
+                value = raw_value.decode("latin1", errors="replace").strip()
+                if key == "set-cookie":
+                    set_cookies.append(value)
+                else:
+                    parsed_headers[key] = value
+            for raw_cookie in set_cookies:
+                pair = raw_cookie.split(";", 1)[0].strip()
+                if "=" in pair:
+                    name, value = pair.split("=", 1)
+                    self.cookies[name.strip()] = value.strip()
+
+            response = Response(status, parsed_headers, payload[:MAX_BYTES], full)
+            if 500 <= status < 600 and attempt <= self.retries:
+                log.warn(f"HTTP {status}，第 {attempt} 次重试: {full}")
+                time.sleep(self.backoff * attempt)
+                continue
+            return response
+
+        raise CrawlerError(TIMEOUT, f"请求失败: {full}")  # pragma: no cover

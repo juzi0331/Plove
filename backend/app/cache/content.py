@@ -103,7 +103,7 @@ class ContentCache:
                 e_site, e_ns, e_ident = parts[0], parts[1], parts[2]
             else:
                 e_site, e_ns, e_ident = "unknown", "unknown", key
-            
+
             if site and e_site != site:
                 continue
             if namespace and e_ns != namespace:

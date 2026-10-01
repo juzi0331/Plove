@@ -43,49 +43,37 @@ const searchInputRef = ref<HTMLInputElement | null>(null)
 const activeNav = ref('all')
 const siteSelectorRef = ref<InstanceType<typeof SiteSelector> | null>(null)
 
-// 下面视频展示行：随机选取 3 个互不重复的真实分类行展示
-const displayedSections = ref<HomeSection[]>([])
+// 视频横幅楼层：优先使用后端下发的后台指定分类楼层（每类严格10部）
+const displayedSections = computed<HomeSection[]>(() => {
+  if (sections.value && sections.value.length > 0) {
+    return sections.value
+  }
+  // 兜底：若暂无分类楼层且有原始推荐，展示前10部
+  if (recommend.value && recommend.value.length > 0) {
+    return [{
+      title: '熱播推薦',
+      videos: recommend.value.slice(0, 10),
+    }]
+  }
+  return []
+})
 
-const categories = computed(() => home.value?.categories ?? [])
+function formatCatDisplay(name?: string, custom?: string): string {
+  if (!name) return ''
+  if (!custom || !custom.trim()) return name
+  let c = custom.trim()
+  if ((c.startsWith('(') && c.endsWith(')')) || (c.startsWith('（') && c.endsWith('）'))) {
+    c = c.slice(1, -1).trim()
+  }
+  if (!c) return name
+  const suffix = `（${c}）`
+  if (name.endsWith(suffix)) return name
+  return `${name}${suffix}`
+}
+
+const categories = computed(() => (home.value?.categories ?? []).filter((c) => !c.hidden))
 const recommend = computed(() => home.value?.recommend ?? [])
 const sections = computed(() => home.value?.sections ?? [])
-
-function pickRandomSections(): void {
-  const pool: HomeSection[] = []
-
-  // 1. 如果后端有真实推荐 recommend，加入候选行
-  if (recommend.value && recommend.value.length > 0) {
-    pool.push({
-      title: '熱播推薦',
-      videos: recommend.value,
-    })
-  }
-
-  // 2. 将后端源站所有有视频的真实板块加入候选
-  for (const sec of sections.value) {
-    if (sec.videos && sec.videos.length > 0) {
-      // 避免标题重复
-      if (!pool.some((p) => p.title === sec.title)) {
-        pool.push(sec)
-      }
-    }
-  }
-
-  if (pool.length <= 3) {
-    displayedSections.value = pool
-    return
-  }
-
-  // Fisher-Yates 洗牌算法随机选取 3 个不重复的分类行 (消除 M-3)
-  const shuffled = [...pool]
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    const temp = shuffled[i]
-    shuffled[i] = shuffled[j]
-    shuffled[j] = temp
-  }
-  displayedSections.value = shuffled.slice(0, 3)
-}
 
 async function load(): Promise<void> {
   if (loading.value) return
@@ -100,7 +88,6 @@ async function load(): Promise<void> {
       return
     }
     home.value = await api.getHome(key)
-    pickRandomSections()
   } catch (err) {
     home.value = null
     error.value = describeError(err)
@@ -195,7 +182,7 @@ function scrollRow(rowId: string, direction: 'left' | 'right'): void {
             type="button"
             @click="onSelectCategory(cat.tid)"
           >
-            {{ cat.name || cat.tid }}
+            {{ formatCatDisplay(cat.name, cat.custom_name) || cat.tid }}
           </button>
         </nav>
       </div>
@@ -258,19 +245,28 @@ function scrollRow(rowId: string, direction: 'left' | 'right'): void {
         </div>
       </div>
 
-      <!-- 真实内容：随机展示 3 个互不重复的真实分类行 -->
+      <!-- 真实内容：展示后台配置的分类横幅行（每类严格横向展示 10 部） -->
       <template v-else>
         <section
           v-for="(section, sIdx) in displayedSections"
           :key="section.title + sIdx"
           class="nf-row"
         >
-          <h2 class="nf-row__title">{{ section.title }}</h2>
+          <div class="nf-row__header">
+            <h2
+              class="nf-row__title"
+              :class="{ 'is-clickable': !!section.tid }"
+              :title="section.tid ? `進入 ${section.title} 分類瀏覽全部` : ''"
+              @click="section.tid && openCategory(section.tid)"
+            >
+              {{ section.title }}
+            </h2>
+          </div>
           <div class="nf-row__slider-wrap">
             <button class="nf-row-arrow left" type="button" @click="scrollRow(`row-display-${sIdx}`, 'left')">‹</button>
             <div :id="`row-display-${sIdx}`" class="nf-row__track">
               <NetflixCard
-                v-for="(item, idx) in section.videos ?? []"
+                v-for="(item, idx) in (section.videos ?? []).slice(0, 10)"
                 :key="item.vod_id"
                 :item="{
                   ...item,
@@ -560,6 +556,15 @@ function scrollRow(rowId: string, direction: 'left' | 'right'): void {
   margin: 0 0 12px;
   padding: 0 4%;
   letter-spacing: -0.01em;
+}
+
+.nf-row__title.is-clickable {
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.nf-row__title.is-clickable:hover {
+  color: #ffffff;
 }
 
 .nf-row__slider-wrap {

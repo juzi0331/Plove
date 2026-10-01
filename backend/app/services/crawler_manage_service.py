@@ -28,70 +28,26 @@ from app.schemas.site import SiteMeta
 
 logger = get_logger(__name__)
 
-#: 危险模块与属性黑名单
-_DANGEROUS_MODULES = frozenset({
-    "subprocess",
-    "ctypes",
-    "socket",
-    "pty",
-    "multiprocessing",
-    "shutil",
-    "importlib",
-})
+_crawler_dir = Path(__file__).resolve().parents[3] / "crawler"
+if _crawler_dir.is_dir() and str(_crawler_dir) not in sys.path:
+    sys.path.insert(0, str(_crawler_dir))
 
-_DANGEROUS_ATTRIBUTES = frozenset({
-    "system",
-    "popen",
-    "exec",
-    "eval",
-    "spawn",
-    "fork",
-    "kill",
-})
+from crawler_kit.audit import audit_script_ast, get_crawler_runner_env
 
 
 def _audit_ast(code: str) -> tuple[bool, str | None]:
     """静态检查代码是否包含 SyntaxError 或危险调用。"""
-    try:
-        tree = ast.parse(code)
-    except SyntaxError as exc:
-        return False, f"Python 语法错误（第 {exc.lineno} 行）: {exc.msg}"
-
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for alias in node.names:
-                root_pkg = alias.name.split(".")[0]
-                if root_pkg in _DANGEROUS_MODULES:
-                    return False, f"禁止导入受限模块: {alias.name}"
-        elif isinstance(node, ast.ImportFrom):
-            if node.module:
-                root_pkg = node.module.split(".")[0]
-                if root_pkg in _DANGEROUS_MODULES:
-                    return False, f"禁止导入受限模块: {node.module}"
-        elif isinstance(node, ast.Attribute):
-            if node.attr in _DANGEROUS_ATTRIBUTES:
-                return False, f"禁止调用受限属性或函数: {node.attr}"
-        elif isinstance(node, ast.Name):
-            if node.id in {"eval", "exec", "__import__"}:
-                return False, f"禁止直接使用内置危险函数: {node.id}"
-
-    return True, None
+    return audit_script_ast(code)
 
 
 def _probe_meta(script_path: Path, python_exe: str | None = None) -> tuple[bool, SiteMeta | None, str | None]:
     """在隔离子进程中试跑一次 meta 命令。"""
     py = python_exe or sys.executable
     argv = [py, str(script_path), "meta"]
-    env = os.environ.copy()
-    env["PYTHONIOENCODING"] = "utf-8"
-    env["PYTHONUTF8"] = "1"
+    env = get_crawler_runner_env()
 
-    # 确保隔离临时文件子进程也能加载并导入 crawler_kit
     crawler_dir = Path(__file__).resolve().parents[3] / "crawler"
-    if crawler_dir.is_dir():
-        crawler_root = str(crawler_dir)
-        existing_pp = env.get("PYTHONPATH", "")
-        env["PYTHONPATH"] = f"{crawler_root}{os.pathsep}{existing_pp}" if existing_pp else crawler_root
+    sites_exec_dir = crawler_dir / "sites" if (crawler_dir / "sites").is_dir() else script_path.parent
 
     try:
         proc = subprocess.run(  # noqa: S603
@@ -102,6 +58,7 @@ def _probe_meta(script_path: Path, python_exe: str | None = None) -> tuple[bool,
             errors="replace",
             timeout=4.0,
             env=env,
+            cwd=str(sites_exec_dir),
         )
     except subprocess.TimeoutExpired:
         return False, None, "试运行 meta 超时（超过 4 秒未返回）"
@@ -157,8 +114,16 @@ def validate_crawler_code(
         )
     checks.append("语法与安全审计通过")
 
-    # 2. 临时写出并试跑 meta 命令
-    with tempfile.NamedTemporaryFile("w", suffix=".py", encoding="utf-8", delete=False) as tmp:
+    # 2. 临时写出并试跑 meta 命令（优先落在 sites_dir 下，保证天然享有同级 crawler_kit 寻址环境）
+    target_dir = sites_dir if sites_dir.is_dir() else None
+    with tempfile.NamedTemporaryFile(
+        "w",
+        prefix="_tmp_val_",
+        suffix=".py",
+        dir=str(target_dir) if target_dir else None,
+        encoding="utf-8",
+        delete=False,
+    ) as tmp:
         tmp.write(code)
         tmp_path = Path(tmp.name)
 

@@ -152,6 +152,7 @@ export interface CategoryRuleItem {
   custom_name?: string
   hidden?: boolean
   sort_order?: number
+  show_on_home?: boolean
   subcategories?: SubCategoryItem[]
 }
 
@@ -295,9 +296,10 @@ export interface HomePayload {
   sections?: HomeSection[]
 }
 
-/** 首页板块。源站自己的分组结构，前端可选使用。 */
+/** 首页板块。源站自己的分组结构或后台自定义首页分类楼层。 */
 export interface HomeSection {
   title: string
+  tid?: string | null
   videos?: VodItem[]
 }
 
@@ -520,12 +522,16 @@ export interface SitePreheatDetail {
 export interface SubCategory {
   tid: string
   name?: string
+  custom_name?: string
+  hidden?: boolean
 }
 
 /** 子分类/二级筛选标签。 */
 export interface SubCategoryItem {
   tid: string
   name: string
+  custom_name?: string
+  hidden?: boolean
 }
 
 /** 紧急停服维护模式。 */
@@ -558,6 +564,8 @@ export interface SystemStatusPayload {
 export interface VodCategory {
   tid: string
   name?: string
+  custom_name?: string
+  hidden?: boolean
   subcategories?: SubCategory[]
 }
 
