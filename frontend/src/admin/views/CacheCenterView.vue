@@ -7,41 +7,55 @@
 import {
   ElButton,
   ElCard,
-  ElCol,
+  ElDescriptions,
+  ElDescriptionsItem,
+  ElDrawer,
   ElEmpty,
   ElInput,
   ElMessage,
   ElMessageBox,
   ElOption,
   ElProgress,
-  ElRow,
   ElSelect,
-  ElTable,
-  ElTableColumn,
+  ElSwitch,
   ElTag,
-  ElDrawer,
-  ElDescriptions,
-  ElDescriptionsItem,
 } from 'element-plus'
 import {
   Delete,
+  DocumentCopy,
   Refresh,
   Search,
   VideoPlay,
   View,
-  DocumentCopy,
 } from '@element-plus/icons-vue'
 import { computed, onMounted, ref } from 'vue'
 
-import { clearCache, getCacheEntry, getCacheStats, listCacheKeys, preheatCache } from '@/admin/api'
+import {
+  clearCache,
+  getCacheEntry,
+  getCacheGlobalConfig,
+  getCacheStats,
+  listCacheKeys,
+  listSites,
+  preheatCache,
+  updateCacheGlobalConfig,
+  type CacheGlobalConfig,
+} from '@/admin/api'
 import { ui } from '@/admin/ui'
-import { adminPath } from '@/admin/config'
-import type { CacheEntryDetail, CacheKeyEntry, CacheStatsPayload } from '@/api/types'
+import type { AdminSiteItem, CacheEntryDetail, CacheKeyEntry, CacheStatsPayload } from '@/api/types'
 
 const loading = ref(false)
 const preheating = ref(false)
+const updatingGlobal = ref(false)
 const stats = ref<CacheStatsPayload | null>(null)
 const entries = ref<CacheKeyEntry[]>([])
+const allSites = ref<AdminSiteItem[]>([])
+
+const globalConfig = ref<CacheGlobalConfig>({
+  cache_enabled: false,
+  warmup_enabled: false,
+  warmup_interval_seconds: 86400,
+})
 
 // 单条缓存详情抽屉
 const isEntryDrawerVisible = ref(false)
@@ -76,16 +90,34 @@ const searchKw = ref('')
 async function loadData(): Promise<void> {
   loading.value = true
   try {
-    const [st, keys] = await Promise.all([
+    const [st, keys, siteRes, gCfg] = await Promise.all([
       getCacheStats(),
       listCacheKeys(filterSite.value || undefined, filterNs.value || undefined),
+      listSites().catch(() => ({ sites: [] })),
+      getCacheGlobalConfig().catch(() => ({ cache_enabled: false, warmup_enabled: false, warmup_interval_seconds: 86400 })),
     ])
     stats.value = st
     entries.value = keys
+    allSites.value = siteRes.sites || []
+    globalConfig.value = gCfg
   } catch (err) {
     ElMessage.error(err instanceof Error ? err.message : '加载缓存数据失败')
   } finally {
     loading.value = false
+  }
+}
+
+async function handleSaveGlobalConfig(): Promise<void> {
+  updatingGlobal.value = true
+  try {
+    const res = await updateCacheGlobalConfig(globalConfig.value)
+    globalConfig.value = res
+    ElMessage.success('全局缓存与预热总控配置已实时保存并持久化！')
+    await loadData()
+  } catch (err) {
+    ElMessage.error(err instanceof Error ? err.message : '保存总控配置失败')
+  } finally {
+    updatingGlobal.value = false
   }
 }
 
@@ -153,6 +185,74 @@ async function handleClearKey(entryKey: string): Promise<void> {
   }
 }
 
+interface SiteCacheSummary {
+  site: string
+  name: string
+  total: number
+  homeCount: number
+  categoryCount: number
+  detailCount: number
+}
+
+const siteSummaries = computed<SiteCacheSummary[]>(() => {
+  const map: Record<string, SiteCacheSummary> = {}
+
+  // 1. 先把系统接入的所有站点放入 map，保证哪怕 0 条缓存也会展示！
+  for (const s of allSites.value) {
+    map[s.key] = {
+      site: s.key,
+      name: s.name || s.key,
+      total: 0,
+      homeCount: 0,
+      categoryCount: 0,
+      detailCount: 0,
+    }
+  }
+
+  // 2. 统计现存的所有条目
+  for (const entry of entries.value) {
+    const s = entry.site || 'unknown'
+    if (!map[s]) {
+      map[s] = {
+        site: s,
+        name: s,
+        total: 0,
+        homeCount: 0,
+        categoryCount: 0,
+        detailCount: 0,
+      }
+    }
+    map[s].total++
+    if (entry.namespace === 'home') map[s].homeCount++
+    else if (entry.namespace === 'category') map[s].categoryCount++
+    else if (entry.namespace === 'detail') map[s].detailCount++
+  }
+  return Object.values(map)
+})
+
+async function handleClearSite(site: string): Promise<void> {
+  try {
+    const res = await clearCache(site)
+    ElMessage.success(res.message || `已清空站点 ${site} 的缓存`)
+    await loadData()
+  } catch (err) {
+    ElMessage.error(err instanceof Error ? err.message : '清空失败')
+  }
+}
+
+async function handlePreheatSite(site: string): Promise<void> {
+  preheating.value = true
+  try {
+    const res = await preheatCache(site)
+    ElMessage.success(`站点 ${site} 预热成功！耗时 ${res.elapsed_ms}ms`)
+    await loadData()
+  } catch (err) {
+    ElMessage.error(err instanceof Error ? err.message : '预热失败')
+  } finally {
+    preheating.value = false
+  }
+}
+
 function nsTagType(ns: string): 'primary' | 'success' | 'warning' | 'info' | 'danger' {
   switch (ns) {
     case 'home':
@@ -200,147 +300,237 @@ function nsTagType(ns: string): 'primary' | 'success' | 'warning' | 'info' | 'da
       </div>
     </div>
 
-    <!-- 职责边界整合指引横幅 -->
+    <!-- 全局缓存与主动预热总控开关 -->
+    <div class="global-switch-card">
+      <div class="switch-col">
+        <div class="switch-meta">
+          <div class="switch-badge-title">
+            <span class="dot" :class="{ 'dot--on': globalConfig.cache_enabled }"></span>
+            <strong>全局内容缓存总开关</strong>
+            <ElTag size="small" :type="globalConfig.cache_enabled ? 'success' : 'info'">
+              {{ globalConfig.cache_enabled ? '极速缓存中' : '已停用（纯实时穿透）' }}
+            </ElTag>
+          </div>
+          <p class="switch-desc">
+            默认关闭。开启后，前台首页、分类大厅和详情页将自动享受 0ms 内存与持久化磁盘极速响应，大幅减轻源站压力；关闭后所有请求均穿透直达源站爬虫。
+          </p>
+        </div>
+        <ElSwitch
+          v-model="globalConfig.cache_enabled"
+          :disabled="ui.readOnly || updatingGlobal"
+          active-text="开启缓存"
+          inactive-text="关闭"
+          @change="handleSaveGlobalConfig"
+        />
+      </div>
+
+      <div class="switch-divider"></div>
+
+      <div class="switch-col">
+        <div class="switch-meta">
+          <div class="switch-badge-title">
+            <span class="dot" :class="{ 'dot--on': globalConfig.warmup_enabled }"></span>
+            <strong>自动定时预热总开关</strong>
+            <ElTag size="small" :type="globalConfig.warmup_enabled ? 'success' : 'info'">
+              {{ globalConfig.warmup_enabled ? '后台定时预热中' : '已停用（按需手动预热）' }}
+            </ElTag>
+          </div>
+          <p class="switch-desc">
+            默认关闭。开启后，服务端每隔 24 小时在后台主动模拟访问各源站首页与热门分类填入缓存，彻底杜绝冷启动首访等待；关闭后服务绝不在后台自主请求源站。
+          </p>
+        </div>
+        <ElSwitch
+          v-model="globalConfig.warmup_enabled"
+          :disabled="ui.readOnly || updatingGlobal"
+          active-text="开启预热"
+          inactive-text="关闭"
+          @change="handleSaveGlobalConfig"
+        />
+      </div>
+    </div>
+
+    <!-- 职责说明卡片 -->
     <div class="cache-scope-tip">
-      <span class="tip-icon">[指南]</span>
+      <span class="tip-icon">💡</span>
       <span class="tip-text">
-        <strong>架构运维职责整合说明</strong>：单站点的实时预热与清空已彻底收拢至
-        <RouterLink :to="adminPath('/sites')" style="color: var(--el-color-primary); font-weight: 600">「内容源管理」</RouterLink>
-        的每个站点卡片上一键操作并查看详细战报；本中心专职负责<strong>全局宏观容量看板、实时命中率监控、所有内存 Key 倒计时审查与全量运维</strong>。
+        <strong>缓存中心运维看板</strong>：支持按站点独立预热与清空缓存，实时监控内存占用、命中率与防击穿并发队列。
       </span>
     </div>
 
-    <!-- KPI 统计卡片 -->
-    <ElRow :gutter="16" class="metric-row">
-      <ElCol :xs="24" :sm="12" :md="6">
-        <ElCard shadow="hover" class="metric-card metric-card--primary">
-          <div class="metric-head">
-            <span>实时缓存命中率</span>
-            <ElTag size="small" type="success" effect="plain">透明可感知</ElTag>
-          </div>
-          <div class="metric-val highlight">
-            {{ hitRatio }}<span class="metric-unit">%</span>
-          </div>
-          <div class="metric-foot">
-            <span>命中: {{ stats?.hits ?? 0 }}</span>
-            <span class="foot-sep">/</span>
-            <span>穿透: {{ stats?.misses ?? 0 }}</span>
-          </div>
-        </ElCard>
-      </ElCol>
+    <!-- KPI 统计卡片（纯 Grid 等宽响应式排布） -->
+    <div class="metric-row">
+      <ElCard shadow="hover" class="metric-card metric-card--primary">
+        <div class="metric-head">
+          <span>实时缓存命中率</span>
+          <ElTag size="small" type="success" effect="plain">透明可感知</ElTag>
+        </div>
+        <div class="metric-val highlight">
+          {{ hitRatio }}<span class="metric-unit">%</span>
+        </div>
+        <div class="metric-foot">
+          <span>命中: {{ stats?.hits ?? 0 }}</span>
+          <span class="foot-sep">/</span>
+          <span>穿透: {{ stats?.misses ?? 0 }}</span>
+        </div>
+      </ElCard>
 
-      <ElCol :xs="24" :sm="12" :md="6">
-        <ElCard shadow="hover" class="metric-card">
-          <div class="metric-head">
-            <span>已存条目 / 最大容量</span>
-            <span class="a-muted">{{ capacityPercent }}%</span>
-          </div>
-          <div class="metric-val">
-            {{ stats?.size ?? 0 }}
-            <span class="metric-sub">/ {{ stats?.maxsize ?? 512 }}</span>
-          </div>
-          <ElProgress
-            :percentage="capacityPercent"
-            :show-text="false"
-            :stroke-width="6"
-            color="var(--el-color-primary)"
-          />
-        </ElCard>
-      </ElCol>
+      <ElCard shadow="hover" class="metric-card">
+        <div class="metric-head">
+          <span>L1 内存缓存容量</span>
+          <span class="a-muted">{{ capacityPercent }}%</span>
+        </div>
+        <div class="metric-val">
+          {{ stats?.size ?? 0 }}
+          <span class="metric-sub">/ {{ stats?.maxsize ?? 512 }}</span>
+        </div>
+        <ElProgress
+          :percentage="capacityPercent"
+          :show-text="false"
+          :stroke-width="6"
+          color="var(--el-color-primary)"
+        />
+      </ElCard>
 
-      <ElCol :xs="24" :sm="12" :md="6">
-        <ElCard shadow="hover" class="metric-card">
-          <div class="metric-head">
-            <span>防击穿并发队列</span>
-            <ElTag size="small" :type="stats?.inflight ? 'warning' : 'info'">SingleFlight</ElTag>
-          </div>
-          <div class="metric-val">
-            {{ stats?.inflight ?? 0 }}
-            <span class="metric-unit">tasks</span>
-          </div>
-          <div class="metric-foot a-muted">同一 Key 瞬间并发合并为 1 次请求</div>
-        </ElCard>
-      </ElCol>
+      <ElCard shadow="hover" class="metric-card">
+        <div class="metric-head">
+          <span>L2 磁盘持久化镜像</span>
+          <ElTag size="small" type="success" effect="plain">SQLite WAL</ElTag>
+        </div>
+        <div class="metric-val">
+          {{ stats?.disk?.count ?? 0 }}
+          <span class="metric-unit">条目</span>
+        </div>
+        <div class="metric-foot">
+          <span>磁盘: {{ stats?.disk?.size_mb ?? 0 }} MB</span>
+          <span class="foot-sep">·</span>
+          <span class="a-muted">重启零丢失</span>
+        </div>
+      </ElCard>
 
-      <ElCol :xs="24" :sm="12" :md="6">
-        <ElCard shadow="hover" class="metric-card">
-          <div class="metric-head">
-            <span>全局默认存活时间</span>
-            <span class="a-muted">TTL</span>
-          </div>
-          <div class="metric-kv">
-            <span>首页: {{ stats?.ttl?.home ?? 600 }}s</span>
-            <span>列表: {{ stats?.ttl?.category ?? 300 }}s</span>
-            <span>详情: {{ stats?.ttl?.detail ?? 300 }}s</span>
-          </div>
-          <div class="metric-foot a-muted">播放地址不缓存（时效保护）</div>
-        </ElCard>
-      </ElCol>
-    </ElRow>
+      <ElCard shadow="hover" class="metric-card">
+        <div class="metric-head">
+          <span>防击穿并发队列</span>
+          <ElTag size="small" :type="stats?.inflight ? 'warning' : 'info'">SingleFlight</ElTag>
+        </div>
+        <div class="metric-val">
+          {{ stats?.inflight ?? 0 }}
+          <span class="metric-unit">tasks</span>
+        </div>
+        <div class="metric-foot a-muted">同一 Key 瞬间并发合并为 1 次请求</div>
+      </ElCard>
 
-    <!-- 缓存条目明细表格 -->
-    <ElCard shadow="never" class="table-card">
-      <template #header>
-        <div class="table-header">
-          <div class="table-title">
-            <span>当前内存缓存条目清单 ({{ filteredEntries.length }})</span>
+      <ElCard shadow="hover" class="metric-card">
+        <div class="metric-head">
+          <span>默认存活时间</span>
+          <span class="a-muted">TTL</span>
+        </div>
+        <div class="metric-kv">
+          <span>首页: {{ stats?.ttl?.home ?? 600 }}s</span>
+          <span>列表: {{ stats?.ttl?.category ?? 300 }}s</span>
+          <span>详情: {{ stats?.ttl?.detail ?? 300 }}s</span>
+        </div>
+        <div class="metric-foot a-muted">播放地址不缓存</div>
+      </ElCard>
+    </div>
+
+    <!-- 分站点缓存矩阵卡片（展示系统全部接入站点状态） -->
+    <div v-if="siteSummaries.length > 0" class="site-cache-section">
+      <div class="section-title-row">
+        <span class="section-title">分站点缓存矩阵卡片 ({{ siteSummaries.length }} 个源站)</span>
+        <span class="section-sub">实时展示全量接入源站的缓存落盘现状，支持单站一键预热与即时清空</span>
+      </div>
+      <div class="site-cache-grid">
+        <div v-for="s in siteSummaries" :key="s.site" class="site-cache-card">
+          <div class="s-card-top">
+            <span class="s-card-name" :title="s.site">{{ s.name }} <small class="a-muted" style="font-weight: normal; font-size: 11px">({{ s.site }})</small></span>
+            <ElTag size="small" :type="s.total > 0 ? 'primary' : 'info'" :effect="s.total > 0 ? 'dark' : 'plain'">
+              {{ s.total > 0 ? `${s.total} 条缓存` : '无缓存 (冷)' }}
+            </ElTag>
           </div>
-          <div class="table-filter">
-            <ElSelect
-              v-model="filterNs"
-              placeholder="命名空间"
-              clearable
+          <div class="s-card-badges">
+            <span class="badge-pill pill-home">首页: {{ s.homeCount }}</span>
+            <span class="badge-pill pill-cat">分类: {{ s.categoryCount }}</span>
+            <span class="badge-pill pill-detail">详情: {{ s.detailCount }}</span>
+          </div>
+          <div class="s-card-actions">
+            <ElButton
               size="small"
-              style="width: 130px"
-              @change="loadData"
+              type="primary"
+              plain
+              :loading="preheating"
+              :disabled="ui.readOnly"
+              @click="handlePreheatSite(s.site)"
             >
-              <ElOption label="全部类型" value="" />
-              <ElOption label="首页 (home)" value="home" />
-              <ElOption label="分类 (category)" value="category" />
-              <ElOption label="详情 (detail)" value="detail" />
-            </ElSelect>
-
-            <ElInput
-              v-model="searchKw"
-              placeholder="搜索 Key..."
+              预热该站
+            </ElButton>
+            <ElButton
               size="small"
-              :prefix-icon="Search"
-              clearable
-              style="width: 200px"
-            />
+              type="danger"
+              plain
+              :disabled="ui.readOnly"
+              @click="handleClearSite(s.site)"
+            >
+              清空该站
+            </ElButton>
           </div>
         </div>
-      </template>
+      </div>
+    </div>
 
-      <ElTable :data="filteredEntries" stripe size="small" v-loading="loading">
-        <ElTableColumn prop="site" label="源站点" width="130">
-          <template #default="{ row }">
-            <ElTag size="small" effect="light">{{ row.site }}</ElTag>
-          </template>
-        </ElTableColumn>
+    <!-- 缓存条目明细（卡片流视图，彻底告别死板表格） -->
+    <div class="entries-card-panel">
+      <div class="panel-header-bar">
+        <div class="bar-left">
+          <span class="panel-title">当前内存缓存条目 ({{ filteredEntries.length }})</span>
+        </div>
+        <div class="bar-right">
+          <ElSelect
+            v-model="filterNs"
+            placeholder="命名空间筛选"
+            clearable
+            size="small"
+            style="width: 140px"
+            @change="loadData"
+          >
+            <ElOption label="全部类型" value="" />
+            <ElOption label="首页 (home)" value="home" />
+            <ElOption label="分类 (category)" value="category" />
+            <ElOption label="详情 (detail)" value="detail" />
+          </ElSelect>
 
-        <ElTableColumn prop="namespace" label="命名空间" width="110">
-          <template #default="{ row }">
-            <ElTag size="small" :type="nsTagType(row.namespace)">{{ row.namespace }}</ElTag>
-          </template>
-        </ElTableColumn>
+          <ElInput
+            v-model="searchKw"
+            placeholder="检索 Key / 影片ID..."
+            size="small"
+            :prefix-icon="Search"
+            clearable
+            style="width: 220px"
+          />
+        </div>
+      </div>
 
-        <ElTableColumn prop="ident" label="标识定位符" width="160" show-overflow-tooltip />
+      <!-- 条目卡片网格 -->
+      <div v-if="filteredEntries.length > 0" class="entry-cards-grid">
+        <div v-for="row in filteredEntries" :key="row.key" class="entry-card">
+          <div class="entry-card-header">
+            <div class="entry-tags">
+              <ElTag size="small" effect="plain">{{ row.site }}</ElTag>
+              <ElTag size="small" :type="nsTagType(row.namespace)">{{ row.namespace }}</ElTag>
+              <ElTag v-if="row.is_disk" size="small" type="success" effect="plain">L2磁盘镜像</ElTag>
+            </div>
+            <span class="entry-ttl-pill">
+              剩余 {{ row.remaining_seconds }}s
+            </span>
+          </div>
 
-        <ElTableColumn prop="key" label="完整缓存 Key" min-width="260" show-overflow-tooltip>
-          <template #default="{ row }">
-            <code class="key-code">{{ row.key }}</code>
-          </template>
-        </ElTableColumn>
+          <div class="entry-card-body">
+            <div class="entry-ident" :title="row.ident || '首页默认'">
+              {{ row.ident ? `标识: ${row.ident}` : '全局首页推荐' }}
+            </div>
+            <code class="entry-full-key" :title="row.key">{{ row.key }}</code>
+          </div>
 
-        <ElTableColumn prop="remaining_seconds" label="剩余存活时间 (TTL)" width="160" sortable>
-          <template #default="{ row }">
-            <span class="ttl-badge">{{ row.remaining_seconds }} 秒</span>
-          </template>
-        </ElTableColumn>
-
-        <ElTableColumn label="操作" width="160" align="right">
-          <template #default="{ row }">
+          <div class="entry-card-footer">
             <ElButton
               link
               type="primary"
@@ -354,19 +544,20 @@ function nsTagType(ns: string): 'primary' | 'success' | 'warning' | 'info' | 'da
               link
               type="danger"
               size="small"
+              :icon="Delete"
               :disabled="ui.readOnly"
               @click="handleClearKey(row.key)"
             >
-              删除此键
+              删除键
             </ElButton>
-          </template>
-        </ElTableColumn>
+          </div>
+        </div>
+      </div>
 
-        <template #empty>
-          <ElEmpty description="内存中暂无缓存数据（可点击上方预热或前台浏览视频自动载入）" />
-        </template>
-      </ElTable>
-    </ElCard>
+      <div v-else class="entries-empty">
+        <ElEmpty description="当前未匹配到缓存条目（可点击上方「一键全站预热」或通过前台浏览自动生成）" />
+      </div>
+    </div>
 
     <!-- 缓存条目具体内容透视抽屉 -->
     <ElDrawer
@@ -457,6 +648,75 @@ function nsTagType(ns: string): 'primary' | 'success' | 'warning' | 'info' | 'da
   gap: 8px;
 }
 
+.global-switch-card {
+  display: flex;
+  align-items: stretch;
+  background: var(--el-bg-color-overlay, #ffffff);
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 12px;
+  padding: 18px 24px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+  gap: 24px;
+}
+
+.switch-col {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.switch-divider {
+  width: 1px;
+  background: var(--el-border-color-lighter);
+}
+
+.switch-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.switch-badge-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  color: var(--el-text-color-primary);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--el-color-info-light-3, #94a3b8);
+  transition: all 0.3s ease;
+}
+
+.dot--on {
+  background: var(--el-color-success, #10b981);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+}
+
+.switch-desc {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--el-text-color-secondary);
+  line-height: 1.5;
+}
+
+@media (max-width: 900px) {
+  .global-switch-card {
+    flex-direction: column;
+    gap: 16px;
+  }
+  .switch-divider {
+    width: 100%;
+    height: 1px;
+  }
+}
+
 .cache-scope-tip {
   display: flex;
   align-items: center;
@@ -480,7 +740,22 @@ function nsTagType(ns: string): 'primary' | 'success' | 'warning' | 'info' | 'da
 }
 
 .metric-row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 16px;
   margin-bottom: 4px;
+}
+
+@media (max-width: 1200px) {
+  .metric-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .metric-row {
+    grid-template-columns: 1fr;
+  }
 }
 
 .metric-card {
@@ -545,42 +820,214 @@ function nsTagType(ns: string): 'primary' | 'success' | 'warning' | 'info' | 'da
   margin: 8px 0;
 }
 
-.table-card {
-  border-radius: 8px;
+/* 分站点缓存矩阵卡片 */
+.site-cache-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.table-header {
+.section-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.section-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--el-text-color-primary);
+}
+
+.section-sub {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
+
+.site-cache-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.site-cache-card {
+  background: var(--a-card, #ffffff);
+  border: 1px solid var(--a-border, #e2e8f0);
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.site-cache-card:hover {
+  border-color: var(--el-color-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.s-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.s-card-name {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--el-text-color-primary);
+}
+
+.s-card-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.badge-pill {
+  font-size: 11.5px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.pill-home {
+  background: rgba(59, 130, 246, 0.1);
+  color: #2563eb;
+}
+
+.pill-cat {
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+}
+
+.pill-detail {
+  background: rgba(245, 158, 11, 0.1);
+  color: #d97706;
+}
+
+.s-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.s-card-actions .el-button {
+  flex: 1;
+}
+
+/* 条目明细面板与卡片网格 */
+.entries-card-panel {
+  background: var(--a-card, #ffffff);
+  border: 1px solid var(--a-border, #e2e8f0);
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.panel-header-bar {
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
   gap: 12px;
+  margin-bottom: 16px;
 }
 
-.table-title {
-  font-weight: 600;
+.panel-title {
   font-size: 15px;
+  font-weight: 700;
+  color: var(--el-text-color-primary);
 }
 
-.table-filter {
+.bar-right {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
-.key-code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 12px;
+.entry-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 12px;
+}
+
+.entry-card {
+  background: var(--el-fill-color-blank, #ffffff);
+  border: 1px solid var(--el-border-color-lighter, #ebeef5);
+  border-radius: 8px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.entry-card:hover {
+  border-color: var(--el-color-primary);
   background: var(--el-fill-color-light);
+}
+
+.entry-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.entry-tags {
+  display: flex;
+  gap: 6px;
+}
+
+.entry-ttl-pill {
+  font-size: 11.5px;
+  font-family: ui-monospace, monospace;
+  font-weight: 600;
+  color: var(--el-color-primary);
+  background: rgba(59, 130, 246, 0.08);
   padding: 2px 6px;
   border-radius: 4px;
 }
 
-.ttl-badge {
-  font-family: ui-monospace, SFMono-Regular, monospace;
-  font-size: 12px;
+.entry-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.entry-ident {
+  font-size: 13px;
   font-weight: 600;
-  color: var(--el-color-primary);
+  color: var(--el-text-color-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.entry-full-key {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 11px;
+  color: var(--el-text-color-secondary);
+  background: var(--el-fill-color-light);
+  padding: 2px 6px;
+  border-radius: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.entry-card-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--el-border-color-lighter);
+}
+
+.entries-empty {
+  padding: 40px 0;
 }
 
 .entry-drawer-box {

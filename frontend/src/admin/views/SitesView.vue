@@ -36,13 +36,10 @@ import {
   ElOption,
   ElPopover,
   ElRadio,
-  ElRadioButton,
   ElRadioGroup,
   ElSelect,
   ElSkeleton,
   ElSwitch,
-  ElTable,
-  ElTableColumn,
   ElTag,
   ElTooltip,
 } from 'element-plus'
@@ -58,7 +55,6 @@ import type {
   SiteCachePolicy,
   SiteCategoryRulePayload,
   SiteDetailPolicyPayload,
-  SitePreheatDetail,
   SubCategoryItem,
 } from '@/api/types'
 
@@ -73,7 +69,6 @@ const data = ref<AdminSiteListPayload | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
 const busyKey = ref<string | null>(null)
-const viewMode = ref<'cards' | 'table'>('cards')
 
 async function load(): Promise<void> {
   loading.value = true
@@ -162,6 +157,7 @@ const isUploadVisible = ref(false)
 const uploadKey = ref('')
 const uploadCode = ref('')
 const uploadOverwrite = ref(false)
+const uploadAutoBump = ref(true)
 const validating = ref(false)
 const uploading = ref(false)
 const validateResult = ref<CrawlerValidateResult | null>(null)
@@ -232,6 +228,7 @@ function openUploadDialog(): void {
   uploadKey.value = ''
   uploadCode.value = ''
   uploadOverwrite.value = false
+  uploadAutoBump.value = true
   validateResult.value = null
   selectedFileName.value = ''
   selectedFileSize.value = 0
@@ -282,6 +279,7 @@ async function handleSaveCrawler(): Promise<void> {
       key,
       code: uploadCode.value,
       overwrite: uploadOverwrite.value,
+      auto_bump_version: uploadAutoBump.value,
     })
     ElMessage.success(res.message)
     isUploadVisible.value = false
@@ -348,7 +346,6 @@ const currentCachePolicy = ref<SiteCachePolicy>({
   category_ttl: null,
   detail_ttl: null,
 })
-const siteActionLoading = ref(false)
 
 async function openAdvanced(site: AdminSiteItem): Promise<void> {
   currentAdvanced.value = {
@@ -404,39 +401,6 @@ async function saveAdvanced(): Promise<void> {
     ElMessage.error(describeError(err))
   } finally {
     advancedSaving.value = false
-  }
-}
-
-async function handleClearSiteCacheQuick(key: string): Promise<void> {
-  siteActionLoading.value = true
-  try {
-    const res = await api.clearCache(key)
-    ElMessage.success(res.message)
-  } catch (err) {
-    ElMessage.error(describeError(err))
-  } finally {
-    siteActionLoading.value = false
-  }
-}
-
-const isPreheatReportVisible = ref(false)
-const preheatReport = ref<SitePreheatDetail | null>(null)
-
-async function handlePreheatSiteQuick(key: string): Promise<void> {
-  siteActionLoading.value = true
-  try {
-    const res = await api.preheatCache(key)
-    if (res.details && res.details.length > 0) {
-      preheatReport.value = res.details[0]
-      isPreheatReportVisible.value = true
-      ElMessage.success(`预热成功！已拉取 ${res.details[0].categories_count} 个分类与 ${res.details[0].recommend_count} 部推荐影片`)
-    } else {
-      ElMessage.success(`预热完成（${res.elapsed_ms}ms），首页数据已装入缓存`)
-    }
-  } catch (err) {
-    ElMessage.error(describeError(err))
-  } finally {
-    siteActionLoading.value = false
   }
 }
 
@@ -656,14 +620,6 @@ async function saveDetailPolicy(): Promise<void> {
       desc="全功能控制：采集器脚本上传与热插拔、单站别名/角标/超时、分类与子分类控制、详情页广告清洗与线路别名映射。"
     >
       <template #actions>
-        <ElRadioGroup v-model="viewMode" size="small" style="margin-right: 8px">
-          <ElRadioButton value="cards">
-            <span>卡片视图</span>
-          </ElRadioButton>
-          <ElRadioButton value="table">
-            <span>表格视图</span>
-          </ElRadioButton>
-        </ElRadioGroup>
         <ElButton type="primary" :icon="Upload" @click="openUploadDialog">
           上传采集器
         </ElButton>
@@ -686,8 +642,7 @@ async function saveDetailPolicy(): Promise<void> {
     />
 
     <div v-else class="sites-container">
-      <!-- 模式 1: 现代化立体卡片网格 -->
-      <div v-if="viewMode === 'cards'" class="site-cards-grid">
+      <div class="site-cards-grid">
         <ElCard
           v-for="(site, index) in sites"
           :key="site.key"
@@ -781,32 +736,8 @@ async function saveDetailPolicy(): Promise<void> {
 
           <ElDivider style="margin: 12px 0 10px 0" />
 
-          <!-- 一站式运维操作栏：彻底合并单站预热、清空与配置 -->
+          <!-- 一站式运维操作栏：单站配置、分类、清洗、源码与删除 -->
           <div class="site-card-actions">
-            <!-- 预热该源 -->
-            <ElButton
-              size="small"
-              type="primary"
-              plain
-              :loading="siteActionLoading"
-              title="立即抓取该站首页推荐影视与分类，秒级落入缓存并弹出成果战报"
-              @click="handlePreheatSiteQuick(site.key)"
-            >
-              预热首页
-            </ElButton>
-
-            <!-- 清空该源缓存 -->
-            <ElButton
-              size="small"
-              type="danger"
-              plain
-              :loading="siteActionLoading"
-              title="仅清空该站的首页、分类与详情缓存条目"
-              @click="handleClearSiteCacheQuick(site.key)"
-            >
-              清空缓存
-            </ElButton>
-
             <!-- 单站高级配置 -->
             <ElButton
               size="small"
@@ -819,6 +750,8 @@ async function saveDetailPolicy(): Promise<void> {
             <!-- 分类与子分类 -->
             <ElButton
               size="small"
+              type="primary"
+              plain
               :icon="FolderOpened"
               @click="openCategoryDrawer(site)"
             >
@@ -828,6 +761,8 @@ async function saveDetailPolicy(): Promise<void> {
             <!-- 详情页展示策略 -->
             <ElButton
               size="small"
+              type="success"
+              plain
               :icon="Operation"
               @click="openDetailPolicy(site)"
             >
@@ -856,150 +791,6 @@ async function saveDetailPolicy(): Promise<void> {
           </div>
         </ElCard>
       </div>
-
-      <!-- 模式 2: 表格视图 -->
-      <ElTable v-else :data="sites" size="default" class="sites-table" row-key="key">
-        <!-- 顺序 -->
-        <ElTableColumn label="顺序" width="100" align="center">
-          <template #default="{ row, $index }">
-            <div class="order-cell">
-              <ElButton
-                link
-                size="small"
-                :disabled="ui.readOnly || row.key === firstKey"
-                title="上移"
-                @click="move($index, -1)"
-              >
-                ↑
-              </ElButton>
-              <ElButton
-                link
-                size="small"
-                :disabled="ui.readOnly || row.key === lastKey"
-                title="下移"
-                @click="move($index, 1)"
-              >
-                ↓
-              </ElButton>
-              <span class="a-muted order-num">{{ row.sort_order }}</span>
-            </div>
-          </template>
-        </ElTableColumn>
-
-        <!-- 站点信息（支持自定义别名与角标徽章） -->
-        <ElTableColumn label="站点源" min-width="190">
-          <template #default="{ row }">
-            <div class="site-name-wrap">
-              <span class="a-mono site-key">{{ row.key }}</span>
-              <ElTag v-if="row.mode === 'proxy'" size="small" type="warning" effect="plain" class="mini-tag">
-                反代
-              </ElTag>
-            </div>
-            <div class="site-display-title">
-              {{ row.name }}
-            </div>
-            <div v-if="row.note" class="a-muted site-note">
-              {{ row.note }}
-            </div>
-          </template>
-        </ElTableColumn>
-
-        <!-- 用户可见 -->
-        <ElTableColumn label="客户端可见" width="110" align="center">
-          <template #default="{ row }">
-            <ElTooltip :content="row.enabled ? '已启用（用户端正常可见）' : '已停用（用户端不可见）'" placement="top">
-              <ElSwitch
-                :model-value="row.enabled"
-                size="small"
-                :loading="busyKey === row.key"
-                :disabled="ui.readOnly"
-                @update:model-value="(value) => toggle(row as AdminSiteItem, Boolean(value))"
-              />
-            </ElTooltip>
-          </template>
-        </ElTableColumn>
-
-        <!-- 健康度 -->
-        <ElTableColumn label="健康状态" width="110" align="center">
-          <template #default="{ row }">
-            <ElTag :type="healthState(row as AdminSiteItem).tag" size="small" effect="light">
-              {{ healthState(row as AdminSiteItem).label }}
-            </ElTag>
-            <div v-if="row.health.failures" class="a-muted sub-text">
-              失败 {{ row.health.failures }}/{{ row.health.fail_threshold }}
-            </div>
-          </template>
-        </ElTableColumn>
-
-        <!-- 能力 -->
-        <ElTableColumn label="能力清单" min-width="180">
-          <template #default="{ row }">
-            <div class="cap-tags">
-              <ElTag v-for="item in row.capabilities" :key="item" size="small" class="cap-tag" effect="plain">
-                {{ item }}
-              </ElTag>
-            </div>
-          </template>
-        </ElTableColumn>
-
-        <!-- 核心操作控制栏 -->
-        <ElTableColumn label="高级控制与策略" min-width="320" align="right">
-          <template #default="{ row }">
-            <div class="actions-group">
-              <!-- 单站高级配置 -->
-              <ElButton
-                size="small"
-                :icon="Setting"
-                @click="openAdvanced(row as AdminSiteItem)"
-              >
-                单站设置
-              </ElButton>
-
-              <!-- 站点分类控制 -->
-              <ElButton
-                size="small"
-                type="primary"
-                plain
-                :icon="FolderOpened"
-                @click="openCategoryDrawer(row as AdminSiteItem)"
-              >
-                分类控制
-              </ElButton>
-
-              <!-- 详情页策略 -->
-              <ElButton
-                size="small"
-                type="success"
-                plain
-                :icon="Operation"
-                @click="openDetailPolicy(row as AdminSiteItem)"
-              >
-                详情策略
-              </ElButton>
-
-              <!-- 源码查看 -->
-              <ElButton
-                size="small"
-                link
-                :icon="Document"
-                @click="viewCrawlerCode(row as AdminSiteItem)"
-              >
-                源码
-              </ElButton>
-
-              <!-- 删除采集器 -->
-              <ElButton
-                size="small"
-                link
-                type="danger"
-                :icon="Delete"
-                :disabled="ui.readOnly"
-                @click="handleDeleteCrawler(row.key)"
-              />
-            </div>
-          </template>
-        </ElTableColumn>
-      </ElTable>
     </div>
 
     <!-- ================================================================ 弹窗 1：上传采集器 -->
@@ -1007,6 +798,7 @@ async function saveDetailPolicy(): Promise<void> {
       v-model="isUploadVisible"
       title="部署 / 上传 Python 采集器脚本"
       width="780px"
+      align-center
       destroy-on-close
     >
       <ElForm label-position="top">
@@ -1072,6 +864,11 @@ async function saveDetailPolicy(): Promise<void> {
         <ElFormItem>
           <div class="upload-options">
             <ElSwitch v-model="uploadOverwrite" active-text="允许覆盖已有文件" />
+            <ElSwitch
+              v-if="uploadOverwrite"
+              v-model="uploadAutoBump"
+              active-text="自动自增修订版本号 (如 v1.0.0 ➔ v1.0.1)"
+            />
           </div>
         </ElFormItem>
       </ElForm>
@@ -1094,6 +891,7 @@ async function saveDetailPolicy(): Promise<void> {
       v-model="isAdvancedVisible"
       :title="`单站高级控制 · ${currentAdvanced.key}`"
       width="560px"
+      align-center
       destroy-on-close
     >
       <div v-loading="advancedLoading">
@@ -1164,26 +962,6 @@ async function saveDetailPolicy(): Promise<void> {
             <strong>静态元数据长效化建议</strong>：海报封面图片 URL、剧情简介、演职员等信息极少失效，推荐保持 86400 秒（24小时）乃至更高，可大幅降低源站爬虫频次并显著提升前台秒开速度。
           </div>
 
-          <div class="site-cache-actions">
-            <ElButton
-              size="small"
-              type="primary"
-              plain
-              :loading="siteActionLoading"
-              @click="handlePreheatSiteQuick(currentAdvanced.key)"
-            >
-              立即预热该源首页并查看战报
-            </ElButton>
-            <ElButton
-              size="small"
-              type="danger"
-              plain
-              :loading="siteActionLoading"
-              @click="handleClearSiteCacheQuick(currentAdvanced.key)"
-            >
-              清空该源所有缓存
-            </ElButton>
-          </div>
         </ElForm>
       </div>
 
@@ -1192,75 +970,6 @@ async function saveDetailPolicy(): Promise<void> {
         <ElButton type="primary" :loading="advancedSaving" @click="saveAdvanced">
           保存配置
         </ElButton>
-      </template>
-    </ElDialog>
-
-    <!-- ================================================================ 弹窗：单站首页预热战报报告 -->
-    <ElDialog
-      v-model="isPreheatReportVisible"
-      :title="`预热成效成果报告 · ${preheatReport?.site_name ?? preheatReport?.site}`"
-      width="680px"
-      destroy-on-close
-    >
-      <div v-if="preheatReport" class="preheat-report-box">
-        <div class="report-meta-row">
-          <div class="meta-item">
-            <span class="meta-label">目标站点：</span>
-            <span class="meta-val font-mono">{{ preheatReport.site_name }} ({{ preheatReport.site }})</span>
-          </div>
-          <div class="meta-item">
-            <span class="meta-label">预热抓取耗时：</span>
-            <span class="meta-val text-green font-bold">{{ preheatReport.elapsed_ms }} ms</span>
-          </div>
-        </div>
-
-        <ElDivider content-position="left">
-          成功装载并落入缓存的分类列表 ({{ preheatReport.categories_count }} 个)
-        </ElDivider>
-        <div class="cat-tags-wrap">
-          <ElTag
-            v-for="cat in preheatReport.categories ?? []"
-            :key="cat"
-            size="small"
-            effect="plain"
-            type="info"
-          >
-            {{ cat }}
-          </ElTag>
-          <span v-if="!preheatReport.categories?.length" class="a-muted">无单独分类返回</span>
-        </div>
-
-        <ElDivider content-position="left">
-          成功预热的精选推荐片单 ({{ preheatReport.recommend_count }} 部)
-        </ElDivider>
-        <div class="rec-titles-wrap">
-          <div
-            v-for="(title, idx) in preheatReport.recommend_titles ?? []"
-            :key="idx"
-            class="title-badge"
-          >
-            <span class="badge-idx">{{ idx + 1 }}.</span>
-            <span class="badge-text" :title="title">{{ title }}</span>
-          </div>
-          <span v-if="!preheatReport.recommend_titles?.length" class="a-muted">无推荐影片返回</span>
-        </div>
-
-        <template v-if="preheatReport.sample_posters?.length">
-          <ElDivider content-position="left">抽样海报缩略图预览</ElDivider>
-          <div class="sample-posters-grid">
-            <div
-              v-for="(img, idx) in preheatReport.sample_posters"
-              :key="idx"
-              class="poster-preview-card"
-            >
-              <img :src="img" alt="封面" loading="lazy" />
-            </div>
-          </div>
-        </template>
-      </div>
-
-      <template #footer>
-        <ElButton type="primary" @click="isPreheatReportVisible = false">已知晓关闭</ElButton>
       </template>
     </ElDialog>
 
@@ -1550,9 +1259,8 @@ async function saveDetailPolicy(): Promise<void> {
 <style scoped>
 .sites-container {
   margin-top: 16px;
-  background: var(--a-card-bg, #fff);
-  border-radius: 8px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  background: transparent;
+  box-shadow: none;
 }
 
 .sites-table {

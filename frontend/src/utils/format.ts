@@ -23,3 +23,28 @@ export function formatExpiry(time: number | string | null | undefined): string {
     return String(time)
   }
 }
+
+let _globalImageProxy = false
+
+export function setGlobalImageProxy(enabled: boolean): void {
+  _globalImageProxy = enabled
+}
+
+export function isGlobalImageProxy(): boolean {
+  return _globalImageProxy
+}
+
+/**
+ * 智能包装影视海报封面地址：
+ * 开启全局代理后，第三方 http/https 图片自动转由 /api/v1/proxy/image 中继
+ */
+export function formatPosterUrl(rawUrl: string | undefined | null): string {
+  if (!rawUrl) return ''
+  const trimmed = rawUrl.trim()
+  if (!trimmed) return ''
+  if (trimmed.startsWith('/api/v1/proxy/image')) return trimmed
+  if (_globalImageProxy && (trimmed.startsWith('http://') || trimmed.startsWith('https://'))) {
+    return `/api/v1/proxy/image?url=${encodeURIComponent(trimmed)}`
+  }
+  return trimmed
+}

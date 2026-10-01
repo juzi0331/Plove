@@ -27,6 +27,12 @@
       "description": "剩余存活秒数（TTL 倒计时）",
       "title": "Remaining Seconds",
       "type": "number"
+    },
+    "is_disk": {
+      "default": false,
+      "description": "是否来自 L2 本地磁盘持久化镜像",
+      "title": "Is Disk",
+      "type": "boolean"
     }
   },
   "required": [

@@ -38,6 +38,14 @@ def get_engine() -> Engine:
         url = settings.database_url
         _engine = create_engine(url, **_options_for(url, settings.database_echo))
         _session_factory = sessionmaker(bind=_engine, autoflush=False, expire_on_commit=False)
+        try:
+            from app.db.schema import create_schema
+
+            create_schema(_engine)
+        except Exception as exc:
+            import logging
+
+            logging.getLogger("db").warning("数据库 schema 对齐异常: %s", exc)
     return _engine
 
 

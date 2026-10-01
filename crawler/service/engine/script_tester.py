@@ -22,7 +22,10 @@ import time
 from typing import Any, Optional
 from pydantic import BaseModel
 
-from crawler_kit.audit import audit_script_ast, get_crawler_runner_env
+try:
+    from crawler_kit.audit import audit_script_ast, get_crawler_runner_env
+except ModuleNotFoundError:
+    from crawler.crawler_kit.audit import audit_script_ast, get_crawler_runner_env
 
 from ..core.log import get_logger
 
@@ -67,8 +70,6 @@ class ScriptTester:
         # 注入代理配置（如启用）
         from .proxy_manager import proxy_manager
         env.update(proxy_manager.get_env())
-                pp_parts.append(existing)
-            env["PYTHONPATH"] = os.pathsep.join(pp_parts)
 
         try:
             proc = subprocess.run(  # noqa: S603

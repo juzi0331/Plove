@@ -30,6 +30,8 @@ class ActivationCode(Base):
 
     #: 这个码给多长的时长（小时）。天数换算在发码时做，库里只存小时，避免单位歧义。
     duration_hours: Mapped[int] = mapped_column(Integer, default=24)
+    #: 最多允许绑定的设备数（None 表示不限，数值表示上限，不对普通用户公开）
+    max_devices: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)
     #: 备注：发给谁、哪一批。纯给人看的。
     note: Mapped[str] = mapped_column(String(255), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)

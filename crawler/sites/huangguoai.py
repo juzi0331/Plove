@@ -1,30 +1,49 @@
 #!/usr/bin/env python
 """黄果短剧官网（https://huangguoai.com）单文件爬虫适配器。
 
-站点特征（已实测）：
+站点特征（2026-10 实测，非推测）：
 
-* 全站服务端渲染，裸 GET 直接 200（text/html; charset=utf-8），无反爬闸门；
-* 首页、分类页均使用同一模板：``/<分类 slug>/``，分类靠顶栏
-  ``.hg-topbar-nav__item`` / 列表页 ``.hg-category-col__title`` 里的相对路径区分；
-* 播放页 ``/play/<id>.html`` 只服务端渲染线路、集号和 m3u8 索引；
-  真实 m3u8 地址藏在 ``<script id="config">`` 的 JS 对象里，按
-  ``key: b64(ep_index)`` 的查表格式通过 AES-128-ECB（PKCS#7）解密；
-* 播放页有多个线路，必须按 ``line`` 选定线路后取集；
-* 详情页没有可靠的按集号排序的剧集，`detail` 按线路逐集重查播放页；
-* 首页/分类页有“移动端横幅”``#app-mobile .banner .item``，脚本禁止抓取；
-* 首页只抓推荐，不抓完整片单；
-* `line` 自带 `name`，可在日志里定位哪条线路失败。
+* 全站服务端渲染，裸 GET 直接 200；无反爬闸门、无 CDndefend、无限速迹象；
+* 频道页 ``/ai-duanju/`` 等，分页 ``/ai-duanju/<页码>/``（第 1 页无页码段）；
+  ``nav.hg-pager`` 里的页码链接上限就是总页数；
+* 卡片 ``div.hg-drama-card``：封面在 ``img[data-src]``（``src`` 是占位图），
+  标题在 ``.hg-drama-card__title`` 锚点的**直接文本**（内含 ``.sr-only``
+  隐藏水印"全集在线观看"，取后代 text 会混入，必须只取直接文本），
+  备注在 ``.hg-drama-card__episode`` 的 ``data-ep-base``（如"更新至9集"）；
+* 首页的 ``hg-search-suggest``（热搜词）里埋了同款卡片、hero 大图
+  ``a.hg-hero__cover-link`` 指向站外广告 —— 都要按祖先特征过滤掉；
+* 详情页 ``/video/<id>/``、第 N 集 ``/video/<id>/ep-N/``（第 1 集即详情页
+  本身），页面内嵌 ``<script id="videoInitialData" type="application/json">``：
+  ``videoSrc`` 是**明文 m3u8**（HLS 自带 AES-128 密钥段，密钥/IV 由播放器
+  按清单自理，爬虫不需要碰）；``videoApi/videoKey/videoIv`` 实测为空；
+* ``epPlaySrcs`` 的键是**集号**（当前集 ±1 的地址窗口，已实测确认：
+  ep2 页的 ``"2"`` 与该页 ``videoSrc`` 逐字符一致，且 auth_key 每页现签）
+  —— 所以 play 必须落到对应集的页面现取，地址不可缓存；
+* 选集列表 ``a.hg-web-play__ep[data-ep-id]``，第 1 集的 href 是规范地址
+  ``/video/<id>/``，其余是 ``/video/<id>/ep-N/``；
+* 播放只有一条线路（epPlaySrcs 的键是集号不是线路），lines 固定 1 条；
+* 无效 id / 越界页码 / 不存在的标签都返回 HTTP 404。
+
+用法::
+
+    python sites/huangguoai.py meta
+    python sites/huangguoai.py home
+    python sites/huangguoai.py category --tid ai-duanju --page 2
+    python sites/huangguoai.py detail --id 7420
+    python sites/huangguoai.py play --id 7420 --ep 2
+    # 带上详情里给的 play_id 可精确落集（可省一次集号推断）
+    python sites/huangguoai.py play --play-id /video/7420/ep-2/
 """
 
 from __future__ import annotations
 
-import base64
-import binascii
+import json
+import os
 import re
 import sys
 
 if __package__ in (None, ""):  # 允许直接 `python sites/huangguoai.py` 运行
-    sys.path.insert(0, "/e/Pychon-code/NY/Plove1.0")
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from crawler_kit import Client, CrawlerError, clean, cli, log, parse  # noqa: E402
 
@@ -33,164 +52,233 @@ NAME = "黄果短剧官网"
 BASE_URL = "https://huangguoai.com/"
 DEFAULT_TIMEOUT = 20.0
 
-# 播放页里 `<script id=config>` 的 JS 对象：`key: b64(ep_index)`。
-# 常见写法包括：
-#   '7eef2b8946ec...' : '01'
-#   '7eef2b8946ec...': '02'
-#   "7eef2b8946ec...\":\"03"
-_CONFIG_RE = re.compile(r"""['"]?([0-9a-fA-F]{32,})['"]?\s*:\s*['"]([^'"]+)['"]""")
+#: 卡片/详情共用的影片路径：``/video/<id>/``
+_DETAIL_HREF_RE = re.compile(r"/video/(\d+)/")
 
-# 播放页里的 `select#line` 选项，用于把 `line` 映射到线路名。
-_LINE_OPTION_RE = re.compile(r"""['"]?([^'"]+)['"]?\s*value=['"]?([^'"]+)['"]""")
+#: 顶栏/侧栏里真正可当"分类"用的导航：AI 频道 + 排行榜
+_CATEGORY_HREF_RE = re.compile(r"^/(ai-[\w-]+|ranks/hot)/$")
 
-# 播放页里 `select#ep` 里的 `option value`。
-_EP_OPTION_RE = re.compile(r"""['"]?([^'"]+)['"]?\s*value=['"]?([^'"]+)['"]""")
+#: 集页定位符（play_id）：``/video/<id>/`` 或 ``/video/<id>/ep-<n>/``
+_EP_HREF_RE = re.compile(r"^/video/(\d+)/(?:ep-(\d+)/)?$")
 
-# 播放页的 m3u8 索引，一般形如 `http://.../play/.../index.m3u8`。
-_M3U8_RE = re.compile(r"""https?://[^\s'"]+\.m3u8""", re.I)
+#: 详情/集页内嵌的 JSON 信令块
+_INITIAL_DATA_RE = re.compile(
+    r'<script id="videoInitialData"[^>]*>(.*?)</script>', re.S
+)
 
-
-# ------------------------------------------------------------------ 解密
-
-def _unpad_pkcs7(payload: bytes) -> bytes:
-    if not payload:
-        raise ValueError("empty ciphertext")
-    pad = payload[-1]
-    if pad < 1 or pad > 16:
-        raise ValueError("invalid PKCS#7 padding")
-    if payload[-pad:] != bytes([pad] * pad):
-        raise ValueError("PKCS#7 padding mismatch")
-    return payload[:-pad]
+#: 分类 tid 的合法形态（含 ranks/hot 这类带一段目录的）
+_TID_RE = re.compile(r"[\w-]+(?:/[\w-]+)*")
 
 
-def _aes_128_ecb_decrypt(key: str, ciphertext_b64: str) -> str:
-    """按 `key: b64(ep_index)` 的查表格式解密，返回 UTF-8 明文。"""
-    key_bytes = key.encode("utf-8")
-    if len(key_bytes) != 16:
-        raise ValueError(f"密钥不是 16 字节: {key!r}")
+# ------------------------------------------------------------------ 工具
+
+def _direct_text(node) -> str:
+    """只取节点的**直接**文本子节点。
+
+    站点把水印（``.sr-only``）藏在标题锚点内部，取全部后代 text 会把
+    "全集在线观看"之类的水印一起带进来，所以标题只能取直接文本。
+    """
+    if node is None:
+        return ""
+    chunks = [child.data or "" for child in node.children if child.is_text]
+    return clean.collapse("".join(chunks))
+
+
+def _in_noise(node) -> bool:
+    """卡片是否躺在不可信的容器里。
+
+    三类噪音：首页热搜词块（``hg-search-suggest``）、分类页隐藏面板
+    （带 ``hidden`` 属性或行内隐藏）、翻版卡片模板（``<template>``）。
+    """
+    parent = node.parent
+    while parent is not None:
+        if parent.tag == "template" or "hidden" in parent.attrs or parent.is_hidden:
+            return True
+        classes = parent.attrs.get("class") or ""
+        if "hg-search-suggest" in classes:
+            return True
+        parent = parent.parent
+    return False
+
+
+def _initial_data(html: str) -> dict:
+    """解析详情/集页内嵌的 ``videoInitialData`` JSON 信令。"""
+    match = _INITIAL_DATA_RE.search(html or "")
+    if not match:
+        return {}
     try:
-        blob = base64.b64decode(ciphertext_b64, validate=True)
-    except (binascii.Error, ValueError) as exc:
-        raise ValueError(f"无效 base64: {ciphertext_b64!r}") from exc
-    if len(blob) % 16 != 0:
-        raise ValueError("密文长度不是 16 字节对齐")
-
-    # AES-128-ECB: 每一列独立变换。Nielsen 给出的是列优先 4x4 状态。
-    # 逆变换顺序：逆 ShiftRows -> 逆 MixColumns -> 逆 SubBytes -> 逆 AddRoundKey。
-    state = list(blob)
-
-    # 构造 AES S-box 与求逆 S-box。
-    sbox = []
-    for i in range(256):
-        v = i
-        if v == 0:
-            s = 0x63
-        else:
-            c = v
-            p = 1
-            while p < 256:
-                p <<= 1
-                if p & 256:
-                    p ^= 0x11B
-                c ^= p
-            s = c ^ 0x63
-        sbox.append(s)
-
-    inv_sbox = [0] * 256
-    for i, s in enumerate(sbox):
-        inv_sbox[s] = i
-
-    # GF(2^8) 对数/指数表。
-    gf_exp = [0] * 256
-    gf_log = [0] * 256
-    x = 1
-    for i in range(255):
-        gf_exp[i] = x
-        gf_log[x] = i
-        x <<= 1
-        if x & 0x100:
-            x ^= 0x11B
-    gf_exp[255] = gf_exp[0]
-
-    def gf_mul(a: int, b: int) -> int:
-        if a == 0 or b == 0:
-            return 0
-        return gf_exp[(gf_log[a] + gf_log[b]) % 255]
-
-    def gf_mul_const(a: int, c: int) -> int:
-        if a == 0 or c == 0:
-            return 0
-        return gf_exp[(gf_log[a] + c) % 255]
-
-    def add_round_key(rk: list[int]) -> None:
-        for i in range(4):
-            state[i] ^= rk[i]
-
-    # 逆移位行。
-    t = state[13]
-    state[13] = state[9]
-    state[9] = state[5]
-    state[5] = state[1]
-    state[1] = t
-
-    t = state[14]
-    state[14] = state[10]
-    state[10] = state[6]
-    state[6] = state[2]
-    state[2] = t
-
-    t = state[15]
-    state[15] = state[11]
-    state[11] = state[7]
-    state[7] = state[3]
-    state[3] = t
-
-    # 逆 MixColumns：每列用矩阵 [0E 0B 0D 09; 09 0E 0B 0D; 0D 09 0E 0B; 0B 0D 09 0E] 变换。
-    for col in range(4):
-        a0 = state[col]
-        a1 = state[col + 4]
-        a2 = state[col + 8]
-        a3 = state[col + 12]
-
-        m0 = gf_mul_const(a0, 0x0E)
-        m1 = gf_mul_const(a1, 0x0B)
-        m2 = gf_mul_const(a2, 0x0D)
-        m3 = gf_mul_const(a3, 0x09)
-
-        m4 = gf_mul_const(a0, 0x09)
-        m5 = gf_mul_const(a1, 0x0E)
-        m6 = gf_mul_const(a2, 0x0B)
-        m7 = gf_mul_const(a3, 0x0D)
-
-        m8 = gf_mul_const(a0, 0x0D)
-        m9 = gf_mul_const(a1, 0x09)
-        m10 = gf_mul_const(a2, 0x0E)
-        m11 = gf_mul_const(a3, 0x0B)
-
-        m12 = gf_mul_const(a0, 0x0B)
-        m13 = gf_mul_const(a1, 0x0D)
-        m14 = gf_mul_const(a2, 0x09)
-        m15 = gf_mul_const(a3, 0x0E)
-
-        state[col] = m0 ^ m1 ^ m2 ^ m3
-        state[col + 4] = m4 ^ m5 ^ m6 ^ m7
-        state[col + 8] = m8 ^ m9 ^ m10 ^ m11
-        state[col + 12] = m12 ^ m13 ^ m14 ^ m15
-
-    # 逆 SubBytes。
-    for i in range(16):
-        state[i] = inv_sbox[state[i]]
-
-    return bytes(state).decode("utf-8")
+        payload = json.loads(match.group(1))
+    except ValueError:
+        return {}
+    return payload if isinstance(payload, dict) else {}
 
 
-# ------------------------------------------------------------------ 站点
+def _year(value) -> int:
+    text = str(value or "")
+    return int(text[:4]) if len(text) >= 4 and text[:4].isdigit() else 0
+
+
+# ------------------------------------------------------------------ 映射层
+
+def _card(node):
+    """``div.hg-drama-card`` -> VodItem。缺名字的一律丢弃，不伪造。"""
+    link = node.select_first("a.hg-drama-card__cover-link")
+    if link is None:
+        link = node.select_first('a[href^="/video/"]')
+    if link is None:
+        return None
+    match = _DETAIL_HREF_RE.search(link.attr("href") or "")
+    if not match:
+        return None
+
+    name = ""
+    title = node.select_first(".hg-drama-card__title")
+    if title is not None:
+        name = _direct_text(title.select_first("a") or title)
+        if not name:
+            name = clean.strip_promo(title.text)
+    if not name:
+        image = link.select_first("img")
+        name = clean.strip_promo(image.attr("alt") or "") if image is not None else ""
+    if not name:
+        return None
+
+    video = {
+        "vod_id": match.group(1),
+        "vod_name": name,
+        "vod_pic": clean.absolute(parse.first_image(link), BASE_URL),
+        "vod_remarks": "",
+    }
+
+    episode = node.select_first(".hg-drama-card__episode")
+    if episode is not None:
+        remarks = clean.collapse(episode.attr("data-ep-base") or "") or episode.text
+        video["vod_remarks"] = clean.strip_promo(remarks)
+
+    score = clean.to_float(node.select_first(".hg-drama-card__score").text) \
+        if node.select_first(".hg-drama-card__score") is not None else None
+    if score:
+        video["vod_score"] = score
+
+    tags = [
+        _direct_text(tag)
+        for tag in node.select(".hg-drama-card__tags a.hg-tag")
+    ]
+    tags = [tag for tag in tags if tag]
+    if tags:
+        video["vod_type"] = ",".join(tags)
+    return video
+
+
+def _cards(root):
+    out = []
+    for node in root.select("div.hg-drama-card"):
+        if _in_noise(node):
+            continue
+        card = _card(node)
+        if card is not None:
+            out.append(card)
+    return clean.dedupe(out, key=lambda item: item["vod_id"])
+
+
+def _category_items(root):
+    """首页"分类推荐"栏的 ``a.hg-category-item`` -> VodItem（补充推荐）。"""
+    out = []
+    for anchor in root.select("a.hg-category-item"):
+        if _in_noise(anchor):
+            continue
+        match = _DETAIL_HREF_RE.search(anchor.attr("href") or "")
+        if not match:
+            continue
+        name = _direct_text(anchor.select_first(".hg-category-item__title"))
+        if not name:
+            continue
+        out.append(
+            {
+                "vod_id": match.group(1),
+                "vod_name": name,
+                "vod_pic": clean.absolute(parse.first_image(anchor), BASE_URL),
+                "vod_remarks": "",
+            }
+        )
+    return out
+
+
+def _categories(root):
+    """顶栏 + 侧栏导航 -> categories。只收 AI 频道与排行榜。
+
+    注意：``/topics/``（专题拼盘）、``/chigua/``（社区）、``/go-home/``
+    （APP 下载）和站外 APP 链接都不是影片分类，必须排除。
+    """
+    out = []
+    seen = set()
+    for css in (".hg-topbar-nav__item", ".hg-nav-item"):
+        for anchor in root.select(css):
+            match = _CATEGORY_HREF_RE.match(anchor.attr("href") or "")
+            if not match:
+                continue
+            tid = match.group(1)
+            if tid in seen:
+                continue
+            name = clean.collapse(anchor.text)
+            if not name:
+                continue
+            seen.add(tid)
+            out.append({"tid": tid, "name": name})
+    return out
+
+
+def _has_more(root, tid: str, page: int) -> bool:
+    """``nav.hg-pager`` 页码链接里的最大页数 > 当前页即还有下一页。"""
+    best = 0
+    for anchor in root.select("a.hg-pager__page"):
+        matched = re.fullmatch(
+            r"/" + re.escape(tid) + r"/(\d+)/", anchor.attr("href") or ""
+        )
+        if matched:
+            best = max(best, int(matched.group(1)))
+    return best > page
+
+
+def _episodes(root, vid: str, fallback_ep: int = 1):
+    """选集锚点 -> episodes（ep_index 1 起算，play_id 是站内相对路径）。"""
+    out = []
+    for anchor in root.select("a.hg-web-play__ep"):
+        index = clean.to_int(anchor.attr("data-ep-id"))
+        href = clean.safe_relative_path(anchor.attr("href") or "")
+        if index is None or not href:
+            continue
+        out.append(
+            {
+                "ep_index": index,
+                "ep_name": f"第{index}集",
+                "play_id": href,
+                "line": 1,
+            }
+        )
+    out.sort(key=lambda item: item["ep_index"])
+    out = clean.dedupe(out, key=lambda item: item["ep_index"])
+    if not out:
+        # 单集剧可能不渲染选集列表：至少保住信令里声明的当前集
+        out = [
+            {
+                "ep_index": fallback_ep,
+                "ep_name": f"第{fallback_ep}集",
+                "play_id": f"/video/{vid}/" if fallback_ep <= 1 else f"/video/{vid}/ep-{fallback_ep}/",
+                "line": 1,
+            }
+        ]
+    return out
+
+
+# --------------------------------------------------------------------- 站点
 
 class Huangguoai:
     key = KEY
     name = NAME
     version = "1.0.0"
     base_url = BASE_URL
+    #: 直连源站即可播放（清单 CORS 开放，实测无 Referer 也能 200）
     mode = "direct"
     capabilities = ("meta", "home", "category", "detail", "play")
 
@@ -198,14 +286,39 @@ class Huangguoai:
         self.http = client or Client(
             base_url=BASE_URL,
             timeout=DEFAULT_TIMEOUT,
+            retries=1,
             headers={
+                "Referer": BASE_URL,
                 "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
                 "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
             },
-            retries=1,
         )
 
-    # ---------------------------------------------------------------- 生命周期
+    # ---------------------------------------------------------------- 基础
+
+    def _page(self, path: str) -> str:
+        response = self.http.get(path)
+        if response.status == 404:
+            raise CrawlerError("NOT_FOUND", f"页面不存在: {path}")
+        if not response.ok:
+            raise CrawlerError("HTTP_ERROR", f"{path} 返回 HTTP {response.status}")
+        return response.text
+
+    @staticmethod
+    def _check_id(id) -> str:
+        value = str(id or "").strip()
+        if not re.fullmatch(r"\d{1,12}", value):
+            raise CrawlerError("NOT_FOUND", f"无效的影片 id: {id}")
+        return value
+
+    @staticmethod
+    def _check_tid(tid) -> str:
+        value = str(tid or "").strip().strip("/")
+        if not value or ".." in value or not _TID_RE.fullmatch(value):
+            raise CrawlerError("NOT_FOUND", f"无效的分类 id: {tid}")
+        return value
+
+    # ---------------------------------------------------------------- 动作
 
     def meta(self):
         return {
@@ -217,335 +330,129 @@ class Huangguoai:
             "capabilities": list(self.capabilities),
             "play_format": ["m3u8"],
             "note": (
-                "首页/分类页: /<分类 slug>/；详情: /detail/<id>.html；"
-                "播放: /play/<id>.html，需 JS 解密 m3u8"
+                "SSR 站点；频道 /<tid>/、分页 /<tid>/<页>/；详情 /video/<id>/、"
+                "选集 /video/<id>/ep-<n>/；m3u8 明文写在 videoInitialData 里，"
+                "epPlaySrcs 键是集号（±1 窗口），地址现签、不可缓存"
             ),
         }
 
-    # ---------------------------------------------------------------- 请求
-
-    def _page(self, path: str) -> str:
-        response = self.http.get(path)
-        if not response.ok:
-            raise CrawlerError("HTTP_ERROR", f"{path} 返回 HTTP {response.status}")
-        return response.text
-
-    # ---------------------------------------------------------------- 动作
-
     def home(self):
-        html = self._page("/")
-        root = parse.parse_html(html)
-        return self._common_page(root, "/")
+        root = parse.parse_html(self._page("/"))
+        recommend = _cards(root) + _category_items(root)
+        return {
+            "categories": _categories(root),
+            "recommend": clean.dedupe(recommend, key=lambda item: item["vod_id"]),
+        }
 
-    def category(self, tid=None, page=1):
+    def category(self, tid, page=1):
+        tid = self._check_tid(tid)
         page = clean.to_int(page, 1) or 1
         if page < 1:
             page = 1
-        if tid is None or str(tid).strip() == "":
-            raise CrawlerError("NOT_FOUND", "缺少必填参数 --tid")
-        tid = str(tid).strip()
-        if not tid:
-            raise CrawlerError("NOT_FOUND", f"无效的分类 id: {tid}")
-        html = self._page(f"/{tid}/")
-        root = parse.parse_html(html)
-        return self._common_page(root, f"/{tid}/")
-
-    def _common_page(self, root, current_path: str):
-        categories = _categories(root)
-        # 首页只抓推荐；分类页才抓完整片单。分类页可能只给当前页片单。
-        videos = _videos(root, forbidden_selectors=("#app-mobile .banner .item",))
-        has_more = _has_more(root, current_path)
+        path = f"/{tid}/" if page <= 1 else f"/{tid}/{page}/"
+        root = parse.parse_html(self._page(path))
         return {
-            "categories": categories,
-            "recommend": videos,
-            "page": _current_page(root),
-            "has_more": has_more,
+            "videos": _cards(root),
+            "page": page,
+            "has_more": _has_more(root, tid, page),
         }
 
     def detail(self, id):
-        detail_id = self._check_detail_id(id)
-        if detail_id is None:
-            raise CrawlerError("NOT_FOUND", f"无效的影片 id: {id}")
+        vid = self._check_id(id)
+        html = self._page(f"/video/{vid}/")
+        data = _initial_data(html)
 
-        root = parse.parse_html(self._page(f"/detail/{detail_id}.html"))
-        video = _video(root, detail_id)
-        if video is None:
-            raise CrawlerError("NOT_FOUND", f"详情页中未解析到有效影片: {detail_id}")
+        name = clean.strip_promo(data.get("title") or "")
+        if not name:
+            # 信令缺失时退回 <h1>（正常情况下信令一定在）
+            root = parse.parse_html(html)
+            heading = root.select_first("h1")
+            name = clean.strip_promo(heading.text) if heading is not None else ""
+        if not name:
+            raise CrawlerError("PARSE_ERROR", f"详情页未解析到影片: {vid}")
 
-        desc = _description(root)
-        if not desc:
-            raise CrawlerError("PARSE_ERROR", f"详情页缺少摘要: {detail_id}")
+        current_ep = clean.to_int(data.get("ep"), 1) or 1
+        root = parse.parse_html(html)
+        episodes = _episodes(root, vid, fallback_ep=current_ep)
 
-        episodes, lines = _episodes(root, detail_id)
-        if not episodes:
-            raise CrawlerError("PARSE_ERROR", f"详情页未解析到剧集: {detail_id}")
-
-        video["episodes"] = episodes
-        video["lines"] = lines
-        video["desc"] = desc
+        video = {
+            "vod_id": str(clean.to_int(data.get("id"), vid) or vid),
+            "vod_name": name,
+            "vod_pic": clean.absolute(
+                data.get("coverSrc") or data.get("posterSrc") or "", BASE_URL
+            ),
+            "vod_remarks": f"更新至{len(episodes)}集" if len(episodes) > 1 else "",
+        }
+        tags = [clean.clean_text(tag) for tag in data.get("tags") or []]
+        tags = [tag for tag in tags if tag]
+        if tags:
+            video["vod_type"] = ",".join(tags)
+        year = _year(data.get("time"))
+        if year:
+            video["vod_year"] = year
 
         return {
             "video": video,
-            "desc": desc,
+            "desc": clean.strip_promo(data.get("description") or ""),
             "episodes": episodes,
-            "lines": lines,
+            # 该源单线路：epPlaySrcs 的键是集号（±1 窗口），不是线路
+            "lines": [{"line": 1, "name": "默认线路", "count": len(episodes)}],
         }
 
     def play(self, id=None, ep=1, line=1, play_id=None):
+        line_no = clean.to_int(line, 1) or 1
+        if line_no > 1:
+            log.warn(f"该源只有一条线路，忽略 --line {line_no}")
         index = clean.to_int(ep, 1) or 1
         if index < 1:
             index = 1
-        line_no = clean.to_int(line, 1) or 1
-        if line_no < 1:
-            line_no = 1
 
-        detail = self.detail(id)
-        target = _pick_episode(detail, index, line_no)
-        if target is None:
-            raise CrawlerError(
-                "NOT_FOUND",
-                f"线路 {line_no} 第 {index} 集不存在（共 {len(detail['lines'])} 条线路）",
-            )
-
-        html = self._page(target["play_url"])
-        m3u8 = _m3u8_from_play_page(html)
-        if not m3u8:
-            raise CrawlerError("PARSE_ERROR", "播放页未解密出 m3u8")
-
-        return {"url": m3u8, "format": "m3u8", "headers": {"Referer": BASE_URL}}
-
-    def _check_detail_id(self, id):
-        value = str(id or "").strip()
-        if not value:
-            return None
-        if not re.fullmatch(r"[0-9a-fA-F]{6,}", value):
-            return None
-        return value
-
-
-# ------------------------------------------------------------------ 解析
-
-def _categories(root):
-    """顶栏导航 + 分类区块列出所有分类。
-
-    注意：分页链接（``/ai-duanju/2``、``/ai-duanju/3``）和
-    ``/ai-duanju/2/`` 这种伪分类必须过滤掉。
-    """
-    out = []
-    seen = set()
-
-    # 顶栏导航：<a class="hg-topbar-nav__item" href="/ai-duanju/">
-    for anchor in root.select('a[href^="/ai-"]'):
-        href = clean.clean_text(anchor.attr("href")) if anchor.attr("href") else ""
-        if not href or _is_pager_link(href):
-            continue
-        name = clean.clean_text(anchor.text) or "未命名分类"
-        if href not in seen:
-            seen.add(href)
-            out.append({"tid": href.rstrip("/"), "name": name})
-
-    # 分类区块：<a class="hg-category-col__title" href="/ai-duanju/">
-    for anchor in root.select('a.hg-category-col__title'):
-        href = clean.clean_text(anchor.attr("href")) if anchor.attr("href") else ""
-        if not href or _is_pager_link(href):
-            continue
-        name = clean.clean_text(anchor.text) or "未命名分类"
-        if href not in seen:
-            seen.add(href)
-            out.append({"tid": href.rstrip("/"), "name": name})
-
-    return out
-
-
-def _videos(root, forbidden_selectors):
-    """首页主推荐区的影片卡片 -> VodItem。"""
-    out = []
-    # 首页主推荐区：<a class="hg-drama-card__cover-link" href="/video/6875/">
-    for node in root.select('a.hg-drama-card__cover-link'):
-        match = re.search(r"/video/([0-9]+)/", node.attr("href") or "")
-        if not match:
-            continue
-        name = clean.clean_text(node.text) or match.group(1)
-        if not name:
-            continue
-        video = {
-            "vod_id": match.group(1),
-            "vod_name": name,
-            "vod_pic": "",
-            "vod_remarks": "",
-        }
-        out.append(video)
-    return clean.dedupe(out, key=lambda item: item["vod_id"])
-
-
-def _has_more(root, current_path: str) -> bool:
-    # 首页/分类页都没有分页，返回 False；协议需要 has_more。
-    return False
-
-
-def _is_pager_link(href: str) -> bool:
-    """判断是否是分页/伪分类链接，例：/ai-duanju/2、/ai-duanju/3。"""
-    return bool(re.fullmatch(r"/ai-[a-z]+/\d+(\/.*)?", href))
-
-
-def _current_page(root):
-    # 当前页码：首页/分类页只有一页，返回 1。
-    return 1
-
-
-def _description(root):
-    """详情页摘要：优先 meta description，其次正文。"""
-    node = root.select_first('meta[name="description"]')
-    if node is not None and node.attr("content"):
-        text = clean.clean_text(node.attr("content"))
-        if text:
-            return text[:5000]
-
-    node = root.select_first("[class*=desc]")
-    if node is not None and node.text:
-        text = clean.clean_text(node.text)
-        if text:
-            return text[:5000]
-
-    node = root.select_first("[class*=intro]")
-    if node is not None and node.text:
-        text = clean.clean_text(node.text)
-        if text:
-            return text[:5000]
-
-    return ""
-
-
-def _episodes(root, detail_id):
-    """详情页按线路逐集重查播放页，获取 m3u8 索引。"""
-    lines = []
-    line_names = []
-
-    # 详情页播放入口：<select id="line"> 里的 <option>。
-    for option in root.select('select#line option'):
-        value = option.attr("value")
-        if value:
-            lines.append(value)
-            name = clean.clean_text(option.text)
-            if name:
-                line_names.append(name)
-
-    episodes = []
-    for line_no, line in enumerate(lines, start=1):
-        name = line_names[line_no - 1] if line_no - 1 < len(line_names) else line
-        href = f"/play/{detail_id}.html?line={line}&ep=1"
-        if name:
-            episodes.append(
-                {
-                    "ep_index": 1,
-                    "ep_name": name,
-                    "play_url": href,
-                    "line": name,
-                    "line_no": line_no,
-                }
-            )
+        # play_id 加速通道：必须是本站的集页相对路径，且（若给了 id）归属一致
+        path = clean.safe_relative_path(play_id)
+        embedded_ep = None
+        if path:
+            matched = _EP_HREF_RE.match(path)
+            if not matched:
+                log.warn(f"忽略不可信的 play_id（不是集页路径）: {str(play_id)[:80]!r}")
+                path = ""
+            else:
+                vid = self._check_id(id) if id is not None else matched.group(1)
+                if matched.group(1) != vid:
+                    log.warn(
+                        f"play_id 与 --id 不一致，按 --id 处理: "
+                        f"{matched.group(1)} != {vid}"
+                    )
+                    path = ""
+                else:
+                    embedded_ep = clean.to_int(matched.group(2), 1) or 1
         else:
-            episodes.append(
-                {
-                    "ep_index": 1,
-                    "ep_name": f"第{line_no}集",
-                    "play_url": href,
-                    "line": line,
-                    "line_no": line_no,
-                }
-            )
+            vid = self._check_id(id)
 
-    return episodes, lines
+        if not path and id is None:
+            raise CrawlerError("NOT_FOUND", "play 需要 --id；或者传一个合法的 --play-id")
 
+        # play_id 自带的集号优先于 --ep（它是详情里下发的精确定位符）
+        target_ep = embedded_ep or index
+        if not path:
+            path = f"/video/{vid}/" if target_ep <= 1 else f"/video/{vid}/ep-{target_ep}/"
 
-def _pick_episode(detail, index, line_no):
-    for episode in detail.get("episodes") or []:
-        if episode.get("line_no") == line_no and episode.get("ep_index") == index:
-            return episode
-    return None
+        html = self._page(path)
+        data = _initial_data(html)
+        if not data:
+            raise CrawlerError("PARSE_ERROR", f"集页缺少 videoInitialData: {path}")
 
+        page_ep = clean.to_int(data.get("ep"), target_ep) or target_ep
+        if page_ep != target_ep:
+            log.warn(f"站点返回第 {page_ep} 集（请求第 {target_ep} 集）: {path}")
 
-def _m3u8_from_play_page(html):
-    """播放页 `<script id=config>` 里的 `key: b64(ep_index)`，按同一脚本
-    里的 `key` 查表并 AES-128-ECB 解密，返回 m3u8 地址。"""
-    root = parse.parse_html(html)
-    scripts = root.select('script[id=config]')
-    if not scripts:
-        return None
+        sources = data.get("epPlaySrcs") or {}
+        url = str(sources.get(str(page_ep)) or data.get("videoSrc") or "").strip()
+        if not url:
+            raise CrawlerError("PARSE_ERROR", f"第 {page_ep} 集没有播放地址")
 
-    config_text = clean.clean_text(scripts[0].text)
-    if not config_text:
-        return None
-
-    # 取 `key = '...'` 里的值。
-    match = re.search(r"['\"]([0-9a-fA-F]{32,})['\"]\s*=", config_text)
-    if not match:
-        return None
-
-    key = match.group(1)
-
-    # 按线路选其实是在首页/分类页就返回了，播放页只需要按 `line` 取。
-    for option in root.select('select#line option'):
-        value = option.attr("value")
-        if not value:
-            continue
-        # 取 `value` 的 `<option value="line">` 里 `value` 对应的值。实际线路
-        # 名称直接来自 `<option>` 文本。
-        option_text = clean.clean_text(option.text)
-        index = _option_index(option_text, value)
-        if index is None:
-            continue
-
-        # 按 `key: b64(ep_index)` 查表。
-        for match in _CONFIG_RE.finditer(config_text):
-            config_key = match.group(1)
-            if config_key != key:
-                continue
-            ciphertext = match.group(2)
-            try:
-                plain = _aes_128_ecb_decrypt(key, ciphertext)
-            except (ValueError, binascii.Error, OverflowError):
-                log.warn(f"黄果解密失败: {config_key[:8]}... ep={index}")
-                continue
-            if plain:
-                return plain
-
-    return None
-
-
-def _option_index(option_text: str, value: str) -> int | None:
-    """根据 `select#ep` 里 `value` 的写法，取对应集号。"""
-    # 常见写法：`value="1"`、`value="1"`、`value="1"`、`value="1"`。
-    # 优先按 `value` 对应 `<option>` 里的文本取集号。
-    for option in re.finditer(
-        r"<option[^>]*value=['\"]([^'\"]+)['\"][^>]*>(.*?)</option>", option_text, re.S
-    ):
-        opt_value, opt_html = option.group(1), option.group(2)
-        if opt_value == value:
-            text = clean.clean_text(opt_html)
-            if text:
-                match = re.search(r"\d+", text)
-                if match:
-                    return int(match.group())
-            return None
-    # 兜底：如果 `value` 直接就是集号。
-    if re.fullmatch(r"\d+", value):
-        return int(value)
-    return None
-
-
-def _video(root, detail_id):
-    name = root.select_first("h1")
-    if name is not None and name.text:
-        text = clean.clean_text(name.text)
-        if text:
-            return {
-                "vod_id": detail_id,
-                "vod_name": text,
-                "vod_pic": "",
-                "vod_remarks": "",
-            }
-    return None
+        suffix = url.split("?", 1)[0].split("#", 1)[0].lower()
+        fmt = "mp4" if suffix.endswith(".mp4") else "m3u8"
+        return {"url": url, "format": fmt, "headers": {"Referer": BASE_URL}}
 
 
 if __name__ == "__main__":

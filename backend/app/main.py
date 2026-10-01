@@ -42,10 +42,37 @@ def _start_warmup_job() -> PeriodicJob | None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """启动/关闭时要干的事。后台任务必须在这里收尾 —— 否则测试里会留下野生线程。"""
+    # 启动时确保数据库引擎初始化与表列自动迁移对齐
+    try:
+        from app.db.session import get_engine
+
+        get_engine()
+    except Exception as db_err:
+        from app.core.logging import get_logger
+
+        get_logger("db").warning("数据库启动列对齐跳过: %s", db_err)
+
     job = _start_warmup_job()
+
+    # 开机异步静默预热：延迟 3 秒避开服务初始化峰值，在后台线程自动把各源首页及前 3 分类温热落盘
+    settings = get_settings()
+    import threading
+
+    def _boot_warmup():
+        try:
+            runner = get_warmup_runner(settings)
+            runner.start_in_background(reason="开机自启静默温热")
+        except Exception:
+            pass
+
+    boot_timer = threading.Timer(3.0, _boot_warmup)
+    boot_timer.daemon = True
+    boot_timer.start()
+
     try:
         yield
     finally:
+        boot_timer.cancel()
         if job is not None:
             job.stop()
 

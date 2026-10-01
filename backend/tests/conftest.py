@@ -23,6 +23,7 @@ import pytest
 # 如果开发者本机的 ``.env`` 打开了主动预热，测试期间就会真的定时去请求源站。
 # 环境变量优先级高于 .env，因此这一行能让测试永远不跑后台预热任务。
 os.environ.setdefault("PLOVE_WARMUP_ENABLED", "false")
+os.environ.setdefault("PLOVE_CACHE_ENABLED", "true")
 
 from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy import create_engine

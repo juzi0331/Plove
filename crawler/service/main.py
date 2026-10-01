@@ -1,5 +1,12 @@
 """crawler_service 主入口（FastAPI 微服务）。"""
 
+import sys
+from pathlib import Path
+
+_crawler_root = Path(__file__).resolve().parent.parent
+if str(_crawler_root) not in sys.path:
+    sys.path.insert(0, str(_crawler_root))
+
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware

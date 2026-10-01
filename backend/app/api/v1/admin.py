@@ -81,12 +81,14 @@ from app.schemas.admin_extended import (
     CacheClearRequest,
     CacheClearResult,
     CacheEntryDetail,
+    CacheGlobalConfig,
     CacheKeyEntry,
     CachePreheatRequest,
     CachePreheatResult,
     CacheStatsPayload,
     CodeCleanupResult,
     ImageProxyClearResult,
+    ImageProxyConfig,
     ImageProxyStats,
     PlaygroundProbeRequest,
     PlaygroundProbeResult,
@@ -224,6 +226,7 @@ def issue_codes(
         duration_hours=payload.total_hours,
         count=payload.count,
         note=payload.note,
+        max_devices=payload.max_devices,
     )
     commit_now(db)
     _audit(
@@ -375,6 +378,30 @@ def kick_device(
     return ok(
         KickResult(
             message="已把该设备下线（它下次心跳会收到通知）",
+            code=admin_service.to_code_item(record),
+        ),
+        request_id,
+    )
+
+
+@router.post("/devices/{device_id}/unbind", response_model=Envelope[KickResult], summary="解绑并移除设备")
+def unbind_device(
+    device_id: int,
+    request_id: str = Depends(get_request_id),
+    db: Session = Depends(get_db),
+) -> Envelope[KickResult]:
+    """彻底解绑该设备并释放名额，新设备即可接入。"""
+    record = admin_service.unbind_device(db, device_id)
+    commit_now(db)
+    _audit(
+        "unbind_device",
+        request_id,
+        device_id=device_id,
+        code=admin_service.mask_code(record.code),
+    )
+    return ok(
+        KickResult(
+            message="已成功解绑该设备，已释放绑定名额",
             code=admin_service.to_code_item(record),
         ),
         request_id,
@@ -534,6 +561,7 @@ def upload_crawler(
         key=payload.key,
         code=payload.code,
         overwrite=payload.overwrite,
+        auto_bump_version=payload.auto_bump_version,
         python_exe=registry.runner.python,
     )
     # 清空 meta 缓存并刷新快照
@@ -712,10 +740,81 @@ def update_site_detail_policy(
 def get_cache_stats(
     request_id: str = Depends(get_request_id),
     cache: ContentCache = Depends(get_content_cache),
+    warmup: WarmupRunner = Depends(get_warmup_runner),
 ) -> Envelope[CacheStatsPayload]:
     """返回内存缓存的条目数、命中次数、未命中次数、命中率百分比及 inflight 并发请求。"""
     st = cache.stats()
+    st["enabled"] = cache.enabled
+    st["warmup_enabled"] = warmup.enabled
     return ok(CacheStatsPayload(**st), request_id)
+
+
+@router.get("/cache/config", response_model=Envelope[CacheGlobalConfig], summary="获取全局缓存与主动预热总控配置")
+def get_cache_global_config(
+    request_id: str = Depends(get_request_id),
+    cache: ContentCache = Depends(get_content_cache),
+    warmup: WarmupRunner = Depends(get_warmup_runner),
+) -> Envelope[CacheGlobalConfig]:
+    """获取当前全局内容缓存是否开启、自动预热是否开启。"""
+    return ok(
+        CacheGlobalConfig(
+            cache_enabled=cache.enabled,
+            warmup_enabled=warmup.enabled,
+            warmup_interval_seconds=warmup.interval_seconds,
+        ),
+        request_id,
+    )
+
+
+@router.put("/cache/config", response_model=Envelope[CacheGlobalConfig], summary="更新全局缓存与主动预热总控配置")
+def update_cache_global_config(
+    payload: CacheGlobalConfig,
+    request_id: str = Depends(get_request_id),
+    db: Session = Depends(get_db),
+    cache: ContentCache = Depends(get_content_cache),
+    warmup: WarmupRunner = Depends(get_warmup_runner),
+) -> Envelope[CacheGlobalConfig]:
+    """更新全局内容缓存开关（开/关）与自动定时预热开关（开/关），实时生效并持久化到数据库。"""
+    import json
+    from app.models.system_setting import SystemSetting
+
+    # 1. 实时修改进程单例状态
+    cache.enabled = payload.cache_enabled
+    warmup.enabled = payload.warmup_enabled
+    if payload.warmup_interval_seconds > 0:
+        warmup.interval_seconds = payload.warmup_interval_seconds
+
+    # 2. 持久化存入 system_settings
+    row_cache = db.query(SystemSetting).filter_by(key="content_cache_config").first()
+    cache_json = json.dumps({"cache_enabled": payload.cache_enabled}, ensure_ascii=False)
+    if not row_cache:
+        row_cache = SystemSetting(key="content_cache_config", value_json=cache_json)
+        db.add(row_cache)
+    else:
+        row_cache.value_json = cache_json
+
+    row_warm = db.query(SystemSetting).filter_by(key="warmup_config").first()
+    warm_json = json.dumps(
+        {
+            "warmup_enabled": payload.warmup_enabled,
+            "warmup_interval_seconds": payload.warmup_interval_seconds,
+        },
+        ensure_ascii=False,
+    )
+    if not row_warm:
+        row_warm = SystemSetting(key="warmup_config", value_json=warm_json)
+        db.add(row_warm)
+    else:
+        row_warm.value_json = warm_json
+
+    commit_now(db)
+    _audit(
+        "update_cache_global_config",
+        request_id,
+        cache_enabled=payload.cache_enabled,
+        warmup_enabled=payload.warmup_enabled,
+    )
+    return ok(payload, request_id)
 
 
 @router.get("/cache/keys", response_model=Envelope[list[CacheKeyEntry]], summary="列出当前缓存条目")
@@ -913,6 +1012,26 @@ def get_image_proxy_stats(
     return ok(stats, request_id)
 
 
+@router.get("/proxy/config", response_model=Envelope[ImageProxyConfig], summary="获取图片防盗链全局配置")
+def get_image_proxy_config(
+    request_id: str = Depends(get_request_id),
+    db: Session = Depends(get_db),
+) -> Envelope[ImageProxyConfig]:
+    cfg = image_proxy_service.get_image_proxy_config(db)
+    return ok(cfg, request_id)
+
+
+@router.put("/proxy/config", response_model=Envelope[ImageProxyConfig], summary="更新图片防盗链全局配置")
+def update_image_proxy_config(
+    payload: ImageProxyConfig,
+    request_id: str = Depends(get_request_id),
+    db: Session = Depends(get_db),
+) -> Envelope[ImageProxyConfig]:
+    updated = image_proxy_service.update_image_proxy_config(db, payload)
+    _audit("update_image_proxy_config", request_id, enabled=updated.global_proxy_enabled)
+    return ok(updated, request_id)
+
+
 @router.post("/proxy/clear", response_model=Envelope[ImageProxyClearResult], summary="清空图片代理缓存")
 def clear_image_proxy(
     request_id: str = Depends(get_request_id),
@@ -950,6 +1069,20 @@ def get_sample_posters(
             pass
         if len(posters) >= 24:
             break
+
+    # 若内容源尚未预热或爬虫超时返回空，提供高质量影视真实海报作为防盗链体验样本
+    if not posters:
+        default_samples = [
+            ("星际穿越 (Interstellar)", "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&q=80", "演示样例"),
+            ("流浪地球 (The Wandering Earth)", "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=500&q=80", "演示样例"),
+            ("千与千寻 (Spirited Away)", "https://images.unsplash.com/photo-1578632767115-351597cf2477?w=500&q=80", "演示样例"),
+            ("盗梦空间 (Inception)", "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=500&q=80", "演示样例"),
+            ("黑客帝国 (The Matrix)", "https://images.unsplash.com/photo-1534447677768-be436bb09401?w=500&q=80", "演示样例"),
+            ("银翼杀手2049 (Blade Runner)", "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?w=500&q=80", "演示样例"),
+        ]
+        for t, u, s in default_samples:
+            posters.append(SamplePosterItem(title=t, url=u, site=s))
+
     return ok(SamplePostersPayload(items=posters), request_id)
 
 

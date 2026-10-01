@@ -19,10 +19,57 @@ from urllib.parse import urlparse
 
 import httpx
 
+from app.core.clock import utcnow
 from app.core.config import BACKEND_DIR
-from app.schemas.admin_extended import ImageProxyClearResult, ImageProxyStats
+from app.db.session import commit_now
+from app.models.system_setting import SystemSetting
+from app.schemas.admin_extended import ImageProxyClearResult, ImageProxyConfig, ImageProxyStats
+import json
 
 CACHE_DIR = BACKEND_DIR / "data" / "img_cache"
+PROXY_CONFIG_KEY = "image_proxy_config"
+
+_cached_config: ImageProxyConfig | None = None
+
+
+def get_image_proxy_config(db: Any = None) -> ImageProxyConfig:
+    global _cached_config
+    if _cached_config is not None:
+        return _cached_config
+    if db is None:
+        from app.db.session import SessionLocal
+        with SessionLocal() as session:
+            return get_image_proxy_config(session)
+    row = db.query(SystemSetting).filter_by(key=PROXY_CONFIG_KEY).first()
+    if not row or not row.value_json:
+        _cached_config = ImageProxyConfig()
+        return _cached_config
+    try:
+        data = json.loads(row.value_json)
+        _cached_config = ImageProxyConfig(**data)
+        return _cached_config
+    except Exception:
+        _cached_config = ImageProxyConfig()
+        return _cached_config
+
+
+def update_image_proxy_config(db: Any, payload: ImageProxyConfig) -> ImageProxyConfig:
+    global _cached_config
+    payload.updated_at = utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    row = db.query(SystemSetting).filter_by(key=PROXY_CONFIG_KEY).first()
+    if not row:
+        row = SystemSetting(key=PROXY_CONFIG_KEY, value_json=payload.model_dump_json())
+        db.add(row)
+    else:
+        row.value_json = payload.model_dump_json()
+    commit_now(db)
+    _cached_config = payload
+    return payload
+
+
+def is_global_image_proxy_enabled() -> bool:
+    cfg = get_image_proxy_config()
+    return cfg.global_proxy_enabled
 
 
 def ensure_cache_dir() -> Path:
@@ -59,6 +106,7 @@ def fetch_image_with_cache(
     if not _is_safe_url(url):
         raise ValueError("不合规或受保护的图片地址")
 
+    cfg = get_image_proxy_config()
     cdir = ensure_cache_dir()
     h = _hash_url(url)
     data_file = cdir / f"{h}.bin"
@@ -66,8 +114,8 @@ def fetch_image_with_cache(
 
     etag = f'"{h}"'
 
-    # 1. 检查本地磁盘持久化缓存
-    if data_file.exists() and meta_file.exists():
+    # 1. 检查本地磁盘持久化缓存（必须显式开启磁盘缓存时才读取）
+    if cfg.disk_cache_enabled and data_file.exists() and meta_file.exists():
         try:
             content = data_file.read_bytes()
             c_type = meta_file.read_text(encoding="utf-8").strip() or "image/jpeg"
@@ -97,12 +145,13 @@ def fetch_image_with_cache(
         content = resp.content
         c_type = resp.headers.get("content-type", "image/jpeg")
 
-    # 3. 异步/即时落盘
-    try:
-        data_file.write_bytes(content)
-        meta_file.write_text(c_type, encoding="utf-8")
-    except Exception:
-        pass
+    # 3. 异步/即时落盘（必须显式开启磁盘缓存时才写盘）
+    if cfg.disk_cache_enabled:
+        try:
+            data_file.write_bytes(content)
+            meta_file.write_text(c_type, encoding="utf-8")
+        except Exception:
+            pass
 
     return content, c_type, etag
 

@@ -41,6 +41,32 @@
       "description": "全局默认 TTL 配置秒数",
       "title": "Ttl",
       "type": "object"
+    },
+    "disk": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "L2 磁盘持久化统计（条数、占用体积等）",
+      "title": "Disk"
+    },
+    "enabled": {
+      "default": false,
+      "description": "全局内容缓存是否开启（默认关闭，需手动开启）",
+      "title": "Enabled",
+      "type": "boolean"
+    },
+    "warmup_enabled": {
+      "default": false,
+      "description": "自动定时预热是否开启（默认关闭，需手动开启）",
+      "title": "Warmup Enabled",
+      "type": "boolean"
     }
   },
   "required": [

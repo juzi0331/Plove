@@ -67,6 +67,7 @@ def to_code_item(record: ActivationCode) -> CodeListItem:
         disabled_at=as_aware(record.disabled_at) if record.disabled_at else None,
         remaining_seconds=_remaining_seconds(record),
         device_count=len(devices),
+        max_devices=getattr(record, "max_devices", 1) or 1,
         active_device_name=(active.name or None) if active else None,
     )
 
@@ -141,11 +142,23 @@ def list_devices(session: Session, code_id: int) -> tuple[ActivationCode, list[D
 # ------------------------------------------------------------------ 写
 
 
-def issue_codes(session: Session, *, duration_hours: int, count: int, note: str) -> list[str]:
-    """批量发码。**复用命令行那个函数** —— 两边生成的码必须长得一样、不变量也一样。"""
+def issue_codes(
+    session: Session,
+    *,
+    duration_hours: int,
+    count: int,
+    note: str,
+    max_devices: int = 1,
+) -> list[str]:
+    """批量发码。支持指定最大可用设备数。"""
     codes: list[str] = []
     for _ in range(max(1, min(50, count))):
-        record = activation_service.issue_code(session, duration_hours=duration_hours, note=note)
+        record = activation_service.issue_code(
+            session,
+            duration_hours=duration_hours,
+            note=note,
+            max_devices=max_devices,
+        )
         codes.append(record.code)
     return codes
 
@@ -211,6 +224,23 @@ def kick_device(session: Session, device_id: int) -> ActivationCode:
         record.active_device_id = None
         session.flush()
 
+    return record
+
+
+def unbind_device(session: Session, device_id: int) -> ActivationCode:
+    """彻底解绑该设备，释放绑定名额供新设备使用。"""
+    device = session.get(Device, device_id)
+    if device is None:
+        raise AppError(ErrorCode.NOT_FOUND, "没有这台设备")
+
+    record = device.activation
+    if record is None:
+        raise AppError(ErrorCode.INTERNAL, "设备没有关联的激活码")
+
+    if record.active_device_id == device.id:
+        record.active_device_id = None
+    session.delete(device)
+    session.flush()
     return record
 
 

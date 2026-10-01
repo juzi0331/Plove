@@ -29,6 +29,15 @@ class FakeClock:
         self.now += seconds
 
 
+@pytest.fixture(autouse=True)
+def _clean_disk_cache():
+    from app.cache.disk_cache import get_disk_store
+
+    get_disk_store().clear()
+    yield
+    get_disk_store().clear()
+
+
 # ------------------------------------------------------------------ TTLCache
 
 def test_set_get_roundtrip():

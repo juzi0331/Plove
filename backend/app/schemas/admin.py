@@ -20,6 +20,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -41,6 +42,7 @@ class CacheStats(BaseModel):
     misses: int
     inflight: int = Field(description="正在合并中的 key 数（防击穿那一层）")
     ttl: CacheTtl
+    disk: dict[str, Any] | None = Field(default=None, description="L2 磁盘持久化缓存统计")
 
 
 class SiteHealth(BaseModel):
@@ -114,6 +116,7 @@ class CodeListItem(BaseModel):
         "或者已经到期了。界面必须结合 ``activated_at`` 才能说清是哪种",
     )
     device_count: int = Field(default=0, description="这个码用过几台设备")
+    max_devices: int = Field(default=1, description="最多允许绑定的设备数（仅后台可见）")
     active_device_name: str | None = Field(default=None, description="当前活跃的那台设备名")
 
     @property
@@ -136,6 +139,7 @@ class IssueCodesRequest(BaseModel):
     hours: int | None = Field(default=None, ge=1, le=24 * 365)
     days: int | None = Field(default=None, ge=1, le=365)
     count: int = Field(default=1, ge=1, le=50, description="一次发几个（上限 50，防止手滑发出 5000 个）")
+    max_devices: int = Field(default=1, ge=1, le=100, description="最多允许几台设备使用该码（对用户端严格保密）")
     note: str = Field(default="", max_length=255, description="备注：发给谁 / 哪一批")
 
     @model_validator(mode="after")

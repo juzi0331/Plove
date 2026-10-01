@@ -57,8 +57,14 @@ def normalize_code(code: str) -> str:
 # ------------------------------------------------------------------ 发码
 
 
-def issue_code(session: Session, *, duration_hours: int, note: str = "") -> ActivationCode:
-    """签发一个新码。目前只有命令行工具在用，以后后台面板也调它。"""
+def issue_code(
+    session: Session,
+    *,
+    duration_hours: int,
+    note: str = "",
+    max_devices: int | None = None,
+) -> ActivationCode:
+    """签发一个新码。支持设定该激活码最多允许绑定的设备数（None 为不设上限）。"""
     if duration_hours <= 0:
         raise AppError(ErrorCode.BAD_REQUEST, "时长必须大于 0 小时")
 
@@ -66,7 +72,12 @@ def issue_code(session: Session, *, duration_hours: int, note: str = "") -> Acti
         code = generate_code()
         exists = session.scalar(select(ActivationCode.id).where(ActivationCode.code == code))
         if exists is None:
-            record = ActivationCode(code=code, duration_hours=duration_hours, note=note)
+            record = ActivationCode(
+                code=code,
+                duration_hours=duration_hours,
+                note=note,
+                max_devices=max_devices if (max_devices and max_devices > 0) else None,
+            )
             session.add(record)
             session.flush()
             return record
@@ -117,6 +128,14 @@ def redeem(
         record.expires_at = record.activated_at + timedelta(hours=record.duration_hours)
 
     if device is None:
+        # 设备上限检查（对前台普通用户保密具体策略数字）
+        max_dev = getattr(record, "max_devices", None)
+        if max_dev is not None and max_dev > 0 and len(record.devices) >= max_dev:
+            raise AppError(
+                ErrorCode.ACTIVATION_INVALID,
+                "该激活码已达设备绑定上限，无法接入新设备。请联系管理员进行设备解绑。",
+            )
+
         device = Device(
             activation_id=record.id,
             token=secrets.token_urlsafe(32),

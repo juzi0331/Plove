@@ -39,6 +39,14 @@
       "title": "Count",
       "type": "integer"
     },
+    "max_devices": {
+      "default": 1,
+      "description": "最多允许几台设备使用该码（对用户端严格保密）",
+      "maximum": 100,
+      "minimum": 1,
+      "title": "Max Devices",
+      "type": "integer"
+    },
     "note": {
       "default": "",
       "description": "备注：发给谁 / 哪一批",

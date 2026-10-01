@@ -82,6 +82,12 @@
           "title": "Device Count",
           "type": "integer"
         },
+        "max_devices": {
+          "default": 1,
+          "description": "最多允许绑定的设备数（仅后台可见）",
+          "title": "Max Devices",
+          "type": "integer"
+        },
         "active_device_name": {
           "anyOf": [
             {

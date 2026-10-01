@@ -37,6 +37,7 @@ class CrawlerUploadRequest(BaseModel):
     key: str = Field(pattern=r"^[a-z_][a-z0-9_]{1,63}$", description="站点 key，如 custom_site")
     code: str = Field(min_length=10, description="Python 源码")
     overwrite: bool = Field(default=False, description="若站点已存在是否允许覆盖")
+    auto_bump_version: bool = Field(default=True, description="若覆盖已存在脚本且版本号未变动，是否自动自增修订号(如 1.0.0 -> 1.0.1)")
 
 
 class CrawlerUploadResult(BaseModel):

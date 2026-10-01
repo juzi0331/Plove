@@ -164,10 +164,11 @@ const memory = loadIssueMemory()
 
 const issueOpen = ref(false)
 const issueBusy = ref(false)
-const issueForm = ref<{ unit: 'days' | 'hours'; amount: number; count: number; note: string }>({
+const issueForm = ref<{ unit: 'days' | 'hours'; amount: number; count: number; max_devices: number; note: string }>({
   unit: memory.unit,
   amount: memory.amount,
   count: memory.count,
+  max_devices: 1,
   note: '',
 })
 const issuedCodes = ref<string[]>([])
@@ -186,6 +187,7 @@ async function submitIssue(): Promise<void> {
   try {
     const payload: IssueCodesRequest = {
       count: issueForm.value.count,
+      max_devices: issueForm.value.max_devices || 1,
       note: issueForm.value.note,
       ...(issueForm.value.unit === 'days'
         ? { days: issueForm.value.amount }
@@ -430,10 +432,19 @@ async function handleCleanupExpired(): Promise<void> {
           {{ humanRemaining(row.remaining_seconds ?? 0) }}
         </template>
       </ElTableColumn>
-      <ElTableColumn label="设备" prop="devices" :width="widthOf('devices', 160)">
+      <ElTableColumn label="绑定设备" prop="devices" :width="widthOf('devices', 170)">
         <template #default="{ row }">
           <ElButton link type="primary" size="small" @click="openDevices(row.id)">
-            {{ row.device_count }} 台<template v-if="row.active_device_name">（{{ row.active_device_name }}）</template>
+            <ElTag
+              :type="(row.device_count || 0) >= (row.max_devices || 1) ? 'danger' : 'info'"
+              size="small"
+              effect="plain"
+            >
+              {{ row.device_count || 0 }} / {{ row.max_devices || 1 }} 台
+            </ElTag>
+            <template v-if="row.active_device_name">
+              <span style="margin-left: 4px; font-size: 11px;">({{ row.active_device_name }})</span>
+            </template>
           </ElButton>
         </template>
       </ElTableColumn>
@@ -477,7 +488,7 @@ async function handleCleanupExpired(): Promise<void> {
     </div>
 
     <!-- 发码 -->
-    <ElDialog v-model="issueOpen" title="发码" width="440px">
+    <ElDialog v-model="issueOpen" title="发码" width="440px" align-center>
       <div class="presets">
         <ElButton
           v-for="preset in PRESETS"
@@ -505,13 +516,20 @@ async function handleCleanupExpired(): Promise<void> {
           <ElInputNumber v-model="issueForm.count" :min="1" :max="50" />
         </div>
         <div class="form-row">
+          <span class="form-label">设备上限</span>
+          <div class="inline">
+            <ElInputNumber v-model="issueForm.max_devices" :min="1" :max="100" />
+            <span class="a-muted" style="margin-left: 8px;">台可用设备</span>
+          </div>
+        </div>
+        <div class="form-row">
           <span class="form-label">备注</span>
           <ElInput v-model="issueForm.note" placeholder="发给谁 / 哪一批" maxlength="255" />
         </div>
       </div>
       <p class="a-note">
         时长从首次激活那一刻开始算，不是发码时间。发出去但没人用的码不占时长。
-        <br />上次用的时长与数量会被记住（备注不记）。
+        <br /><strong>🔒 设备限制保密机制</strong>：该激活码最多允许绑定的设备数对用户端严格保密。超出上限激活新设备时将模糊提示受限，管理员可进入设备列表一键解绑释放名额。
       </p>
       <template #footer>
         <ElButton @click="issueOpen = false">取消</ElButton>
@@ -520,7 +538,7 @@ async function handleCleanupExpired(): Promise<void> {
     </ElDialog>
 
     <!-- 延长 -->
-    <ElDialog v-model="extendOpen" title="延长时长" width="430px">
+    <ElDialog v-model="extendOpen" title="延长时长" width="430px" align-center>
       <p class="a-note">
         码：<span class="a-mono">{{ extendTarget?.code }}</span>
       </p>

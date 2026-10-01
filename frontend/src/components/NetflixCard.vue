@@ -29,10 +29,24 @@ const emit = defineEmits<{
   (event: 'select', item: any): void
 }>()
 
-// 容错图片
+import { formatPosterUrl } from '@/utils/format'
+
+// 容错与防盗链代理图片
 const displayPic = computed(() => {
-  return props.item.vod_pic || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&q=80'
+  const raw = props.item.vod_pic || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&q=80'
+  return formatPosterUrl(raw)
 })
+
+function handleImgError(e: Event): void {
+  const target = e.target as HTMLImageElement
+  if (!target) return
+  // 如果直接加载失败且未走代理，自动切换到防盗链代理中继重试一次
+  if (target.src && !target.src.includes('/api/v1/proxy/image') && target.src.startsWith('http')) {
+    target.src = `/api/v1/proxy/image?url=${encodeURIComponent(target.src)}`
+    return
+  }
+  target.style.display = 'none'
+}
 </script>
 
 <template>
@@ -45,7 +59,7 @@ const displayPic = computed(() => {
         class="nf-card__img"
         referrerpolicy="no-referrer"
         loading="lazy"
-        @error="($event.target as HTMLElement).style.display = 'none'"
+        @error="handleImgError"
       />
 
       <!-- 底部暗影遮罩 (保证标题与标签清晰) -->

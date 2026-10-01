@@ -170,20 +170,67 @@ def validate_crawler_code(
     )
 
 
+def _extract_version_from_code(code: str) -> str | None:
+    """从脚本源码中提取版本字符串。"""
+    pat = re.compile(r"""\b(?:__version__|version)\s*=\s*['"]([^'"]+)['"]""")
+    m = pat.search(code)
+    if m:
+        return m.group(1).strip()
+    pat_dict = re.compile(r"""['"]version['"]\s*:\s*['"]([^'"]+)['"]""")
+    m_dict = pat_dict.search(code)
+    if m_dict:
+        return m_dict.group(1).strip()
+    return None
+
+
+def _bump_patch_version(ver: str) -> str:
+    """语义化版本补丁号 + 1，如 1.0.0 -> 1.0.1，1.0 -> 1.0.1。"""
+    m = re.match(r"^(\d+)\.(\d+)(?:\.(\d+))?$", ver.strip())
+    if not m:
+        return f"{ver}.1"
+    major, minor, patch = int(m.group(1)), int(m.group(2)), int(m.group(3) or 0)
+    return f"{major}.{minor}.{patch + 1}"
+
+
+def _replace_code_version(code: str, new_ver: str) -> str:
+    """将代码中的版本号替换为新版本号。"""
+    pat = re.compile(r"""(?P<prefix>\b(?:__version__|version)\s*=\s*['"])(?P<ver>[^'"]+)(?P<suffix>['"])""")
+    if pat.search(code):
+        return pat.sub(rf"\g<prefix>{new_ver}\g<suffix>", code, count=1)
+    pat_dict = re.compile(r"""(?P<prefix>['"]version['"]\s*:\s*['"])(?P<ver>[^'"]+)(?P<suffix>['"])""")
+    if pat_dict.search(code):
+        return pat_dict.sub(rf"\g<prefix>{new_ver}\g<suffix>", code, count=1)
+    return code
+
+
 def save_crawler(
     sites_dir: Path,
     key: str,
     code: str,
     overwrite: bool = False,
+    auto_bump_version: bool = True,
     python_exe: str | None = None,
 ) -> SiteMeta:
-    """保存并热部署采集器脚本。"""
+    """保存并热部署采集器脚本，支持覆盖更新时自动自增修订号。"""
     if not SITE_KEY_PATTERN.match(key):
         raise AppError(ErrorCode.BAD_REQUEST, f"非法的站点 key: {key}")
 
     target_file = sites_dir / f"{key}.py"
     if target_file.exists() and not overwrite:
         raise AppError(ErrorCode.CONFLICT, f"采集器 {key} 已经存在，若需替换请开启覆盖选项")
+
+    # 若为覆盖更新且开启自动升级，对比老代码版本号，如果未改动则自动 patch + 1
+    if target_file.is_file() and overwrite and auto_bump_version:
+        try:
+            old_code = target_file.read_text(encoding="utf-8", errors="replace")
+            old_ver = _extract_version_from_code(old_code)
+            new_ver = _extract_version_from_code(code)
+            if old_ver and new_ver and old_ver == new_ver:
+                bumped_ver = _bump_patch_version(old_ver)
+                code = _replace_code_version(code, bumped_ver)
+                logger.info("采集器 %s 覆盖更新：自动递增版本号 %s -> %s", key, old_ver, bumped_ver)
+        except Exception as bump_err:
+            logger.warning("采集器 %s 自动递增版本号跳过: %s", key, bump_err)
 
     # 先验证
     res = validate_crawler_code(code, sites_dir, python_exe=python_exe, suggested_key=key)
@@ -193,7 +240,7 @@ def save_crawler(
     try:
         sites_dir.mkdir(parents=True, exist_ok=True)
         target_file.write_text(code, encoding="utf-8")
-        logger.info("已成功保存采集器脚本: %s", target_file)
+        logger.info("已成功保存采集器脚本: %s (version=%s)", target_file, res.meta.version)
     except Exception as exc:
         raise AppError(ErrorCode.INTERNAL, f"保存脚本失败: {exc}") from exc
 

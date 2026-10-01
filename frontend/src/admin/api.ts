@@ -200,6 +200,11 @@ export function kickDevice(deviceId: number): Promise<KickResult> {
   return admin(`/admin/devices/${deviceId}/kick`, { method: 'POST' })
 }
 
+export function unbindDevice(deviceId: number): Promise<KickResult> {
+  assertWritable()
+  return admin(`/admin/devices/${deviceId}/unbind`, { method: 'POST' })
+}
+
 export function deleteCode(codeId: number): Promise<{ message: string; id: number }> {
   assertWritable()
   return admin(`/admin/codes/${codeId}`, { method: 'DELETE' })
@@ -224,6 +229,7 @@ import type {
   CacheStatsPayload,
   CodeCleanupResult,
   ImageProxyClearResult,
+  ImageProxyConfig,
   ImageProxyStats,
   PlaygroundProbeRequest,
   PlaygroundProbeResult,
@@ -267,6 +273,24 @@ export function preheatCache(site?: string): Promise<CachePreheatResult> {
   })
 }
 
+export interface CacheGlobalConfig {
+  cache_enabled: boolean
+  warmup_enabled: boolean
+  warmup_interval_seconds: number
+}
+
+export function getCacheGlobalConfig(): Promise<CacheGlobalConfig> {
+  return admin('/admin/cache/config')
+}
+
+export function updateCacheGlobalConfig(payload: CacheGlobalConfig): Promise<CacheGlobalConfig> {
+  assertWritable()
+  return admin('/admin/cache/config', {
+    method: 'PUT',
+    body: payload,
+  })
+}
+
 export function getSiteCachePolicy(key: string): Promise<SiteCachePolicy> {
   return admin(`/admin/sites/${key}/cache-policy`)
 }
@@ -300,6 +324,18 @@ export function searchAggregate(kw: string): Promise<AggregateSearchPayload> {
 
 export function getImageProxyStats(): Promise<ImageProxyStats> {
   return admin('/admin/proxy/stats')
+}
+
+export function getImageProxyConfig(): Promise<ImageProxyConfig> {
+  return admin('/admin/proxy/config')
+}
+
+export function updateImageProxyConfig(payload: ImageProxyConfig): Promise<ImageProxyConfig> {
+  assertWritable()
+  return admin('/admin/proxy/config', {
+    method: 'PUT',
+    body: payload,
+  })
 }
 
 export function clearImageProxy(): Promise<ImageProxyClearResult> {

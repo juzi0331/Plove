@@ -69,11 +69,9 @@ class Settings(BaseSettings):
     contracts_dir: Path = BACKEND_DIR / "contracts"
 
     # -------------------------------------------------------------- 缓存
+    #: 全局内容缓存总开关（默认关，需手动开启）。
+    cache_enabled: bool = False
     #: 目录类内容的缓存生存时间（秒）。**设成 0 就等于关掉这一类缓存。**
-    #:
-    #: 取值依据是"这东西多久会变"，不是"能省多少"：源站目录一天最多更新几次，
-    #: 而每抓一次都要 fork 一个子进程、花 1~4 秒。
-    #: 播放地址**永远不缓存**（m3u8 带时效签名），所以这里没有它。
     cache_ttl_home: float = 600.0
     cache_ttl_category: float = 300.0
     cache_ttl_detail: float = 300.0

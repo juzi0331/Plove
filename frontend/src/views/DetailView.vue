@@ -21,6 +21,7 @@ import type { DetailPayload, Episode, VodItem } from '@/api/types'
 import BrandLogo from '@/components/BrandLogo.vue'
 import NetflixCard from '@/components/NetflixCard.vue'
 import UserMenu from '@/components/UserMenu.vue'
+import { formatPosterUrl } from '@/utils/format'
 import { useDeviceStore } from '@/stores/device'
 import { useSitesStore } from '@/stores/sites'
 
@@ -230,7 +231,7 @@ function scrollRow(direction: 'left' | 'right'): void {
       <section class="nf-detail-hero">
         <div
           class="nf-hero-bg"
-          :style="{ backgroundImage: `url(${video.vod_pic || ''})` }"
+          :style="{ backgroundImage: `url(${formatPosterUrl(video.vod_pic) || ''})` }"
         />
         <div class="nf-hero-vignette" />
 

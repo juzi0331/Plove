@@ -124,22 +124,40 @@ def _content_cache_for(
     ttl_category: float,
     ttl_detail: float,
     maxsize: int,
+    enabled: bool = False,
 ) -> ContentCache:
     return ContentCache(
         ttl_home=ttl_home,
         ttl_category=ttl_category,
         ttl_detail=ttl_detail,
         maxsize=maxsize,
+        enabled=enabled,
     )
 
 
 def get_content_cache(settings: Settings = Depends(get_settings)) -> ContentCache:
     """目录内容的缓存。**必须进程内共用** —— 每次请求造一个就等于没有缓存。"""
+    # 优先读取持久化数据库配置
+    enabled = settings.cache_enabled
+    try:
+        from app.db.session import SessionLocal
+        from app.models.system_setting import SystemSetting
+        import json
+        with SessionLocal() as session:
+            row = session.query(SystemSetting).filter_by(key="content_cache_config").first()
+            if row and row.value_json:
+                data = json.loads(row.value_json)
+                if "cache_enabled" in data:
+                    enabled = bool(data["cache_enabled"])
+    except Exception:
+        pass
+
     return _content_cache_for(
         settings.cache_ttl_home,
         settings.cache_ttl_category,
         settings.cache_ttl_detail,
         settings.cache_maxsize,
+        enabled,
     )
 
 
@@ -154,6 +172,13 @@ def reset_runtime() -> None:
         _warmup = None
     _registry_for.cache_clear()
     _content_cache_for.cache_clear()
+    # 丢掉持久化磁盘幽灵缓存，确保测试环境与重置运行时纯净
+    try:
+        from app.cache.disk_cache import get_disk_store
+
+        get_disk_store().clear()
+    except Exception:
+        pass
     # 源开关的快照也要清：测试之间不隔离的话，上一个用例停用的源会“幽灵”到下一个用例。
     site_settings.reset_store()
 
@@ -170,11 +195,25 @@ def get_warmup_runner(settings: Settings = Depends(get_settings)) -> WarmupRunne
     global _warmup
     with _warmup_lock:
         if _warmup is None:
+            enabled = settings.warmup_enabled
+            try:
+                from app.db.session import SessionLocal
+                from app.models.system_setting import SystemSetting
+                import json
+                with SessionLocal() as session:
+                    row = session.query(SystemSetting).filter_by(key="warmup_config").first()
+                    if row and row.value_json:
+                        data = json.loads(row.value_json)
+                        if "warmup_enabled" in data:
+                            enabled = bool(data["warmup_enabled"])
+            except Exception:
+                pass
+
             _warmup = WarmupRunner(
                 get_registry(settings),
                 get_content_cache(settings),
                 max_categories=settings.warmup_max_categories,
-                enabled=settings.warmup_enabled,
+                enabled=enabled,
                 interval_seconds=settings.warmup_interval_seconds,
             )
         return _warmup

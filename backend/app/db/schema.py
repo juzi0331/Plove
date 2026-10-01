@@ -36,6 +36,15 @@ def _align_columns(engine: Engine) -> None:
                 if col_name not in existing_cols:
                     conn.execute(text(f"ALTER TABLE site_settings ADD COLUMN {col_name} {col_def}"))
 
+    if "activation_codes" in insp.get_table_names():
+        existing_cols = {c["name"] for c in insp.get_columns("activation_codes")}
+        if "max_devices" not in existing_cols:
+            with engine.begin() as conn:
+                try:
+                    conn.execute(text("ALTER TABLE activation_codes ADD COLUMN max_devices INT NOT NULL DEFAULT 1"))
+                except Exception:
+                    conn.execute(text("ALTER TABLE activation_codes ADD COLUMN max_devices INTEGER DEFAULT 1"))
+
 
 def table_names(engine: Engine) -> list[str]:
     return sorted(inspect(engine).get_table_names())

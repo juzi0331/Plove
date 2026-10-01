@@ -105,10 +105,13 @@ def init_system_settings_cache(db: Session) -> None:
 
 def get_public_system_status(db: Session) -> SystemStatusPayload:
     """供前台公开调用的系统状态接口。"""
+    from app.services import image_proxy_service
     m = get_maintenance(db)
     n = get_notice(db)
+    proxy_cfg = image_proxy_service.get_image_proxy_config(db)
     return SystemStatusPayload(
         maintenance=m.enabled,
         maintenance_message=m.message,
         notice=n if n.enabled else None,
+        image_proxy_enabled=proxy_cfg.global_proxy_enabled,
     )

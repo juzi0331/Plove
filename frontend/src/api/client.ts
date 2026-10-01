@@ -20,6 +20,7 @@ import type {
   SessionState,
   SiteListPayload,
   SiteMeta,
+  SystemStatusPayload,
   VodItem,
 } from './types'
 
@@ -144,4 +145,8 @@ export function adminRefreshCache(adminToken: string, wait = false): Promise<Ref
     adminToken,
     query: { wait: wait ? 'true' : undefined },
   })
+}
+
+export function getPublicSystemStatus(): Promise<SystemStatusPayload> {
+  return request('/system/status')
 }

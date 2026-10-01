@@ -14,8 +14,6 @@ import {
   ElButton,
   ElCard,
   ElCol,
-  ElForm,
-  ElFormItem,
   ElIcon,
   ElInput,
   ElInputNumber,
@@ -316,90 +314,149 @@ const previewItemList = computed<any[]>(() => {
 
     <!-- ==================== Tab 1: 单站在线探针 ==================== -->
     <div v-if="activeTab === 'probe'" class="tab-panel">
-      <!-- 快捷智能预设箱（免手动填 ID） -->
-      <div class="preset-box">
-        <div class="preset-title-row">
-          <span class="preset-title">常用智能测试预设（免手动找影片 ID，点击直接全自动串联测试）：</span>
-          <span class="preset-sub">针对当前选定站点：<strong>{{ probeForm.site || '未选择' }}</strong></span>
+      <!-- 顶部控制与源站切换卡片 -->
+      <div class="probe-toolbar-card">
+        <div class="toolbar-left">
+          <span class="toolbar-label">调试目标源：</span>
+          <ElSelect v-model="probeForm.site" style="width: 240px">
+            <ElOption
+              v-for="s in sites"
+              :key="s.key"
+              :label="`${s.name} (${s.key})`"
+              :value="s.key"
+            />
+          </ElSelect>
         </div>
-        <div class="preset-buttons">
-          <ElButton :icon="Film" size="default" :loading="probing" @click="handleQuickPreset('home')">
-            探测首页推荐片单
-          </ElButton>
-          <ElButton :icon="FolderOpened" size="default" :loading="probing" @click="handleQuickPreset('category')">
-            提取分类与子标签树
-          </ElButton>
-          <ElButton :icon="DataAnalysis" type="primary" plain size="default" :loading="probing" @click="handleQuickPreset('detail_auto')">
-            自动抽片测试详情页
-          </ElButton>
-          <ElButton :icon="VideoPlay" type="primary" size="default" :loading="probing" @click="handleQuickPreset('play_auto')">
-            自动抽片测试视频试播
-          </ElButton>
+        <div class="toolbar-right">
+          <ElSwitch v-model="probeForm.bypass_cache" active-text="强制穿透源站 (跳过缓存)" />
         </div>
       </div>
 
-      <!-- 控制面板卡片 -->
-      <ElCard shadow="never" class="panel-card">
-        <ElForm :model="probeForm" label-position="top" inline class="custom-form">
-          <ElFormItem label="目标内容源">
-            <ElSelect v-model="probeForm.site" style="width: 200px">
-              <ElOption
-                v-for="s in sites"
-                :key="s.key"
-                :label="`${s.name} (${s.key})`"
-                :value="s.key"
-              />
-            </ElSelect>
-          </ElFormItem>
-
-          <ElFormItem label="探测命令">
-            <ElRadioGroup v-model="probeForm.command">
-              <ElRadioButton value="home">首页推荐</ElRadioButton>
-              <ElRadioButton value="category">分类列表</ElRadioButton>
-              <ElRadioButton value="detail">影片详情</ElRadioButton>
-              <ElRadioButton value="play">播放解析</ElRadioButton>
-            </ElRadioGroup>
-          </ElFormItem>
-
-          <ElFormItem v-if="probeForm.command === 'category'" label="分类 ID (tid)">
-            <ElInput v-model="probeForm.tid" placeholder="留空为默认全部" style="width: 130px" />
-          </ElFormItem>
-
-          <ElFormItem v-if="probeForm.command === 'category'" label="页码 (page)">
-            <ElInputNumber v-model="probeForm.page" :min="1" :max="999" style="width: 110px" />
-          </ElFormItem>
-
-          <ElFormItem
-            v-if="probeForm.command === 'detail' || probeForm.command === 'play'"
-            label="影片 ID (vod_id)"
-          >
-            <ElInput v-model="probeForm.vod_id" placeholder="输入 ID 或点击上方预设" style="width: 200px" />
-          </ElFormItem>
-
-          <ElFormItem v-if="probeForm.command === 'play'" label="集数 (ep)">
-            <ElInputNumber v-model="probeForm.ep" :min="1" :max="9999" style="width: 100px" />
-          </ElFormItem>
-
-          <ElFormItem label="缓存控制">
-            <ElSwitch v-model="probeForm.bypass_cache" active-text="强制绕过缓存 (查源现抓)" />
-          </ElFormItem>
-
-          <ElFormItem label="&nbsp;">
+      <!-- 「4步全链路体检工作流」卡片矩阵（彻底去重） -->
+      <div class="workflow-cards-grid">
+        <!-- 步骤 1: 首页推荐 -->
+        <div
+          class="workflow-card"
+          :class="{ 'is-active': probeForm.command === 'home' }"
+          @click="probeForm.command = 'home'"
+        >
+          <div class="wf-header">
+            <span class="wf-badge">步骤 1</span>
+            <ElIcon :size="20"><Film /></ElIcon>
+          </div>
+          <div class="wf-title">首页推荐嗅探</div>
+          <div class="wf-desc">提取源站首页骨架与推荐片单</div>
+          <div class="wf-btn-box">
             <ElButton
+              size="small"
               type="primary"
-              :icon="Aim"
-              :loading="probing"
-              @click="handleRunProbe"
+              :loading="probing && probeForm.command === 'home'"
+              @click.stop="handleQuickPreset('home')"
             >
-              发送探测请求
+              一键探测首页
             </ElButton>
-          </ElFormItem>
-        </ElForm>
-      </ElCard>
+          </div>
+        </div>
 
-      <!-- 探测结果展示区 -->
+        <!-- 步骤 2: 分类提取 -->
+        <div
+          class="workflow-card"
+          :class="{ 'is-active': probeForm.command === 'category' }"
+          @click="probeForm.command = 'category'"
+        >
+          <div class="wf-header">
+            <span class="wf-badge">步骤 2</span>
+            <ElIcon :size="20"><FolderOpened /></ElIcon>
+          </div>
+          <div class="wf-title">分类标签抽样</div>
+          <div class="wf-desc">提取所有主分类与二级标签树</div>
+          <div class="wf-btn-box">
+            <ElButton
+              size="small"
+              type="primary"
+              :loading="probing && probeForm.command === 'category'"
+              @click.stop="handleQuickPreset('category')"
+            >
+              一键提取分类
+            </ElButton>
+          </div>
+        </div>
+
+        <!-- 步骤 3: 详情穿透 -->
+        <div
+          class="workflow-card"
+          :class="{ 'is-active': probeForm.command === 'detail' }"
+          @click="probeForm.command = 'detail'"
+        >
+          <div class="wf-header">
+            <span class="wf-badge">步骤 3</span>
+            <ElIcon :size="20"><DataAnalysis /></ElIcon>
+          </div>
+          <div class="wf-title">详情全量穿透</div>
+          <div class="wf-desc">自动抽片提取剧集、线路与简介</div>
+          <div class="wf-btn-box">
+            <ElButton
+              size="small"
+              type="primary"
+              plain
+              :loading="probing && probeForm.command === 'detail'"
+              @click.stop="handleQuickPreset('detail_auto')"
+            >
+              自动抽片测详情
+            </ElButton>
+          </div>
+        </div>
+
+        <!-- 步骤 4: 播放嗅探 -->
+        <div
+          class="workflow-card"
+          :class="{ 'is-active': probeForm.command === 'play' }"
+          @click="probeForm.command = 'play'"
+        >
+          <div class="wf-header">
+            <span class="wf-badge">步骤 4</span>
+            <ElIcon :size="20"><VideoPlay /></ElIcon>
+          </div>
+          <div class="wf-title">视频播放流嗅探</div>
+          <div class="wf-desc">解析真实 m3u8 并直接在播放器试播</div>
+          <div class="wf-btn-box">
+            <ElButton
+              size="small"
+              type="success"
+              :loading="probing && probeForm.command === 'play'"
+              @click.stop="handleQuickPreset('play_auto')"
+            >
+              自动抽片试播
+            </ElButton>
+          </div>
+        </div>
+      </div>
+
+      <!-- 可选手填自定义参数栏（高级运维输入特定 ID） -->
+      <div v-if="probeForm.command === 'category' || probeForm.command === 'detail' || probeForm.command === 'play'" class="custom-param-bar">
+        <span class="param-tip">自定义参数调试：</span>
+        <template v-if="probeForm.command === 'category'">
+          <span class="param-label">分类 ID (tid):</span>
+          <ElInput v-model="probeForm.tid" placeholder="留空为全部" size="small" style="width: 140px" />
+          <span class="param-label">页码:</span>
+          <ElInputNumber v-model="probeForm.page" :min="1" :max="999" size="small" style="width: 100px" />
+        </template>
+        <template v-if="probeForm.command === 'detail' || probeForm.command === 'play'">
+          <span class="param-label">影片 ID (vod_id):</span>
+          <ElInput v-model="probeForm.vod_id" placeholder="输入 ID 或点击上方卡片自动抽片" size="small" style="width: 220px" />
+        </template>
+        <template v-if="probeForm.command === 'play'">
+          <span class="param-label">集数 (ep):</span>
+          <ElInputNumber v-model="probeForm.ep" :min="1" :max="9999" size="small" style="width: 90px" />
+        </template>
+        <ElButton type="primary" size="small" :icon="Aim" :loading="probing" style="margin-left: 12px" @click="handleRunProbe">
+          以自定义参数执行
+        </ElButton>
+      </div>
+
+      <!-- 探测结果展示区（大屏卡片化排布） -->
       <div v-if="probeResult" class="result-box">
-        <!-- 核心指标条 -->
+        <!-- 核心指标卡片 -->
         <ElRow :gutter="16" class="metrics-row">
           <ElCol :xs="24" :sm="8">
             <div class="metric-block">
@@ -513,31 +570,11 @@ const previewItemList = computed<any[]>(() => {
         </ElCard>
       </div>
 
-      <!-- 尚未探测时的功能引导区（替代以前单一空盒子） -->
-      <div v-else class="guide-grid">
-        <div class="guide-card" @click="handleQuickPreset('home')">
-          <div class="guide-icon"><Film /></div>
-          <div class="guide-title">一键嗅探首页片单</div>
-          <div class="guide-desc">即时触发爬虫拉取当前源的首页推荐影片，查看封面与标题解析是否完整。</div>
-        </div>
-
-        <div class="guide-card" @click="handleQuickPreset('category')">
-          <div class="guide-icon"><FolderOpened /></div>
-          <div class="guide-title">全分类标签树解析</div>
-          <div class="guide-desc">提取所有主分类与子分类标签，检查是否有需要加入黑名单的非法类目。</div>
-        </div>
-
-        <div class="guide-card" @click="handleQuickPreset('detail_auto')">
-          <div class="guide-icon"><DataAnalysis /></div>
-          <div class="guide-title">智能提取影片详情</div>
-          <div class="guide-desc">系统全自动提取首页第 1 部影视并穿透至详情页，校验剧集列表与演职员字段。</div>
-        </div>
-
-        <div class="guide-card" @click="handleQuickPreset('play_auto')">
-          <div class="guide-icon"><VideoPlay /></div>
-          <div class="guide-title">视频播放流在线直放</div>
-          <div class="guide-desc">自动解析首部影视第 1 集的真实 m3u8/mp4 视频流地址，并在内嵌播放器试播。</div>
-        </div>
+      <!-- 尚未探测时的就绪引导卡片 -->
+      <div v-else class="ready-banner-card">
+        <div class="ready-icon">⚡</div>
+        <div class="ready-title">在线探针控制台已就绪</div>
+        <div class="ready-sub">点击上方「步骤 1 ~ 4」任一工作流卡片，即可一键对选定源站发起全自动穿透体检与在线播放测试。</div>
       </div>
     </div>
 
@@ -731,101 +768,159 @@ const previewItemList = computed<any[]>(() => {
   gap: 18px;
 }
 
-/* 预设箱 */
-.preset-box {
-  background: linear-gradient(135deg, rgba(79, 70, 229, 0.06) 0%, rgba(6, 182, 212, 0.04) 100%);
-  border: 1px solid rgba(79, 70, 229, 0.15);
-  border-radius: var(--a-radius);
-  padding: 16px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.preset-title-row {
+/* 顶部工具栏卡片 */
+.probe-toolbar-card {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 8px;
-  font-size: 13px;
-}
-
-.preset-title {
-  font-weight: 700;
-  color: var(--a-brand);
-}
-
-.preset-sub {
-  color: var(--a-text-2);
-}
-
-.preset-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-/* 表单卡片 */
-.panel-card {
-  border-radius: var(--a-radius);
-  border: 1px solid var(--a-border);
-  background: var(--a-card);
-}
-
-.custom-form {
-  margin-bottom: -18px;
-}
-
-/* 引导大卡片群 (替代空盒子) */
-.guide-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 16px;
-  margin-top: 10px;
-}
-
-.guide-card {
   background: var(--a-card);
   border: 1px solid var(--a-border);
   border-radius: var(--a-radius);
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  box-shadow: var(--a-shadow-xs);
+  padding: 14px 20px;
+  margin-bottom: 14px;
 }
 
-.guide-card:hover {
-  transform: translateY(-3px);
-  border-color: var(--a-brand);
-  box-shadow: var(--a-shadow-1);
-}
-
-.guide-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
-  background: var(--a-bg-subtle);
+.toolbar-left {
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 22px;
-  color: var(--a-brand);
+  gap: 12px;
 }
 
-.guide-title {
-  font-size: 15px;
-  font-weight: 700;
+.toolbar-label {
+  font-size: 13.5px;
+  font-weight: 600;
   color: var(--a-text);
 }
 
-.guide-desc {
-  font-size: 12.5px;
+/* 4步全链路体检工作流卡片网格 */
+.workflow-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+@media (max-width: 992px) {
+  .workflow-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.workflow-card {
+  background: var(--a-card);
+  border: 1px solid var(--a-border);
+  border-radius: var(--a-radius);
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.workflow-card:hover {
+  border-color: var(--a-brand);
+  transform: translateY(-2px);
+  box-shadow: var(--a-shadow-sm);
+}
+
+.workflow-card.is-active {
+  border-color: var(--a-brand);
+  background: rgba(229, 9, 20, 0.04);
+  box-shadow: 0 0 0 1px var(--a-brand);
+}
+
+.wf-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  color: var(--a-brand);
+}
+
+.wf-badge {
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--a-text-2);
+}
+
+.wf-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--a-text);
+  margin-bottom: 4px;
+}
+
+.wf-desc {
+  font-size: 12px;
   color: var(--a-text-3);
-  line-height: 1.6;
+  margin-bottom: 12px;
+  line-height: 1.4;
+  flex: 1;
+}
+
+.wf-btn-box {
+  display: flex;
+}
+
+.wf-btn-box .el-button {
+  width: 100%;
+}
+
+/* 自定义参数条 */
+.custom-param-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  background: var(--a-bg-subtle);
+  border: 1px dashed var(--a-border);
+  border-radius: 8px;
+  padding: 10px 16px;
+  margin-bottom: 16px;
+  font-size: 12.5px;
+}
+
+.param-tip {
+  font-weight: 600;
+  color: var(--a-brand);
+}
+
+.param-label {
+  color: var(--a-text-2);
+  margin-left: 8px;
+}
+
+/* 就绪横幅卡片 */
+.ready-banner-card {
+  text-align: center;
+  padding: 60px 24px;
+  background: var(--a-card);
+  border: 1px dashed var(--a-border);
+  border-radius: var(--a-radius);
+  margin-top: 10px;
+}
+
+.ready-icon {
+  font-size: 36px;
+  margin-bottom: 12px;
+}
+
+.ready-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--a-text);
+  margin-bottom: 6px;
+}
+
+.ready-sub {
+  font-size: 13px;
+  color: var(--a-text-3);
+  max-width: 500px;
+  margin: 0 auto;
 }
 
 /* 结果区 */

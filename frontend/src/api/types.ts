@@ -102,6 +102,7 @@ export interface CacheKeyEntry {
   namespace: string
   ident: string
   remaining_seconds: number
+  is_disk?: boolean
 }
 
 /** 主动预热缓存请求。 */
@@ -125,6 +126,11 @@ export interface CacheStats {
   misses: number
   inflight: number
   ttl: CacheTtl
+  disk?: {
+    count: number
+    size_mb: number
+    db_path: string
+  }
 }
 
 /** 缓存全局命中率与容量看板数据。 */
@@ -136,6 +142,11 @@ export interface CacheStatsPayload {
   hit_ratio_percent: number
   inflight?: number
   ttl?: Record<string, number>
+  disk?: {
+    count: number
+    size_mb: number
+    db_path: string
+  }
 }
 
 /** 三类内容的缓存时长（秒）。0 表示该类缓存已关闭。 */
@@ -180,6 +191,7 @@ export interface CodeListItem {
   disabled_at?: string | null
   remaining_seconds?: number
   device_count?: number
+  max_devices?: number
   active_device_name?: string | null
 }
 
@@ -203,6 +215,7 @@ export interface CrawlerUploadRequest {
   key: string
   code: string
   overwrite?: boolean
+  auto_bump_version?: boolean
 }
 
 /** 上传采集器结果。 */
@@ -316,12 +329,23 @@ export interface ImageProxyStats {
   cache_dir: string
 }
 
+/** 图片代理全局总控配置。 */
+export interface ImageProxyConfig {
+  global_proxy_enabled: boolean
+  disk_cache_enabled: boolean
+  auto_strip_referer: boolean
+  custom_referer: string
+  cache_max_mb: number
+  updated_at?: string
+}
+
 /** 发码。``hours`` / ``days`` 二选一。 */
 export interface IssueCodesRequest {
   hours?: number | null
   days?: number | null
   count?: number
   note?: string
+  max_devices?: number
 }
 
 /** 发码的回执。**码本身一定要回给调用方** —— 它是唯一的交付物。 */
@@ -558,6 +582,7 @@ export interface SystemStatusPayload {
   maintenance?: boolean
   maintenance_message?: string
   notice?: SystemNoticePayload | null
+  image_proxy_enabled?: boolean
 }
 
 /** 站级动态分类，由爬虫的 ``home`` 返回，前端不写死。 */

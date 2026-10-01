@@ -20,6 +20,12 @@
       "description": "若站点已存在是否允许覆盖",
       "title": "Overwrite",
       "type": "boolean"
+    },
+    "auto_bump_version": {
+      "default": true,
+      "description": "若覆盖已存在脚本且版本号未变动，是否自动自增修订号(如 1.0.0 -> 1.0.1)",
+      "title": "Auto Bump Version",
+      "type": "boolean"
     }
   },
   "required": [

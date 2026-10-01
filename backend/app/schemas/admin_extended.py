@@ -20,6 +20,7 @@ class CacheKeyEntry(BaseModel):
     namespace: str = Field(description="命名空间：home / category / detail")
     ident: str = Field(description="标识符：- / tid:page / vod_id")
     remaining_seconds: float = Field(description="剩余存活秒数（TTL 倒计时）")
+    is_disk: bool = Field(default=False, description="是否来自 L2 本地磁盘持久化镜像")
 
 
 class CacheStatsPayload(BaseModel):
@@ -32,6 +33,26 @@ class CacheStatsPayload(BaseModel):
     hit_ratio_percent: float = Field(description="实时缓存命中率百分比（0.0 ~ 100.0）")
     inflight: int = Field(default=0, description="当前正在并发保护中的任务数")
     ttl: dict[str, float] = Field(default_factory=dict, description="全局默认 TTL 配置秒数")
+    disk: dict[str, Any] | None = Field(default=None, description="L2 磁盘持久化统计（条数、占用体积等）")
+    enabled: bool = Field(default=False, description="全局内容缓存是否开启（默认关闭，需手动开启）")
+    warmup_enabled: bool = Field(default=False, description="自动定时预热是否开启（默认关闭，需手动开启）")
+
+
+class CacheGlobalConfig(BaseModel):
+    """全局内容缓存与预热总控配置。"""
+
+    cache_enabled: bool = Field(
+        default=False,
+        description="是否开启全局内容缓存（默认关闭，需手动开启；开启后首页与分类等享受极速缓存）",
+    )
+    warmup_enabled: bool = Field(
+        default=False,
+        description="是否开启自动定时预热（默认关闭，需手动开启；开启后后台自动定期抓取入口页）",
+    )
+    warmup_interval_seconds: float = Field(
+        default=86400.0,
+        description="预热周期（秒），默认 86400（24小时）",
+    )
 
 
 class CacheClearRequest(BaseModel):
@@ -156,6 +177,35 @@ class PlaygroundProbeResult(BaseModel):
 
 # ------------------------------------------------------------------ 图片防盗链代理与缓存
 
+class ImageProxyConfig(BaseModel):
+    """全局图片防盗链代理总控配置。"""
+
+    global_proxy_enabled: bool = Field(
+        default=False,
+        description="是否全局启用海报防盗链中继（开启后前台所有海报经由本站代理中继并高速缓存，彻底免除第三方防盗链 403 破图）",
+    )
+    disk_cache_enabled: bool = Field(
+        default=False,
+        description="是否开启图片本地持久化磁盘缓存（默认关闭，需手动开启；开启后将图片缓存在本地 backend/data/img_cache 避免重复请求源站）",
+    )
+    auto_strip_referer: bool = Field(
+        default=True,
+        description="中继时是否自动去除 Referer 或伪造为源站同源 Referer",
+    )
+    custom_referer: str = Field(
+        default="",
+        description="全局自定义伪造 Referer（若为空则自动根据图片 URL 提取 host）",
+    )
+    cache_max_mb: int = Field(
+        default=1024,
+        description="磁盘缓存最大容量限制（MB）",
+    )
+    updated_at: str = Field(
+        default="",
+        description="配置最后更新时间",
+    )
+
+
 class ImageProxyStats(BaseModel):
     """图片代理缓存看板数据。"""
 
@@ -204,6 +254,7 @@ class SystemStatusPayload(BaseModel):
     maintenance: bool = Field(default=False, description="当前是否处于全站维护中")
     maintenance_message: str = Field(default="", description="维护文案")
     notice: SystemNoticePayload | None = Field(default=None, description="当前生效的公告信息")
+    image_proxy_enabled: bool = Field(default=False, description="是否全局开启图片防盗链代理")
 
 
 # ------------------------------------------------------------------ 跨源聚合搜索增强

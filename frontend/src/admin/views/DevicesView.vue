@@ -90,6 +90,26 @@ async function kick(device: DeviceItem): Promise<void> {
   }
 }
 
+async function unbind(device: DeviceItem): Promise<void> {
+  try {
+    await ElMessageBox.confirm(
+      `确定解绑「${device.name || '未命名设备'}」吗？解绑后将彻底移除该设备的绑定记录，并立即释放 1 个设备名额供新设备接入。`,
+      '解绑设备',
+      { type: 'warning', confirmButtonText: '确定解绑', cancelButtonText: '取消' },
+    )
+  } catch {
+    return
+  }
+
+  try {
+    const result = await api.unbindDevice(device.id)
+    ElMessage.success(result.message)
+    await load()
+  } catch (err) {
+    ElMessage.error(describeError(err))
+  }
+}
+
 function back(): void {
   void router.push({ name: 'admin-codes' })
 }
@@ -139,19 +159,27 @@ function back(): void {
       <ElTableColumn label="最后出现" width="140">
         <template #default="{ row }"><TimeAgo :value="row.last_seen_at" /></template>
       </ElTableColumn>
-      <ElTableColumn label="操作" width="120" fixed="right">
+      <ElTableColumn label="操作" width="160" fixed="right">
         <template #default="{ row }">
           <ElButton
             v-if="row.is_active"
             link
-            type="danger"
+            type="warning"
             size="small"
             :disabled="ui.readOnly"
             @click="kick(row as DeviceItem)"
           >
             踢下线
           </ElButton>
-          <span v-else class="a-muted">—</span>
+          <ElButton
+            link
+            type="danger"
+            size="small"
+            :disabled="ui.readOnly"
+            @click="unbind(row as DeviceItem)"
+          >
+            解绑设备
+          </ElButton>
         </template>
       </ElTableColumn>
     </ElTable>

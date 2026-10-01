@@ -96,11 +96,13 @@ function shuffleArray<T>(arr: T[]): T[] {
 // 响应式卡片列表（避免 SSR/客户端 hydration 不一致，并在挂载时执行真正随机化）
 const cardList = ref<PosterCardItem[]>([])
 
+import { formatPosterUrl } from '@/utils/format'
+
 function buildPosterWall(): void {
   // 1. 汇集所有素材
   const livePics = props.items
     .filter((it) => it.vod_pic && it.vod_pic.startsWith('http'))
-    .map((it) => it.vod_pic)
+    .map((it) => formatPosterUrl(it.vod_pic))
 
   const allPics = shuffleArray([...officialNetflixPosters, ...cinemaWallPosters, ...livePics])
 

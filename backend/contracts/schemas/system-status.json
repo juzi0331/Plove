@@ -87,6 +87,12 @@
       ],
       "default": null,
       "description": "当前生效的公告信息"
+    },
+    "image_proxy_enabled": {
+      "default": false,
+      "description": "是否全局开启图片防盗链代理",
+      "title": "Image Proxy Enabled",
+      "type": "boolean"
     }
   },
   "title": "SystemStatusPayload",

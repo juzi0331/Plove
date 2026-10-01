@@ -29,6 +29,20 @@
         },
         "ttl": {
           "$ref": "#/$defs/CacheTtl"
+        },
+        "disk": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "L2 磁盘持久化缓存统计",
+          "title": "Disk"
         }
       },
       "required": [
