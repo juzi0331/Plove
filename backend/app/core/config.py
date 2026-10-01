@@ -9,6 +9,7 @@ from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 #: 后端根目录 ``backend/`` —— 本文件在 ``backend/app/core/config.py``
@@ -138,6 +139,22 @@ class Settings(BaseSettings):
 
     #: 后台管理接口令牌，尚未启用
     admin_token: str = ""
+
+    @field_validator("crawler_dir", mode="before")
+    @classmethod
+    def _blank_crawler_dir_uses_default(cls, value: object) -> object:
+        """.env 里留空表示使用仓库默认 crawler/，不能被 Path('') 解析成当前目录。"""
+        if value is None or (isinstance(value, str) and not value.strip()):
+            return PROJECT_DIR / "crawler"
+        return value
+
+    @field_validator("contracts_dir", mode="before")
+    @classmethod
+    def _blank_contracts_dir_uses_default(cls, value: object) -> object:
+        """.env 里留空表示使用 backend/contracts/。"""
+        if value is None or (isinstance(value, str) and not value.strip()):
+            return BACKEND_DIR / "contracts"
+        return value
 
     @property
     def is_dev(self) -> bool:
