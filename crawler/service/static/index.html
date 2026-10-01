@@ -994,7 +994,7 @@
               <span class="panel-title">1. 本地采集脚本导入与编辑 (sites/&lt;key&gt;.py)</span>
               <div style="display:flex;gap:8px">
                 <button class="btn btn-secondary" style="padding:4px 8px;font-size:0.75rem" @click="loadSampleTesterCode">载入模板</button>
-                <button class="btn btn-secondary" style="padding:4px 8px;font-size:0.75rem" @click="testScriptCode = ''; testFileMeta = ''">清空</button>
+                <button class="btn btn-secondary" style="padding:4px 8px;font-size:0.75rem" @click="clearTesterStudio">清空</button>
               </div>
             </div>
 
@@ -1026,8 +1026,8 @@
             <div class="form-group">
               <div style="display:flex;justify-content:space-between;align-items:center">
                 <label class="form-label">Python 脚本完整源码</label>
-                <span style="font-size:0.75rem;color:var(--text-dim);font-family:var(--font-mono)" v-if="testScriptCode">
-                  {{ testScriptCode.split('\n').length }} 行 · {{ (new Blob([testScriptCode]).size / 1024).toFixed(1) }} KB
+                <span style="font-size:0.75rem;color:var(--text-dim);font-family:var(--font-mono)" v-if="scriptStats">
+                  {{ scriptStats }}
                 </span>
               </div>
               <textarea 
@@ -1446,6 +1446,20 @@
         const scriptTesting = ref(false);
         const testReport = ref(null);
         const isDragging = ref(false);
+
+        const scriptStats = computed(() => {
+          if (!testScriptCode.value) return '';
+          const lines = testScriptCode.value.split('\n').length;
+          const bytes = new TextEncoder().encode(testScriptCode.value).length;
+          return `${lines} 行 · ${(bytes / 1024).toFixed(1)} KB`;
+        });
+
+        function clearTesterStudio() {
+          testScriptCode.value = '';
+          testCustomKey.value = '';
+          testFileMeta.value = '';
+          testReport.value = null;
+        }
 
         // 提示词弹窗状态
         const showPromptModal = ref(false);
@@ -2054,6 +2068,8 @@ if __name__ == "__main__":
           openDeployFromTester,
           openDeployModal,
           executeDeploy,
+          scriptStats,
+          clearTesterStudio,
           goToLiveTest,
           fetchLiveHome,
           fetchLiveDetail,
@@ -2064,7 +2080,14 @@ if __name__ == "__main__":
           loadSampleJson
         };
       }
-    }).mount('#app');
+    });
+
+    app.config.errorHandler = (err, vm, info) => {
+      console.error('Vue 全局异常捕获:', err, info);
+      alert('界面渲染捕获异常: ' + (err && err.message ? err.message : err));
+    };
+
+    app.mount('#app');
   </script>
 </body>
 </html>
