@@ -525,6 +525,8 @@
     }
 
     .form-input, .form-textarea, .form-select {
+      width: 100%;
+      box-sizing: border-box;
       background: #ffffff;
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-sm);
@@ -1386,17 +1388,42 @@
       </div>
     </div>
 
-    <!-- 查看 Python 源码弹窗 -->
+    <!-- 查看 Python 源码专业弹窗 -->
     <div class="modal-overlay" v-if="showSourceModal" @click.self="showSourceModal = false">
-      <div class="modal-body">
-        <div class="panel-head">
-          <span class="panel-title">采集脚本源码: sites/{{ viewSourceKey }}.py</span>
+      <div class="modal-body" style="max-width:960px;width:95%">
+        <div class="panel-head" style="margin-bottom:1rem">
+          <div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span class="panel-title" style="font-size:1.15rem;font-weight:800;color:var(--text-main)">sites/{{ viewSourceKey }}.py</span>
+              <span class="tag tag-python">Python 采集器</span>
+            </div>
+            <div style="font-size:0.8rem;color:var(--text-dim);margin-top:4px;font-family:var(--font-mono)" v-if="viewSourceCode">
+              {{ viewSourceCode.split('\n').length }} 行 · {{ (new TextEncoder().encode(viewSourceCode).length / 1024).toFixed(1) }} KB · UTF-8
+            </div>
+          </div>
           <div style="display:flex;gap:8px">
-            <button class="btn btn-secondary" style="padding:4px 10px;font-size:0.8rem" @click="downloadScriptFile(viewSourceKey, viewSourceCode)">下载文件</button>
-            <button class="btn btn-secondary" style="padding:4px 10px;font-size:0.8rem" @click="showSourceModal = false">关闭</button>
+            <button class="btn btn-primary" style="padding:6px 14px;font-size:0.82rem" @click="loadViewSourceToStudio">
+              调入工坊体检
+            </button>
+            <button class="btn btn-secondary" style="padding:6px 12px;font-size:0.82rem" @click="copySourceCodeModal">
+              {{ copySourceBtnText }}
+            </button>
+            <button class="btn btn-secondary" style="padding:6px 12px;font-size:0.82rem" @click="downloadScriptFile(viewSourceKey, viewSourceCode)">
+              下载文件
+            </button>
+            <button class="btn btn-secondary" style="padding:6px 12px;font-size:0.82rem" @click="showSourceModal = false">
+              关闭
+            </button>
           </div>
         </div>
-        <textarea class="form-textarea" style="min-height:460px;margin-top:1rem" readonly :value="viewSourceCode"></textarea>
+
+        <div class="code-preview-wrap">
+          <div class="code-meta-bar">
+            <span>PYTHON · UTF-8 · READONLY PREVIEW</span>
+            <span>无损保持缩进与排版格式</span>
+          </div>
+          <pre class="code-content-box" style="max-height:560px;font-size:0.84rem;white-space:pre;overflow-x:auto;tab-size:4;line-height:1.65;font-family:var(--font-mono)">{{ viewSourceCode }}</pre>
+        </div>
       </div>
     </div>
 
@@ -1793,18 +1820,41 @@
         }
 
         // 查看源码
+        const copySourceBtnText = ref('复制全部源码');
+
         async function viewScriptCodeModal(key) {
           viewSourceKey.value = key;
+          copySourceBtnText.value = '复制全部源码';
           try {
             const res = await fetch(`/api/v1/rules/script/${key}/code`);
             const json = await res.json();
             if (json.ok) {
               viewSourceCode.value = json.data.code;
               showSourceModal.value = true;
+            } else {
+              alert('获取源码失败: ' + (json.error ? json.error.message : '未知异常'));
             }
           } catch (e) {
             alert('获取源码失败: ' + e);
           }
+        }
+
+        function copySourceCodeModal() {
+          if (!viewSourceCode.value) return;
+          navigator.clipboard.writeText(viewSourceCode.value);
+          copySourceBtnText.value = '已成功复制！';
+          setTimeout(() => {
+            copySourceBtnText.value = '复制全部源码';
+          }, 3000);
+        }
+
+        function loadViewSourceToStudio() {
+          testScriptCode.value = viewSourceCode.value;
+          testCustomKey.value = viewSourceKey.value;
+          testFileMeta.value = `已载入本地站点库源码 (${viewSourceKey.value}.py)`;
+          testReport.value = null;
+          showSourceModal.value = false;
+          tab.value = 'test_studio';
         }
 
         // 下载本地脚本
@@ -2227,6 +2277,9 @@ if __name__ == "__main__":
           saveScriptToLocalLibrary,
           saveScriptToLibraryFromSmart,
           viewScriptCodeModal,
+          copySourceBtnText,
+          copySourceCodeModal,
+          loadViewSourceToStudio,
           downloadScriptFile,
           copyPythonCode,
           deleteSiteItem,
