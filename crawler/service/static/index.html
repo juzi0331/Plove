@@ -1067,18 +1067,14 @@
               class="smart-input" 
               v-model="smartUrl" 
               placeholder="输入目标影视/短剧站主页 URL，如 https://xiaoyakankan.com 或 https://rou.video..."
-              @keyup.enter="startStructureInspection"
+              @keyup.enter="openVisualPickerModal" 
             />
-            <button class="btn btn-emerald" :disabled="structureLoading || smartLoading" @click="startStructureInspection">
-              <span v-if="!structureLoading">勘探分类与详情页结构 (可视化)</span>
-              <span v-else>正在深度勘探结构...</span>
+            <button class="btn btn-hero" style="padding:10px 22px;font-size:0.92rem;font-weight:700" :disabled="smartLoading" @click="openVisualPickerModal">
+              进入网页可视化点选 (推荐)
             </button>
-            <button class="btn btn-hero" :disabled="smartLoading || structureLoading" @click="startSmartExplore">
-              <span v-if="!smartLoading">一键全自动探测</span>
+            <button class="btn btn-secondary" :disabled="smartLoading" @click="startSmartExplore" title="纯后台分析并直接生成脚本">
+              <span v-if="!smartLoading">后台全自动分析</span>
               <span v-else>正在分析生成中...</span>
-            </button>
-            <button class="btn btn-secondary" style="border-color:var(--accent-primary);color:var(--accent-primary)" @click="openVisualPickerModal">
-              网页实时点选
             </button>
           </div>
 
@@ -1111,261 +1107,130 @@
         </div>
 
         <!-- 可视化分类与字段配置工作台 (勘探结果) -->
-        <div class="taxonomy-studio-card" v-if="structureResult">
-          <div style="display:flex;align-items:flex-start;justify-content:space-between;border-bottom:1px solid var(--border-subtle);padding-bottom:1rem;margin-bottom:1.25rem">
+                <div class="taxonomy-studio-card" v-if="structureResult" style="margin-top:1.5rem">
+          <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border-subtle);padding-bottom:1rem;margin-bottom:1rem">
             <div>
               <div style="display:flex;align-items:center;gap:10px">
-                <span class="studio-step-badge">可视化配置工作台</span>
+                <span class="studio-step-badge">已配置成果总览</span>
                 <h3 style="font-size:1.25rem;font-weight:800;color:var(--text-main)">
-                  目标站点分类与字段勘探: {{ structureResult.site_name }} ({{ structureResult.suggested_key }})
+                  {{ structureResult.site_name }} ({{ structureResult.suggested_key }})
                 </h3>
+                <span class="tag tag-python">{{ structureResult.base_url }}</span>
               </div>
               <p style="color:var(--text-muted);font-size:0.86rem;margin-top:6px">
-                基础域名: {{ structureResult.base_url }} · 已嗅探出 {{ (structureResult.categories_tree || []).length }} 个一级分类、{{ (structureResult.unassigned_tags_pool || structureResult.unassigned_tags || []).length }} 个待选标签及详情页字段结构。请在下方勾选和微调：
+                已选定 {{ selectedCategoriesCount }} 个一级分类 · 共 {{ totalSubcategoriesCount }} 个二级标签 · 已绑定 {{ boundFieldsCount }} 个详情页采集字段。
               </p>
             </div>
             <div style="display:flex;gap:8px">
-              <button class="btn btn-emerald" style="padding:5px 12px;font-size:0.8rem" @click="openVisualPickerModal">
-                进入网页可视化点选
+              <button class="btn btn-hero" style="padding:6px 14px;font-size:0.82rem;font-weight:700" @click="openVisualPickerModal">
+                打开网页可视化点选 (继续增删修改)
               </button>
-              <button class="btn btn-secondary" style="padding:5px 12px;font-size:0.8rem" @click="isStudioCollapsed = !isStudioCollapsed">
-                {{ isStudioCollapsed ? '展开工作台' : '收起工作台' }}
-              </button>
-              <button class="btn btn-secondary" style="padding:5px 12px;font-size:0.8rem" @click="resetStudio" title="清空勘探结果">
+              <button class="btn btn-secondary" style="padding:6px 12px;font-size:0.82rem" @click="resetStudio" title="清空并重新开始">
                 清空重置
               </button>
             </div>
           </div>
 
-          <div v-show="!isStudioCollapsed">
-            <!-- 步骤 1: 一级分类与二级标签规划 -->
-            <div style="margin-bottom:1.75rem">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem">
-                <h4 style="font-size:1rem;font-weight:700;color:var(--text-main);display:flex;align-items:center;gap:8px">
-                  <span style="background:var(--accent-primary);color:#fff;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:0.75rem">1</span>
-                  定制分类体系 (一级分类 &amp; 二级标签)
-                </h4>
-                <div style="font-size:0.8rem;color:var(--text-muted)">
-                  点击左侧分类卡片可在右侧分配与管理二级标签
-                </div>
+          <!-- 成果列表预览网格 -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:1.25rem">
+            <!-- 左侧: 已选分类与标签列表 -->
+            <div class="panel" style="margin-bottom:0">
+              <div class="panel-head" style="padding:8px 12px">
+                <span class="panel-title" style="font-size:0.86rem">已选分类体系清单</span>
+                <span class="tag tag-direct">{{ selectedCategoriesCount }} 类 · {{ totalSubcategoriesCount }} 标</span>
               </div>
-
-              <div class="taxonomy-layout">
-                <!-- 左列: 一级分类列表 -->
-                <div class="primary-col">
-                  <div style="display:flex;align-items:center;justify-content:space-between">
-                    <span style="font-size:0.88rem;font-weight:700;color:var(--text-main)">一级分类 ({{ (structureResult.categories_tree || []).length }})</span>
-                    <span style="font-size:0.78rem;color:var(--text-dim)">勾选即采纳</span>
-                  </div>
-
-                  <!-- 快速添加一级分类 -->
-                  <div style="display:flex;gap:6px">
-                    <input 
-                      class="smart-input" 
-                      style="padding:6px 10px;font-size:0.82rem;flex:1" 
-                      placeholder="新分类名称 (如: 动漫)" 
-                      v-model="newPrimaryName"
-                    />
-                    <input 
-                      class="smart-input" 
-                      style="padding:6px 10px;font-size:0.82rem;width:80px" 
-                      placeholder="tid/路径" 
-                      v-model="newPrimaryTid"
-                      @keyup.enter="addPrimaryCategory"
-                    />
-                    <button class="btn btn-secondary" style="padding:6px 10px;font-size:0.82rem" @click="addPrimaryCategory">
-                      添加
-                    </button>
-                  </div>
-
-                  <!-- 一级分类卡片列表 -->
-                  <div style="display:flex;flex-direction:column;gap:8px;max-height:360px;overflow-y:auto;padding-right:4px">
-                    <div 
-                      v-for="(cat, idx) in structureResult.categories_tree" 
-                      :key="cat.type_id || cat.tid || idx"
-                      class="primary-item-card"
-                      :class="{ 'is-active': activePrimaryIndex === idx }"
-                      @click="activePrimaryIndex = idx"
-                    >
-                      <div style="display:flex;align-items:center;justify-content:space-between">
-                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex:1" @click.stop>
-                          <input type="checkbox" v-model="cat.selected" style="accent-color:var(--accent-primary);cursor:pointer;width:15px;height:15px">
-                          <span style="font-weight:700;font-size:0.9rem;color:var(--text-main)">{{ cat.type_name || cat.name }}</span>
-                        </label>
-                        <div style="display:flex;align-items:center;gap:6px">
-                          <span style="font-size:0.75rem;background:#e2e8f0;padding:2px 6px;border-radius:4px;color:var(--text-muted)">
-                            {{ cat.subcategories ? cat.subcategories.length : 0 }} 标签
-                          </span>
-                          <button 
-                            class="pill-remove-btn" 
-                            title="删除此分类"
-                            @click.stop="removePrimaryCategory(idx)"
-                          >×</button>
-                        </div>
-                      </div>
-                      <div style="font-size:0.75rem;color:var(--text-dim);font-family:var(--font-mono);margin-left:23px">
-                        ID/路径: {{ cat.type_id || cat.tid }}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- 右列: 二级标签与分类池 -->
-                <div class="subcat-col" v-if="currentPrimaryCategory">
-                  <div style="display:flex;align-items:center;justify-content:space-between">
-                    <div>
-                      <span style="font-size:0.88rem;font-weight:700;color:var(--text-main)">
-                        「{{ currentPrimaryCategory.type_name || currentPrimaryCategory.name }}」的二级标签/子分类
-                      </span>
-                      <span style="font-size:0.78rem;color:var(--text-muted);margin-left:8px">
-                        ({{ currentPrimaryCategory.subcategories ? currentPrimaryCategory.subcategories.filter(s => s.selected).length : 0 }} / {{ currentPrimaryCategory.subcategories ? currentPrimaryCategory.subcategories.length : 0 }} 启用)
-                      </span>
-                    </div>
-                    <div style="display:flex;gap:6px">
-                      <button class="btn btn-secondary" style="padding:3px 8px;font-size:0.76rem" @click="toggleAllSubcategories(activePrimaryIndex, true)">全选</button>
-                      <button class="btn btn-secondary" style="padding:3px 8px;font-size:0.76rem" @click="toggleAllSubcategories(activePrimaryIndex, false)">全清</button>
-                    </div>
-                  </div>
-
-                  <!-- 快速添加自定义二级标签 -->
-                  <div style="display:flex;gap:6px">
-                    <input 
-                      class="smart-input" 
-                      style="padding:6px 10px;font-size:0.82rem;flex:1" 
-                      placeholder="输入自定义子标签或过滤词 (如: 4K, 连载中, 国产短剧)" 
-                      v-model="newCustomTagName"
-                      @keyup.enter="addCustomSubcategory"
-                    />
-                    <button class="btn btn-secondary" style="padding:6px 10px;font-size:0.82rem" @click="addCustomSubcategory">
-                      添加标签
-                    </button>
-                  </div>
-
-                  <!-- 当前分类已分配的标签 Pill 列表 -->
-                  <div>
-                    <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:6px">
-                      已分配标签 (点击可启用/禁用，点击 × 移除):
-                    </div>
-                    <div class="subcat-pills-wrap">
-                      <div 
-                        v-for="(sub, subIdx) in currentPrimaryCategory.subcategories" 
-                        :key="sub.type_id || sub.tid || subIdx"
-                        class="subcat-pill"
-                        :class="{ 'is-selected': sub.selected }"
-                        @click="sub.selected = !sub.selected"
-                      >
-                        <span>{{ sub.type_name || sub.name }}</span>
-                        <span class="pill-remove-btn" @click.stop="removeSubcategory(activePrimaryIndex, subIdx)">×</span>
-                      </div>
-                      <div v-if="!currentPrimaryCategory.subcategories || currentPrimaryCategory.subcategories.length === 0" style="color:var(--text-dim);font-size:0.82rem;padding:8px">
-                        暂无二级标签。可从下方候选标签池点击添加，或直接手动输入。
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- 全站嗅探出的候选标签池 -->
-                  <div v-if="(structureResult.unassigned_tags_pool || structureResult.unassigned_tags || []).length > 0">
-                    <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:6px">
-                      全站嗅探出的候选标签池 (点击一键归入「{{ currentPrimaryCategory.type_name || currentPrimaryCategory.name }}」):
-                    </div>
-                    <div class="tag-pool-wrap">
-                      <span 
-                        v-for="(tag, tIdx) in (structureResult.unassigned_tags_pool || structureResult.unassigned_tags || [])" 
-                        :key="tIdx"
-                        class="tag-pool-chip"
-                        @click="addTagFromPool(tag)"
-                      >
-                        + {{ tag.tag_name || tag.type_name || tag.name }}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div class="subcat-col" v-else style="display:flex;align-items:center;justify-content:center;color:var(--text-dim)">
-                  请在左侧选择一个一级分类以配置二级标签
-                </div>
-              </div>
-            </div>
-
-            <!-- 步骤 2: 详情页待采集字段清单 -->
-            <div style="margin-bottom:1.5rem;border-top:1px solid var(--border-subtle);padding-top:1.5rem">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem">
-                <h4 style="font-size:1rem;font-weight:700;color:var(--text-main);display:flex;align-items:center;gap:8px">
-                  <span style="background:var(--accent-primary);color:#fff;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:0.75rem">2</span>
-                  详情页待采集字段规划 (已自动嗅探特征)
-                </h4>
-                <div style="font-size:0.8rem;color:var(--text-muted)">
-                  勾选需要的字段，爬虫或 AI 将严格只解析与提取这些字段
-                </div>
-              </div>
-
-              <div class="detail-fields-grid">
+              <div style="padding:10px 12px;max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:8px">
                 <div 
-                  v-for="field in structureResult.detail_fields" 
-                  :key="field.field_key || field.field"
-                  class="field-card"
-                  :class="{ 'is-selected': field.selected }"
+                  v-for="(cat, cIdx) in (structureResult.categories_tree || [])" 
+                  :key="cIdx"
+                  style="border:1px solid var(--border-subtle);border-radius:6px;padding:8px;background:var(--bg-surface-subtle)"
                 >
-                  <div style="display:flex;align-items:center;justify-content:space-between">
-                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-                      <input type="checkbox" v-model="field.selected" style="accent-color:var(--accent-primary);cursor:pointer;width:15px;height:15px">
-                      <span style="font-weight:700;font-size:0.88rem;color:var(--text-main)">{{ field.field_label || field.label }}</span>
-                    </label>
-                    <span :class="field.found ? 'field-badge-found' : 'field-badge-miss'">
-                      {{ field.found ? '已侦测到' : '未直接侦测' }}
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+                    <strong style="color:var(--text-main);font-size:0.86rem">{{ cat.type_name || cat.name }}</strong>
+                    <span style="font-size:0.72rem;color:var(--text-dim);font-family:var(--font-mono)">tid: {{ cat.type_id || cat.tid }} ({{ cat.subcategories ? cat.subcategories.length : 0 }} 标签)</span>
+                  </div>
+                  <div style="display:flex;flex-wrap:wrap;gap:4px">
+                    <span 
+                      v-for="(sub, sIdx) in (cat.subcategories || [])" 
+                      :key="sIdx"
+                      class="tag" 
+                      style="font-size:0.72rem;padding:1px 6px;background:var(--bg-surface);border:1px solid var(--border-subtle)"
+                    >
+                      {{ sub.type_name || sub.name }}
+                    </span>
+                    <span v-if="!cat.subcategories || cat.subcategories.length === 0" style="font-size:0.72rem;color:var(--text-dim)">
+                      暂无子标签
                     </span>
                   </div>
-                  <div style="font-size:0.72rem;color:var(--text-dim);font-family:var(--font-mono)">
-                    字段键名: {{ field.field_key || field.field }}
-                  </div>
-                  <div v-if="field.detected_sample || field.sample" style="font-size:0.75rem;color:var(--text-muted);background:var(--bg-surface);padding:4px 6px;border-radius:4px;border:1px solid var(--border-subtle);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" :title="field.detected_sample || field.sample">
-                    采样: {{ field.detected_sample || field.sample }}
-                  </div>
+                </div>
+                <div v-if="!structureResult.categories_tree || structureResult.categories_tree.length === 0" style="text-align:center;padding:1.5rem;color:var(--text-dim);font-size:0.8rem">
+                  暂无分类，请点击上方按钮进入网页点选
                 </div>
               </div>
             </div>
 
-            <!-- 步骤 3: 确认与操作栏 -->
-            <div class="studio-action-bar">
-              <div>
-                <div style="font-weight:700;font-size:0.95rem;color:var(--text-main)">
-                  已配置: {{ selectedCategoriesCount }} 个主分类及标签 · {{ selectedFieldsCount }} 个详情页采集字段
-                </div>
-                <div style="font-size:0.8rem;color:var(--text-muted);margin-top:2px">
-                  确认后可立即让 AI 精准编写代码，或直接由引擎套用模板编译单文件 Python 采集器
-                </div>
+            <!-- 右侧: 详情页字段映射采样 -->
+            <div class="panel" style="margin-bottom:0">
+              <div class="panel-head" style="padding:8px 12px">
+                <span class="panel-title" style="font-size:0.86rem">详情页采集字段绑定状态</span>
+                <span class="tag tag-python">{{ boundFieldsCount }} / {{ (structureResult.detail_fields || []).length }} 字段</span>
               </div>
-              <div style="display:flex;gap:12px;flex-wrap:wrap">
-                <button class="btn btn-secondary" style="border-color:var(--accent-primary);color:var(--accent-primary)" @click="generatePromptFromVisualConfig">
-                  生成 AI 专用提示词 (带当前配置)
-                </button>
-                <button class="btn btn-primary" :disabled="generatingCode" @click="generateCodeFromVisualConfig">
-                  <span v-if="!generatingCode">立即生成 Python 采集器脚本</span>
-                  <span v-else>正在编译生成中...</span>
-                </button>
+              <div style="padding:10px 12px;max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:5px">
+                <div 
+                  v-for="field in (structureResult.detail_fields || [])" 
+                  :key="field.field_key || field.field"
+                  style="display:flex;align-items:center;justify-content:space-between;padding:5px 8px;border-radius:4px;border:1px solid var(--border-subtle);background:var(--bg-surface-subtle)"
+                >
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <span style="font-size:0.78rem;font-weight:600;color:var(--text-main)">{{ field.field_label || field.label }}</span>
+                    <span class="tag" :class="(field.detected_sample || field.sample) ? 'tag-direct' : 'tag-json'" style="font-size:0.65rem;padding:0 3px">
+                      {{ (field.detected_sample || field.sample) ? '已绑定' : '未绑定' }}
+                    </span>
+                  </div>
+                  <div v-if="field.detected_sample || field.sample" style="font-size:0.72rem;color:#059669;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" :title="field.detected_sample || field.sample">
+                    {{ field.detected_sample || field.sample }}
+                  </div>
+                </div>
               </div>
             </div>
+          </div>
 
-            <!-- 可视化配置生成的代码展示面板 -->
-            <div class="panel" style="margin-top:1.5rem" v-if="generatedConfigCode">
-              <div class="panel-head">
-                <div style="display:flex;align-items:center;gap:8px">
-                  <span class="panel-title">已根据定制结构生成采集器: sites/{{ structureResult.suggested_key }}.py</span>
-                  <span class="tag tag-python">单文件 Python 源码</span>
-                </div>
-                <div style="display:flex;gap:8px">
-                  <button class="btn btn-emerald" style="padding:4px 10px;font-size:0.8rem" @click="loadGeneratedCodeToStudio">
-                    调入工坊体检与部署
-                  </button>
-                  <button class="btn btn-secondary" style="padding:4px 10px;font-size:0.8rem" @click="copyGeneratedConfigCode">
-                    复制代码
-                  </button>
-                  <button class="btn btn-secondary" style="padding:4px 10px;font-size:0.8rem" @click="downloadScriptFile(structureResult.suggested_key, generatedConfigCode)">
-                    下载文件
-                  </button>
-                </div>
-              </div>
-              <pre class="output-box" style="max-height:280px">{{ generatedConfigCode }}</pre>
+          <!-- 行动操作条 -->
+          <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg-surface-subtle);border:1px solid var(--border-subtle);padding:10px 14px;border-radius:6px">
+            <div style="font-size:0.82rem;color:var(--text-muted)">
+              核对无误后，可立即生成标准 Python 采集脚本，或生成 AI 提示词交给大模型编写代码。
             </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-secondary" style="border-color:var(--accent-primary);color:var(--accent-primary);font-size:0.82rem" @click="generatePromptFromVisualConfig">
+                生成 AI 专用提示词 (带当前配置)
+              </button>
+              <button class="btn btn-primary" style="font-size:0.82rem" :disabled="generatingCode" @click="generateCodeFromVisualConfig">
+                <span v-if="!generatingCode">立即生成 Python 采集器脚本</span>
+                <span v-else>正在编译生成中...</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 可视化配置生成的代码展示面板 -->
+          <div class="panel" style="margin-top:1.25rem" v-if="generatedConfigCode">
+            <div class="panel-head">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="panel-title">已根据定制结构生成采集器: sites/{{ structureResult.suggested_key }}.py</span>
+                <span class="tag tag-python">单文件 Python 源码</span>
+              </div>
+              <div style="display:flex;gap:8px">
+                <button class="btn btn-emerald" style="padding:4px 10px;font-size:0.8rem" @click="loadGeneratedCodeToStudio">
+                  调入工坊体检与部署
+                </button>
+                <button class="btn btn-secondary" style="padding:4px 10px;font-size:0.8rem" @click="copyGeneratedConfigCode">
+                  复制代码
+                </button>
+                <button class="btn btn-secondary" style="padding:4px 10px;font-size:0.8rem" @click="downloadScriptFile(structureResult.suggested_key, generatedConfigCode)">
+                  下载文件
+                </button>
+              </div>
+            </div>
+            <pre class="output-box" style="max-height:280px">{{ generatedConfigCode }}</pre>
           </div>
         </div>
 
@@ -2398,9 +2263,21 @@
               </div>
 
               <!-- 返回点选按钮 -->
-              <button class="btn btn-primary" style="width:100%;padding:6px;font-size:0.78rem;justify-content:center;margin-top:4px" @click="visualActiveTab = 'pick'">
-                &lt;- 返回网页点选工作台
-              </button>
+                            <!-- 弹窗内快捷生成与行动区 -->
+              <div style="border-top:1px solid var(--border-subtle);padding-top:10px;margin-top:8px;display:flex;flex-direction:column;gap:6px">
+                <button class="btn btn-emerald" style="width:100%;padding:7px;font-size:0.82rem;font-weight:700;justify-content:center" :disabled="generatingCode" @click="generateCodeFromVisualConfig">
+                  <span v-if="!generatingCode">一键生成 Python 采集器脚本</span>
+                  <span v-else>正在编译生成中...</span>
+                </button>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+                  <button class="btn btn-secondary" style="padding:5px;font-size:0.74rem;justify-content:center" @click="generatePromptFromVisualConfig">
+                    生成 AI 提示词
+                  </button>
+                  <button class="btn btn-primary" style="padding:5px;font-size:0.74rem;justify-content:center" @click="visualActiveTab = 'pick'">
+                    <- 继续网页点选
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -2777,7 +2654,8 @@
 
         // 实时可视化点选拾取器交互逻辑
         function openVisualPickerModal() {
-          const targetUrl = smartUrl.value || (structureResult.value ? structureResult.value.base_url : 'https://rou.video');
+          let targetUrl = smartUrl.value.trim() || (structureResult.value ? structureResult.value.base_url : 'https://rou.video');
+          smartUrl.value = targetUrl;
           visualPickerUrl.value = targetUrl;
           visualPickingMode.value = 'pick';
           visualProxyIframeSrc.value = '/api/v1/smart/visual-proxy?url=' + encodeURIComponent(targetUrl) + '&mode=pick';
@@ -2785,10 +2663,14 @@
           pickedSiblingsSelected.value = [];
 
           if (!structureResult.value) {
+            let suggestedKey = 'custom_site';
+            try {
+              suggestedKey = new URL(targetUrl).hostname.replace(/\./g, '_');
+            } catch (e) {}
             structureResult.value = {
               base_url: targetUrl,
-              site_name: '自定义点选站点',
-              suggested_key: 'custom_picker',
+              site_name: suggestedKey,
+              suggested_key: suggestedKey,
               categories_tree: [],
               unassigned_tags_pool: [],
               detail_fields: [
@@ -2803,6 +2685,31 @@
               ]
             };
           }
+
+          // 若当前分类清单为空，后台静默自动预探测一次（能识别则自动填入，省去用户重复输入）
+          if (!structureResult.value.categories_tree || structureResult.value.categories_tree.length === 0) {
+            fetch('/api/v1/smart/inspect-structure', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ url: targetUrl })
+            }).then(res => res.json()).then(json => {
+              if (json.ok && json.data) {
+                if (!structureResult.value.categories_tree || structureResult.value.categories_tree.length === 0) {
+                  if (json.data.categories_tree && json.data.categories_tree.length > 0) {
+                    structureResult.value.categories_tree = json.data.categories_tree;
+                  }
+                  if (json.data.site_name) structureResult.value.site_name = json.data.site_name;
+                  if (json.data.suggested_key) structureResult.value.suggested_key = json.data.suggested_key;
+                  if (json.data.detail_fields && json.data.detail_fields.length > 0) {
+                    structureResult.value.detail_fields = json.data.detail_fields;
+                  }
+                }
+              }
+            }).catch(e => {
+              console.warn('静默预探测背景任务异常:', e);
+            });
+          }
+
           showVisualPickerModal.value = true;
         }
 
