@@ -52,6 +52,29 @@ from app.schemas.admin_site_control import (
     SiteDetailPolicyUpdateRequest,
     SubCategoryItem,
 )
+from app.schemas.admin_extended import (
+    AggregateSearchPayload,
+    AggregateSearchSiteResult,
+    CacheClearRequest,
+    CacheClearResult,
+    CacheEntryDetail,
+    CacheKeyEntry,
+    CachePreheatRequest,
+    CachePreheatResult,
+    CacheStatsPayload,
+    CodeCleanupResult,
+    ImageProxyClearResult,
+    ImageProxyConfig,
+    ImageProxyStats,
+    PlaygroundProbeRequest,
+    PlaygroundProbeResult,
+    SamplePostersPayload,
+    SiteCachePolicy,
+    SitePreheatDetail,
+    SystemMaintenancePayload,
+    SystemNoticePayload,
+    SystemStatusPayload,
+)
 from app.schemas.catalog import DetailPayload, HomePayload, HomeSection, ListPayload
 from app.schemas.envelope import Envelope, ErrorInfo
 from app.schemas.episode import Episode, LineInfo
@@ -134,30 +157,8 @@ __all__ = [
     "SystemNoticePayload",
     "SystemStatusPayload",
     "CodeCleanupResult",
+    "ImageProxyConfig",
 ]
-
-from app.schemas.admin_extended import (
-    AggregateSearchPayload,
-    AggregateSearchSiteResult,
-    CacheClearRequest,
-    CacheClearResult,
-    CacheEntryDetail,
-    CacheKeyEntry,
-    CachePreheatRequest,
-    CachePreheatResult,
-    CacheStatsPayload,
-    CodeCleanupResult,
-    ImageProxyClearResult,
-    ImageProxyStats,
-    PlaygroundProbeRequest,
-    PlaygroundProbeResult,
-    SamplePostersPayload,
-    SiteCachePolicy,
-    SitePreheatDetail,
-    SystemMaintenancePayload,
-    SystemNoticePayload,
-    SystemStatusPayload,
-)
 
 #: 导出清单：文件名（不含扩展名） -> 模型
 #: ``Envelope`` 有类型参数，导出时用 ``Envelope[Any]`` 固定下来
@@ -225,6 +226,7 @@ EXPORTS: dict[str, type[BaseModel]] = {
     # 图片防盗链代理
     "admin-image-proxy-stats": ImageProxyStats,
     "admin-image-proxy-clear": ImageProxyClearResult,
+    "admin-image-proxy-config": ImageProxyConfig,
     "admin-sample-posters": SamplePostersPayload,
     # 系统公告与维护模式
     "system-notice": SystemNoticePayload,

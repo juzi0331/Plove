@@ -12,6 +12,16 @@
       "default": "",
       "title": "Name",
       "type": "string"
+    },
+    "custom_name": {
+      "default": "",
+      "title": "Custom Name",
+      "type": "string"
+    },
+    "hidden": {
+      "default": false,
+      "title": "Hidden",
+      "type": "boolean"
     }
   },
   "required": [

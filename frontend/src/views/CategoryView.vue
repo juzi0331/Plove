@@ -21,6 +21,7 @@ import SiteSelector from '@/components/SiteSelector.vue'
 import UserMenu from '@/components/UserMenu.vue'
 import { useDeviceStore } from '@/stores/device'
 import { useSitesStore } from '@/stores/sites'
+import { formatCatDisplay } from '@/utils/format'
 
 const props = defineProps<{ tid: string }>()
 
@@ -38,19 +39,6 @@ const finished = ref(false)
 const page = ref(1)
 
 const scrolled = ref(false)
-
-function formatCatDisplay(name?: string, custom?: string): string {
-  if (!name) return ''
-  if (!custom || !custom.trim()) return name
-  let c = custom.trim()
-  if ((c.startsWith('(') && c.endsWith(')')) || (c.startsWith('（') && c.endsWith('）'))) {
-    c = c.slice(1, -1).trim()
-  }
-  if (!c) return name
-  const suffix = `（${c}）`
-  if (name.endsWith(suffix)) return name
-  return `${name}${suffix}`
-}
 
 // 当前主分类与二级分类关系解析
 const currentParentCategory = computed(() => {
@@ -336,7 +324,11 @@ function switchCategory(tid: string): void {
 function openDetail(item: { vod_id?: string | number }): void {
   if (item?.vod_id) {
     saveState()
-    void router.push({ name: 'detail', params: { vodId: String(item.vod_id) } })
+    void router.push({
+      name: 'detail',
+      params: { vodId: String(item.vod_id) },
+      query: { site: sites.currentKey || undefined },
+    })
   }
 }
 

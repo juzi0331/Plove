@@ -10,13 +10,11 @@
 import { request } from './http'
 import type {
   ActivationResult,
-  AdminStatusPayload,
   DetailPayload,
   HealthPayload,
   HomePayload,
   ListPayload,
   Playback,
-  RefreshResult,
   SessionState,
   SiteListPayload,
   SiteMeta,
@@ -128,22 +126,6 @@ export function getPlayback(key: string, input: PlaybackInput): Promise<Playback
       line: input.line,
       play_id: input.playId,
     },
-  })
-}
-
-// ------------------------------------------------------------------ 后台
-// 用**另一个**令牌（X-Admin-Token）。前端用户端其实用不到这两个，
-// 写在这里是为了日后做后台面板（阶段 8）时不用再摸一遍 URL。
-
-export function adminStatus(adminToken: string): Promise<AdminStatusPayload> {
-  return request('/admin/status', { adminToken })
-}
-
-export function adminRefreshCache(adminToken: string, wait = false): Promise<RefreshResult> {
-  return request('/admin/cache/refresh', {
-    method: 'POST',
-    adminToken,
-    query: { wait: wait ? 'true' : undefined },
   })
 }
 

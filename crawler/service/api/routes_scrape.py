@@ -1,9 +1,8 @@
 """统一数据抓取 API，同时支持 Python 独立采集脚本与 JSON 规则。"""
 
-from typing import Any, Optional
+from typing import Any
 from fastapi import APIRouter, Query
 
-from ..core.errors import CrawlerServiceError, ErrorCode
 from ..engine.rule_manager import rule_manager
 from ..engine.scraper import UniversalScraper
 

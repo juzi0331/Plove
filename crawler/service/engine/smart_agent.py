@@ -14,24 +14,13 @@ from __future__ import annotations
 
 import json
 import re
-import urllib.parse
 from typing import Any, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .code_generator import generate_crawler_python_code
 from .extractor_html import HtmlNode, parse_html
-from .models import (
-    CategoryItemRule,
-    DetailRule,
-    EpisodeItemRule,
-    FieldExtractor,
-    HomeRule,
-    PlayRule,
-    SiteRule,
-    VodItemRule,
-)
+from .models import SiteRule
 from ..core.cleaner import clean_title, collapse_whitespace, is_placeholder_image, safe_resolve_url
-from ..core.errors import CrawlerServiceError, ErrorCode
 from ..core.http_client import HttpClient
 from ..core.log import get_logger
 
@@ -46,13 +35,27 @@ class SmartExploreResult(BaseModel):
     site_name: str
     suggested_key: str
     data_type: str
-    categories: list[dict[str, str]]
+    categories: list[dict[str, Any]]
     recommend: list[dict[str, Any]]
     sample_detail: Optional[dict[str, Any]] = None
     sample_stream: Optional[dict[str, Any]] = None
     generated_rule: dict[str, Any]
     generated_python_code: str = ""
     steps_log: list[str]
+
+
+class StructureInspectionResult(BaseModel):
+    base_url: str
+    site_name: str
+    suggested_key: str
+    categories_tree: list[dict[str, Any]]
+    unassigned_tags: list[dict[str, str]]
+    unassigned_tags_pool: list[dict[str, str]] = Field(default_factory=list)
+    detail_fields: list[dict[str, Any]]
+    sample_video: Optional[dict[str, Any]] = None
+    html_preview: str = ""
+    steps_log: list[str] = Field(default_factory=list)
+
 
 
 
@@ -78,30 +81,410 @@ class SmartAgent:
         self.logs.append(msg)
         logger.info("[SmartAgent] %s", msg)
 
+    async def _resolve_entry_page(self, client: HttpClient, target_url: str) -> tuple[str, HtmlNode]:
+        """请求目标页面，若遇到门禁页/过渡页/欢迎页（如未成年警告、仅有几个引导链接），自动跟踪进入主入口。"""
+        resp = await client.request("GET", target_url)
+        self.log(f"源站响应状态码: {resp.status_code}")
+        html = resp.text
+        root = parse_html(html)
+
+        anchors = root.select("a")
+        # 若页面超链接极少 (<= 6 个)，检测是否为门禁/过渡页
+        if len(anchors) <= 6:
+            for a in anchors:
+                h = (a.attr("href") or "").strip()
+                t = collapse_whitespace(a.text)
+                if not h or h == "#" or h.startswith("javascript:"):
+                    continue
+                if any(w in t for w in ["进入", "進入", "18", "滿", "满", "成年", "agree", "enter", "continue", "首页", "首頁"]) or h in ("/home", "/index.html", "/main"):
+                    if not h.startswith("http") or any(dom in h for dom in (self.base_url, self.suggested_key)):
+                        next_url = safe_resolve_url(self.base_url, h)
+                        self.log(f"检测到网站引导/准入过渡页，自动跟踪至主入口: {next_url}")
+                        try:
+                            next_resp = await client.request("GET", next_url)
+                            if next_resp.status_code == 200 and len(next_resp.text) > len(html):
+                                return next_resp.text, parse_html(next_resp.text)
+                        except Exception as exc:
+                            self.log(f"跟踪主入口异常: {exc}")
+                        break
+        return html, root
+
     async def explore(self) -> SmartExploreResult:
         self.log(f"开始连接目标站点: {self.target_url}")
         async with HttpClient(base_url=self.base_url) as client:
-            resp = await client.request("GET", self.target_url)
-            self.log(f"源站响应成功，状态码: {resp.status_code}")
+            html, root = await self._resolve_entry_page(client, self.target_url)
 
             # 探测是 JSON 还是 HTML
-            content_type = resp.headers.get("content-type", "").lower()
-            text_body = resp.text
-
-            if "application/json" in content_type or (text_body.startswith("{") and text_body.endswith("}")):
+            text_body = html
+            if text_body.strip().startswith("{") and text_body.strip().endswith("}"):
                 self.log("检测到目标站为纯 JSON API 接口")
-                return await self._explore_json(resp.json())
+                return await self._explore_json(json.loads(text_body))
             else:
                 self.log("检测到目标站为 HTML 网页形态，启动智能 DOM 聚类分析")
                 return await self._explore_html(client, text_body)
+
+    async def inspect_structure(self) -> StructureInspectionResult:
+        """对目标站点进行可视化探测勘探：
+        1. 探测站点名称与推荐主页卡片
+        2. 扫描并归纳一级分类与二级子标签树
+        3. 深入样本详情页，探测各项关键字段（片名、海报、状态、年份、地区、演员、导演、标签、简介、选集、线路）
+        4. 返回供前端可视化展示与勾选的完整结构
+        """
+        self.log(f"启动可视化结构勘探: {self.target_url}")
+        async with HttpClient(base_url=self.base_url) as client:
+            html, root = await self._resolve_entry_page(client, self.target_url)
+
+            # 1. 站点名称
+            og_site = root.select_first("meta[property='og:site_name'], meta[name='og:site_name']")
+            if og_site and og_site.attr("content"):
+                site_name = clean_title(og_site.attr("content").split(",")[0].split("-")[0].split("_")[0]) or self.suggested_key
+            else:
+                title_node = root.select_first("title")
+                raw_title = title_node.text if title_node else self.suggested_key
+                site_name = clean_title(raw_title.split("-")[0].split("_")[0].split("|")[0]) or self.suggested_key
+
+            # 2. 深度导航与标签树勘探
+            categories_tree, unassigned_tags = await self._discover_taxonomy_tree(client, root, html)
+            self.log(f"识别出 {len(categories_tree)} 个候选一级分类，{len(unassigned_tags)} 个标签候选项")
+
+            # 3. 采样详情页字段探测
+            recommend = self._extract_vod_list_heuristic(root, categories=categories_tree)
+            sample_video = recommend[0] if recommend else None
+            detail_fields = self._default_detail_fields()
+
+            if sample_video and sample_video.get("raw_href"):
+                detail_url = safe_resolve_url(self.base_url, sample_video["raw_href"])
+                self.log(f"采样详情页深入探测: {detail_url}")
+                try:
+                    detail_resp = await client.request("GET", detail_url)
+                    detail_html = detail_resp.text
+                    detail_root = parse_html(detail_html)
+                    detail_fields = self._probe_detail_fields(sample_video, detail_root, detail_url, detail_html)
+                except Exception as exc:
+                    self.log(f"采样详情页探测异常: {exc}")
+
+            return StructureInspectionResult(
+                base_url=self.base_url,
+                site_name=site_name,
+                suggested_key=self.suggested_key,
+                categories_tree=categories_tree,
+                unassigned_tags=unassigned_tags,
+                unassigned_tags_pool=unassigned_tags,
+                detail_fields=detail_fields,
+                sample_video=sample_video,
+                html_preview=html[:3000],
+                steps_log=self.logs,
+            )
+
+    async def _discover_taxonomy_tree(
+        self, client: HttpClient, root: HtmlNode, html: str
+    ) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
+        """智能探索站点的一级分类与二级子标签。"""
+        anchors = root.select("nav a, header a, .menu a, .navbar a, [class*='nav'] a, [class*='menu'] a, a")
+        discovered_primaries: list[dict[str, Any]] = []
+        all_tags: list[dict[str, str]] = []
+        seen_tids: set[str] = set()
+        seen_tags: set[str] = set()
+
+        cat_page_url = ""
+
+        for a in anchors:
+            href = (a.attr("href") or "").strip()
+            text = collapse_whitespace(a.text)
+            if not href or href == "#" or href.startswith("javascript:") or not text:
+                continue
+            if len(text) > 15:
+                continue
+
+            lower_t = text.lower()
+            lower_h = href.lower()
+            if any(x in lower_t or x in lower_h for x in [
+                "app", "download", "login", "register", "vip", "pay", "order", "help",
+                "telegram", "group", "feedback", "dizhi", "follows", "history", "search"
+            ]):
+                continue
+
+            if not cat_page_url and any(c in lower_h for c in ["/cat", "/tags", "/categories", "/category"]):
+                cat_page_url = safe_resolve_url(self.base_url, href)
+
+            if "/t/" in href or "/tag/" in href:
+                tag_name = text.lstrip("#")
+                m_tag = re.search(r"/(?:t|tag)/([^/?#]+)", href)
+                if m_tag:
+                    try:
+                        tag_name = urllib.parse.unquote(m_tag.group(1))
+                    except Exception:
+                        pass
+                if tag_name and tag_name not in seen_tags:
+                    seen_tags.add(tag_name)
+                    all_tags.append({
+                        "tid": f"t/{tag_name}",
+                        "type_id": f"t/{tag_name}",
+                        "name": tag_name,
+                        "type_name": tag_name,
+                        "tag_name": tag_name,
+                        "raw_href": href,
+                    })
+                continue
+
+            tid = ""
+            m_type = re.search(r"/(?:type|vod/type/id|category|show|channel)/(\d+)", href)
+            if m_type:
+                tid = m_type.group(1)
+            elif any(p == href or href.endswith(p) for p in ["/v", "/series", "/movie", "/tv", "/drama", "/dongman", "/zongyi"]):
+                tid = href.strip("/").split("/")[-1]
+            elif text in ("影片", "视频", "劇集", "短剧", "电影", "电视剧", "动漫", "综艺", "國產AV", "探花", "自拍流出", "麻豆傳媒", "OnlyFans", "日本"):
+                tid = href.strip("/").replace("/", "_") or "1"
+
+            if tid and tid not in seen_tids:
+                seen_tids.add(tid)
+                discovered_primaries.append({
+                    "tid": tid,
+                    "type_id": tid,
+                    "name": text,
+                    "type_name": text,
+                    "raw_href": href,
+                    "selected": True,
+                    "subcategories": [{"tid": tid, "type_id": tid, "name": f"全部{text}", "type_name": f"全部{text}", "selected": True}],
+                })
+
+        if cat_page_url:
+            try:
+                cat_resp = await client.request("GET", cat_page_url)
+                if cat_resp.status_code == 200:
+                    cat_root = parse_html(cat_resp.text)
+                    for a in cat_root.select('a[href*="/t/"], a[href*="/tag/"]'):
+                        h = a.attr("href") or ""
+                        t = collapse_whitespace(a.text)
+                        m_t = re.search(r"/(?:t|tag)/([^/?#]+)", h)
+                        name = urllib.parse.unquote(m_t.group(1)) if m_t else t.lstrip("#")
+                        if name and name not in seen_tags and len(name) <= 12:
+                            seen_tags.add(name)
+                            all_tags.append({
+                                "tid": f"t/{name}",
+                                "type_id": f"t/{name}",
+                                "name": name,
+                                "type_name": name,
+                                "raw_href": h
+                            })
+            except Exception:
+                pass
+
+        if not discovered_primaries:
+            discovered_primaries = [
+                {
+                    "tid": "1", "type_id": "1", "name": "电影", "type_name": "电影", "raw_href": "/type/1.html", "selected": True,
+                    "subcategories": [
+                        {"tid": "1", "type_id": "1", "name": "全部电影", "type_name": "全部电影", "selected": True},
+                        {"tid": "101", "type_id": "101", "name": "动作片", "type_name": "动作片", "selected": True},
+                        {"tid": "102", "type_id": "102", "name": "喜剧片", "type_name": "喜剧片", "selected": True},
+                        {"tid": "103", "type_id": "103", "name": "爱情片", "type_name": "爱情片", "selected": True},
+                        {"tid": "104", "type_id": "104", "name": "科幻片", "type_name": "科幻片", "selected": True},
+                    ]
+                },
+                {
+                    "tid": "2", "type_id": "2", "name": "电视剧", "type_name": "电视剧", "raw_href": "/type/2.html", "selected": True,
+                    "subcategories": [
+                        {"tid": "2", "type_id": "2", "name": "全部剧集", "type_name": "全部剧集", "selected": True},
+                        {"tid": "201", "type_id": "201", "name": "国产剧", "type_name": "国产剧", "selected": True},
+                        {"tid": "202", "type_id": "202", "name": "欧美剧", "type_name": "欧美剧", "selected": True},
+                        {"tid": "203", "type_id": "203", "name": "日韩剧", "type_name": "日韩剧", "selected": True},
+                    ]
+                },
+                {
+                    "tid": "3", "type_id": "3", "name": "动漫", "type_name": "动漫", "raw_href": "/type/3.html", "selected": True,
+                    "subcategories": [
+                        {"tid": "3", "type_id": "3", "name": "全部动漫", "type_name": "全部动漫", "selected": True},
+                        {"tid": "301", "type_id": "301", "name": "国漫", "type_name": "国漫", "selected": True},
+                        {"tid": "302", "type_id": "302", "name": "日漫", "type_name": "日漫", "selected": True},
+                    ]
+                },
+                {
+                    "tid": "4", "type_id": "4", "name": "综艺", "type_name": "综艺", "raw_href": "/type/4.html", "selected": True,
+                    "subcategories": [
+                        {"tid": "4", "type_id": "4", "name": "全部综艺", "type_name": "全部综艺", "selected": True},
+                        {"tid": "401", "type_id": "401", "name": "大陆综艺", "type_name": "大陆综艺", "selected": True},
+                    ]
+                },
+            ]
+
+        unassigned_tags: list[dict[str, str]] = []
+        assigned_tag_names: set[str] = set()
+
+        for prim in discovered_primaries:
+            p_name = prim["name"]
+            for tag in all_tags:
+                t_name = tag["name"]
+                if t_name in assigned_tag_names:
+                    continue
+                if (p_name in t_name or t_name in p_name) and t_name != p_name:
+                    prim["subcategories"].append({
+                        "tid": tag["tid"],
+                        "type_id": tag.get("type_id", tag["tid"]),
+                        "name": t_name,
+                        "type_name": t_name,
+                        "selected": True
+                    })
+                    assigned_tag_names.add(t_name)
+
+        for tag in all_tags:
+            if tag["name"] not in assigned_tag_names:
+                unassigned_tags.append({
+                    "tid": tag.get("tid", ""),
+                    "type_id": tag.get("type_id", tag.get("tid", "")),
+                    "name": tag.get("name", ""),
+                    "type_name": tag.get("name", ""),
+                    "tag_name": tag.get("name", ""),
+                    "url_hint": tag.get("raw_href", ""),
+                })
+
+        return discovered_primaries, unassigned_tags[:80]
+
+    def _default_detail_fields(self) -> list[dict[str, Any]]:
+        return [
+            {"field": "vod_name", "field_key": "vod_name", "label": "影片名称 (vod_name)", "field_label": "影片名称 (vod_name)", "found": False, "sample": "", "detected_sample": "", "required": True, "selected": True, "tip": "片名，大厅展示与播放器核心显示（必须采集）"},
+            {"field": "vod_pic", "field_key": "vod_pic", "label": "海报封面 (vod_pic)", "field_label": "海报封面 (vod_pic)", "found": False, "sample": "", "detected_sample": "", "required": True, "selected": True, "tip": "封面图片 URL（必须采集）"},
+            {"field": "vod_remarks", "field_key": "vod_remarks", "label": "集数状态 (vod_remarks)", "field_label": "集数状态 (vod_remarks)", "found": False, "sample": "", "detected_sample": "", "required": False, "selected": True, "tip": "如'全12集'、'更新至第8集'、'1080P中字'"},
+            {"field": "vod_year", "field_key": "vod_year", "label": "上映年份 (vod_year)", "field_label": "上映年份 (vod_year)", "found": False, "sample": "", "detected_sample": "", "required": False, "selected": False, "tip": "如 2026"},
+            {"field": "vod_area", "field_key": "vod_area", "label": "制片地区 (vod_area)", "field_label": "制片地区 (vod_area)", "found": False, "sample": "", "detected_sample": "", "required": False, "selected": False, "tip": "如'中国大陆'、'日本'、'韩国'"},
+            {"field": "vod_actor", "field_key": "vod_actor", "label": "主演演员 (vod_actor)", "field_label": "主演演员 (vod_actor)", "found": False, "sample": "", "detected_sample": "", "required": False, "selected": False, "tip": "主演名单字符串"},
+            {"field": "vod_director", "field_key": "vod_director", "label": "导演主创 (vod_director)", "field_label": "导演主创 (vod_director)", "found": False, "sample": "", "detected_sample": "", "required": False, "selected": False, "tip": "导演名单字符串"},
+            {"field": "vod_tag", "field_key": "vod_tag", "label": "分类题材 (vod_tag)", "field_label": "分类题材 (vod_tag)", "found": False, "sample": "", "detected_sample": "", "required": False, "selected": True, "tip": "类型标签，如'都市,爱情,科幻'"},
+            {"field": "vod_content", "field_key": "vod_content", "label": "剧情简介 (vod_content)", "field_label": "剧情简介 (vod_content)", "found": False, "sample": "", "detected_sample": "", "required": False, "selected": True, "tip": "影片详细剧情描述"},
+            {"field": "episodes", "field_key": "episodes", "label": "选集列表 (episodes)", "field_label": "选集列表 (episodes)", "found": False, "sample": "", "detected_sample": "", "required": True, "selected": True, "tip": "逐集定位符，包含集号与 play_id（必须采集）"},
+            {"field": "lines", "field_key": "lines", "label": "播放线路 (lines)", "field_label": "播放线路 (lines)", "found": False, "sample": "", "detected_sample": "", "required": False, "selected": True, "tip": "多条播放源线路列表"},
+        ]
+
+    def _probe_detail_fields(
+        self, vod_item: dict[str, Any], root: HtmlNode, detail_url: str, html_content: str
+    ) -> list[dict[str, Any]]:
+        fields = self._default_detail_fields()
+
+        h1 = root.select_first("h1, .video-info-header h1, .title, .page-title")
+        title = clean_title(h1.text) if h1 and h1.text else vod_item.get("vod_name", "")
+        if not title:
+            og_t = root.select_first('meta[property="og:title"]')
+            if og_t:
+                title = clean_title(og_t.attr("content"))
+        if title:
+            f = next((x for x in fields if x["field"] == "vod_name"), None)
+            if f:
+                f["found"] = True
+                f["sample"] = title
+
+        pic = vod_item.get("vod_pic", "")
+        if not pic:
+            og_img = root.select_first('meta[property="og:image"]')
+            if og_img:
+                pic = og_img.attr("content")
+        if not pic:
+            img = root.select_first(".video-cover img, .poster img, .pic img")
+            if img:
+                pic = img.attr("data-original") or img.attr("src")
+        pic = safe_resolve_url(self.base_url, pic) if pic else ""
+        if pic:
+            f = next((x for x in fields if x["field"] == "vod_pic"), None)
+            if f:
+                f["found"] = True
+                f["sample"] = pic
+
+        remarks = vod_item.get("vod_remarks", "")
+        if not remarks:
+            for r_sel in [".remarks", ".badge", ".module-item-text", ".status"]:
+                r_node = root.select_first(r_sel)
+                if r_node and r_node.text:
+                    remarks = collapse_whitespace(r_node.text)
+                    break
+        if remarks:
+            f = next((x for x in fields if x["field"] == "vod_remarks"), None)
+            if f:
+                f["found"] = True
+                f["sample"] = remarks
+                f["selected"] = True
+
+        year_m = re.search(r"\b(20\d\d|19\d\d)\b", html_content)
+        if year_m:
+            f = next((x for x in fields if x["field"] == "vod_year"), None)
+            if f:
+                f["found"] = True
+                f["sample"] = year_m.group(1)
+                f["selected"] = True
+
+        for area in ["中国大陆", "大陆", "香港", "台湾", "日本", "韩国", "美国", "英国", "泰国"]:
+            if area in html_content:
+                f = next((x for x in fields if x["field"] == "vod_area"), None)
+                if f:
+                    f["found"] = True
+                    f["sample"] = area
+                    f["selected"] = True
+                break
+
+        actor_m = re.search(r"(?:主演|演员|cast)[：:\s]+([^\n<]+)", html_content, re.IGNORECASE)
+        if actor_m:
+            f = next((x for x in fields if x["field"] == "vod_actor"), None)
+            if f:
+                f["found"] = True
+                f["sample"] = collapse_whitespace(actor_m.group(1))[:60]
+                f["selected"] = True
+
+        dir_m = re.search(r"(?:导演|director)[：:\s]+([^\n<]+)", html_content, re.IGNORECASE)
+        if dir_m:
+            f = next((x for x in fields if x["field"] == "vod_director"), None)
+            if f:
+                f["found"] = True
+                f["sample"] = collapse_whitespace(dir_m.group(1))[:40]
+                f["selected"] = True
+
+        tag_nodes = root.select('a[href*="/t/"], a[href*="/tag/"], .tag, .genre a')
+        tags = [collapse_whitespace(t.text).lstrip("#") for t in tag_nodes if t.text]
+        tags = [t for t in tags if t and len(t) <= 10][:8]
+        if tags:
+            f = next((x for x in fields if x["field"] == "vod_tag"), None)
+            if f:
+                f["found"] = True
+                f["sample"] = ",".join(tags)
+                f["selected"] = True
+
+        desc_node = root.select_first(".video-info-content, .desc, .content, details, p.detail")
+        if desc_node and desc_node.text:
+            desc = collapse_whitespace(desc_node.text)
+            if len(desc) > 10:
+                f = next((x for x in fields if x["field"] == "vod_content"), None)
+                if f:
+                    f["found"] = True
+                    f["sample"] = desc[:120] + "..." if len(desc) > 120 else desc
+                    f["selected"] = True
+
+        ep_links = root.select("a[href*='/play/'], a[href*='/v/'], .module-play-list-link, .playlist a")
+        if len(ep_links) >= 1:
+            f = next((x for x in fields if x["field"] == "episodes"), None)
+            if f:
+                f["found"] = True
+                f["sample"] = f"成功探测到 {len(ep_links)} 集选集入口"
+                f["selected"] = True
+
+        lines_tabs = root.select(".play-source-tab, .source-item, [class*='tab'] button")
+        if len(lines_tabs) >= 1:
+            f = next((x for x in fields if x["field"] == "lines"), None)
+            if f:
+                f["found"] = True
+                f["sample"] = f"发现 {len(lines_tabs)} 条可选播放线路"
+        for f in fields:
+            f["detected_sample"] = f.get("sample", "")
+
+        return fields
 
     async def _explore_html(self, client: HttpClient, html: str) -> SmartExploreResult:
         root = parse_html(html)
 
         # 1. 站点名称推测
-        title_node = root.select_first("title")
-        raw_title = title_node.text if title_node else self.suggested_key
-        site_name = clean_title(raw_title.split("-")[0].split("_")[0].split("|")[0]) or self.suggested_key
+        og_site = root.select_first("meta[property='og:site_name'], meta[name='og:site_name']")
+        if og_site and og_site.attr("content"):
+            site_name = clean_title(og_site.attr("content").split(",")[0].split("-")[0].split("_")[0]) or self.suggested_key
+        else:
+            title_node = root.select_first("title")
+            raw_title = title_node.text if title_node else self.suggested_key
+            site_name = clean_title(raw_title.split("-")[0].split("_")[0].split("|")[0]) or self.suggested_key
         self.log(f"推断站点名称: {site_name}")
 
         # 2. 启发式提取分类

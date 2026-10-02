@@ -49,3 +49,20 @@ export function formatPosterUrl(rawUrl: string | undefined | null, siteKey?: str
   }
   return trimmed
 }
+
+/**
+ * 分类与标签展示名归一化（带管理员自定义别名后缀）
+ */
+export function formatCatDisplay(name?: string, custom?: string): string {
+  if (!name) return ''
+  if (!custom || !custom.trim()) return name
+  let c = custom.trim()
+  if ((c.startsWith('(') && c.endsWith(')')) || (c.startsWith('（') && c.endsWith('）'))) {
+    c = c.slice(1, -1).trim()
+  }
+  if (!c) return name
+  const suffix = `（${c}）`
+  if (name.endsWith(suffix)) return name
+  return `${name}${suffix}`
+}
+

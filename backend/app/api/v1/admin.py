@@ -47,7 +47,6 @@ from app.core.middleware import get_request_id
 from app.crawler.registry import SiteRegistry
 from app.schemas.admin import (
     AdminSiteActionResult,
-    AdminSiteItem,
     AdminSiteListPayload,
     AdminSiteOrderRequest,
     AdminStatusPayload,

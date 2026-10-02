@@ -14,6 +14,8 @@ class SubCategory(BaseModel):
 
     tid: str = Field(description="子分类 id")
     name: str = ""
+    custom_name: str = ""
+    hidden: bool = False
 
 
 class VodCategory(BaseModel):
@@ -21,6 +23,8 @@ class VodCategory(BaseModel):
 
     tid: str = Field(description="站内分类 id，原样透传")
     name: str = ""
+    custom_name: str = ""
+    hidden: bool = False
     subcategories: list[SubCategory] = Field(default_factory=list, description="该分类下的子分类列表")
 
 

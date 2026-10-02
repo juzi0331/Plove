@@ -25,12 +25,11 @@ from __future__ import annotations
 
 import os
 import sys
-import urllib.parse
 
 if __package__ in (None, ""):  # 允许直接 `python sites/ai2048.py` 运行
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from crawler_kit import Client, CrawlerError, clean, cli, log  # noqa: E402
+from crawler_kit import Client, CrawlerError, clean, cli  # noqa: E402
 
 KEY = "ai2048"
 NAME = "2048 AI短剧"

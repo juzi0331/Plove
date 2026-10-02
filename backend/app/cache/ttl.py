@@ -17,7 +17,7 @@ import threading
 import time
 from collections import OrderedDict
 from collections.abc import Callable
-from typing import Generic, TypeVar
+from typing import Any, Generic, TypeVar
 
 T = TypeVar("T")
 

@@ -267,6 +267,24 @@ def _matches(node, compound) -> bool:
 def select(root, css, limit=None):
     """在 ``root``（HTML 字符串或 :class:`Node`）里按 CSS 选择器找节点。"""
     node_root = parse_html(root)
+    if not css:
+        return []
+    if "," in css:
+        results = []
+        seen = set()
+        for sub_css in css.split(","):
+            sub_css = sub_css.strip()
+            if not sub_css:
+                continue
+            for item in select(node_root, sub_css):
+                nid = id(item)
+                if nid not in seen:
+                    seen.add(nid)
+                    results.append(item)
+                    if limit is not None and len(results) >= limit:
+                        return results
+        return results
+
     parts = _split_selector(css)
     if not parts:
         return []

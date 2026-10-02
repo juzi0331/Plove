@@ -18,6 +18,11 @@ _DECORATED_PATTERN = re.compile(
     r"[\U0001D400-\U0001D7FF\U0000FF01-\U0000FF5E]+"
 )
 
+# 匹配常见的 Emoji 表情字符范围
+_EMOJI_PATTERN = re.compile(
+    r"[\U00010000-\U0010FFFF\u2600-\u27BF\u2300-\u23FF\u2B50\u200D\uFE0F]"
+)
+
 # 协议相对 URL 匹配
 _PROTOCOL_RELATIVE_RE = re.compile(r"^//")
 
@@ -27,6 +32,13 @@ def collapse_whitespace(text: str | None) -> str:
     if not text:
         return ""
     return re.sub(r"\s+", " ", str(text)).strip()
+
+
+def strip_emojis(text: str | None) -> str:
+    """去除文本中的表情符号。"""
+    if not text:
+        return ""
+    return _EMOJI_PATTERN.sub("", str(text))
 
 
 def strip_decorated_ad_words(text: str | None) -> str:
@@ -44,10 +56,10 @@ def strip_decorated_ad_words(text: str | None) -> str:
 
 
 def clean_title(title: str | None, ad_patterns: Iterable[str] | None = None) -> str:
-    """全面清洗影片标题或分类名。"""
+    """全面清洗影片标题或分类名（剔除变体字广告与表情符号）。"""
     if not title:
         return ""
-    val = strip_decorated_ad_words(title)
+    val = strip_emojis(strip_decorated_ad_words(title))
     if ad_patterns:
         for pat in ad_patterns:
             try:

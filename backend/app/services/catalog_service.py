@@ -19,11 +19,11 @@ from __future__ import annotations
 
 import re
 from typing import TypeVar
+from urllib.parse import quote
 
 from pydantic import BaseModel
 
 from app.cache.content import ContentCache
-from app.core.errors import AppError, ErrorCode
 from app.crawler.registry import SiteRegistry
 from app.crawler.validate import validate_payload
 from app.schemas.catalog import DetailPayload, HomePayload, ListPayload
@@ -219,11 +219,6 @@ def playback(
     """
     _ensure_enabled(registry, key)
     meta = registry.meta(key)
-    if meta.mode != "direct":
-        raise AppError(
-            ErrorCode.NOT_IMPLEMENTED,
-            f"{meta.name} 标记为需要后端流代理，而流代理尚未实现",
-        )
 
     if line is None:
         cached_line = site_control_service.get_cached_fastest_line(key, vod_id)
@@ -236,4 +231,12 @@ def playback(
     cleaned = _clean_play_id(play_id)
     if cleaned is not None:
         options["play_id"] = cleaned
-    return _load(Playback, registry, key, "play", **options)
+
+    raw = _load(Playback, registry, key, "play", **options)
+
+    # 阶段 9 流代理：若该源标记为 mode == "proxy"，通过后端流中继代理以支持伪装容器解封装与防盗链穿透
+    if meta.mode == "proxy":
+        proxy_url = f"/api/v1/proxy/stream/m3u8?site={quote(key)}&url={quote(raw.url)}"
+        return raw.model_copy(update={"url": proxy_url, "headers": {}})
+
+    return raw

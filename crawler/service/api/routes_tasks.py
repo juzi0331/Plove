@@ -1,6 +1,5 @@
 """后台批量采集任务与异步调度 API。"""
 
-import asyncio
 import time
 import uuid
 from typing import Any, Optional

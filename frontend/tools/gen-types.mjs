@@ -19,7 +19,7 @@
  */
 
 import { createHash } from 'node:crypto'
-import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -27,9 +27,13 @@ const HERE = dirname(fileURLToPath(import.meta.url))
 const FRONTEND_DIR = resolve(HERE, '..')
 const REPO_DIR = resolve(FRONTEND_DIR, '..')
 
+const DEFAULT_SCHEMA_DIR = existsSync(join(REPO_DIR, 'backend', 'contracts', 'schemas'))
+  ? join(REPO_DIR, 'backend', 'contracts', 'schemas')
+  : join(REPO_DIR, 'contracts', 'schemas')
+
 const SCHEMA_DIR = process.env.PLOVE_CONTRACTS_DIR
   ? join(process.env.PLOVE_CONTRACTS_DIR, 'schemas')
-  : join(REPO_DIR, 'contracts', 'schemas')
+  : DEFAULT_SCHEMA_DIR
 const OUT_FILE = join(FRONTEND_DIR, 'src', 'api', 'types.ts')
 
 // ---------------------------------------------------------------- 命名

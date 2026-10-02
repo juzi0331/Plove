@@ -14,7 +14,7 @@ import json
 import sqlite3
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from app.core.config import BACKEND_DIR
 from app.core.logging import get_logger

@@ -249,7 +249,7 @@ def test_concurrent_identical_computes_run_once():
     那个 ``sleep`` 是刻意留的宽裕余量（跟随者只是走到 ``dict.get``），
     不是为了掩盖竞态。
     """
-    cache = ContentCache(ttl_home=60, ttl_category=60, ttl_detail=60)
+    cache = ContentCache(ttl_home=60, ttl_category=60, ttl_detail=60, enable_disk=False)
     release = threading.Event()
     lock = threading.Lock()
     invocations = []

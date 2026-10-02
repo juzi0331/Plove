@@ -24,6 +24,7 @@ import SiteSelector from '@/components/SiteSelector.vue'
 import UserMenu from '@/components/UserMenu.vue'
 import { useDeviceStore } from '@/stores/device'
 import { useSitesStore } from '@/stores/sites'
+import { formatCatDisplay } from '@/utils/format'
 
 const sites = useSitesStore()
 const device = useDeviceStore()
@@ -57,19 +58,6 @@ const displayedSections = computed<HomeSection[]>(() => {
   }
   return []
 })
-
-function formatCatDisplay(name?: string, custom?: string): string {
-  if (!name) return ''
-  if (!custom || !custom.trim()) return name
-  let c = custom.trim()
-  if ((c.startsWith('(') && c.endsWith(')')) || (c.startsWith('（') && c.endsWith('）'))) {
-    c = c.slice(1, -1).trim()
-  }
-  if (!c) return name
-  const suffix = `（${c}）`
-  if (name.endsWith(suffix)) return name
-  return `${name}${suffix}`
-}
 
 const categories = computed(() => (home.value?.categories ?? []).filter((c) => !c.hidden))
 const recommend = computed(() => home.value?.recommend ?? [])
@@ -134,7 +122,11 @@ watch(() => device.restoredAt, () => void load())
 
 function openDetail(item: { vod_id?: string | number }): void {
   if (item?.vod_id) {
-    void router.push({ name: 'detail', params: { vodId: String(item.vod_id) } })
+    void router.push({
+      name: 'detail',
+      params: { vodId: String(item.vod_id) },
+      query: { site: sites.currentKey || undefined },
+    })
   }
 }
 

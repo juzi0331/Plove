@@ -106,6 +106,14 @@ async function loadDetail(): Promise<void> {
     detail.value = result
     activeLine.value = result.lines?.length ? result.lines[0]?.line : undefined
 
+    if (key && route.query.site !== key) {
+      void router.replace({
+        name: 'detail',
+        params: { vodId: props.vodId },
+        query: { ...route.query, site: key },
+      })
+    }
+
     // 顺便拉取首页推荐作为底部的“更多类似好片”
     void loadRelated(key)
   } catch (err) {
@@ -128,7 +136,7 @@ async function loadRelated(key: string): Promise<void> {
 function play(episode: Episode | null): void {
   if (!episode) return
   const label = epLabel(episode)
-  const siteKey = sites.currentKey || (typeof route.query.site === 'string' ? route.query.site : undefined)
+  const siteKey = (typeof route.query.site === 'string' ? route.query.site : null) || sites.currentKey
   void router.push({
     name: 'play',
     params: { vodId: props.vodId, ep: String(episode.ep_index) },
@@ -136,6 +144,7 @@ function play(episode: Episode | null): void {
       site: siteKey || undefined,
       line: episode.line ?? activeLine.value,
       play_id: episode.play_id || undefined,
+      title: video.value?.vod_name || undefined,
       name: label === `第 ${episode.ep_index} 集` ? undefined : label,
     },
   })

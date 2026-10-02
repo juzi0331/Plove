@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import re
 from html.parser import HTMLParser
-from typing import Any, Optional
+from typing import Optional
 
 from .models import FieldExtractor
 from ..core.cleaner import collapse_whitespace, safe_resolve_url
@@ -66,7 +66,21 @@ class HtmlNode:
         return self.attrs.get(name.lower(), default)
 
     def select(self, selector: str) -> list["HtmlNode"]:
-        """按 CSS 选择器匹配后代节点。"""
+        """按 CSS 选择器匹配后代节点，支持逗号分隔多选择器。"""
+        if "," in selector:
+            results: list[HtmlNode] = []
+            seen_ids: set[int] = set()
+            for part in selector.split(","):
+                part = part.strip()
+                if not part:
+                    continue
+                for item in self.select(part):
+                    nid = id(item)
+                    if nid not in seen_ids:
+                        seen_ids.add(nid)
+                        results.append(item)
+            return results
+
         tokens = _tokenize_selector(selector)
         current = [self]
         for combinator, step in tokens:

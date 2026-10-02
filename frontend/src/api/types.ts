@@ -6,7 +6,7 @@
 // 重新生成：cd frontend && npm run gen:types
 // 检查是否过期：npm run check:types（退出码非 0 = 契约改过但没重新生成）
 //
-// 契约指纹：3ab977812824
+// 契约指纹：fe3b18fcab73
 /** 激活成功后的状态。 */
 export interface ActivationResult {
   device_token: string
@@ -316,21 +316,21 @@ export interface ImageProxyClearResult {
   freed_mb: number
 }
 
+/** 全局图片防盗链代理总控配置。 */
+export interface ImageProxyConfig {
+  global_proxy_enabled?: boolean
+  disk_cache_enabled?: boolean
+  auto_strip_referer?: boolean
+  custom_referer?: string
+  cache_max_mb?: number
+  updated_at?: string
+}
+
 /** 图片代理缓存看板数据。 */
 export interface ImageProxyStats {
   cached_files: number
   total_size_mb: number
   cache_dir: string
-}
-
-/** 图片代理全局总控配置。 */
-export interface ImageProxyConfig {
-  global_proxy_enabled: boolean
-  disk_cache_enabled: boolean
-  auto_strip_referer: boolean
-  custom_referer: string
-  cache_max_mb: number
-  updated_at?: string
 }
 
 /** 发码。``hours`` / ``days`` 二选一。 */

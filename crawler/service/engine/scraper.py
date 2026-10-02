@@ -5,8 +5,6 @@
 
 from __future__ import annotations
 
-import re
-import urllib.parse
 from typing import Any, Optional
 
 from .extractor_html import extract_html_field, parse_html

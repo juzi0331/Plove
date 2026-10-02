@@ -1,13 +1,13 @@
 """规则管理与在线调试 API。"""
 
-from typing import Any, Optional
+from typing import Any
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from ..core.errors import CrawlerServiceError, ErrorCode
+from ..core.errors import ErrorCode
 from ..engine.extractor_html import extract_html_field, parse_html
 from ..engine.extractor_json import extract_json_field
-from ..engine.models import FieldExtractor, SiteRule
+from ..engine.models import FieldExtractor
 from ..engine.rule_manager import rule_manager
 
 router = APIRouter(prefix="/api/v1/rules", tags=["rules"])

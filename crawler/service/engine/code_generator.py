@@ -10,8 +10,8 @@
 
 from __future__ import annotations
 
+import json
 import re
-from typing import Any
 
 
 def generate_crawler_python_code(
@@ -29,13 +29,14 @@ def generate_crawler_python_code(
     if not class_name:
         class_name = "CustomSite"
 
-    cats_repr = repr(categories or [
-        {"tid": "1", "name": "电影"},
-        {"tid": "2", "name": "电视剧"},
-        {"tid": "3", "name": "动漫"},
-    ])
+    cats_repr = json.dumps(categories or [
+        {"tid": "1", "name": "电影", "subcategories": [{"tid": "1", "name": "全部电影"}]},
+        {"tid": "2", "name": "电视剧", "subcategories": [{"tid": "2", "name": "全部剧集"}]},
+        {"tid": "3", "name": "动漫", "subcategories": [{"tid": "3", "name": "全部动漫"}]},
+    ], ensure_ascii=False, indent=4)
 
     code_template = f'''#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 """自动生成的采集器脚本: {name} ({key})。
 
 由 Plove Spider Generator 自动生成并导出。
@@ -43,6 +44,7 @@ def generate_crawler_python_code(
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import sys
@@ -99,16 +101,23 @@ class {class_name}:
         return {{"categories": CATEGORIES, "recommend": recommend}}
 
     def category(self, tid, page=1):
-        # 兼容常见 MacCMS / 动态分类路径
-        path = f"/show/{{tid}}--------{{page}}---.html"
+        tid_str = str(tid or "").strip().strip("/")
+        page_num = max(1, clean.to_int(page, 1) or 1)
+        if tid_str.startswith("t/"):
+            tag_quote = urllib.parse.quote(tid_str[2:])
+            path = f"/t/{{tag_quote}}" + (f"?page={{page_num}}" if page_num > 1 else "")
+        elif tid_str.isdigit():
+            path = f"/type/{{tid_str}}-{{page_num}}.html"
+        else:
+            path = f"/{{tid_str}}" + (f"?page={{page_num}}" if page_num > 1 else "")
+
         resp = self.http.get(path)
         if not resp.ok:
-            # 尝试回退通用 query
-            resp = self.http.get("/", params={{"tid": tid, "page": page}})
+            resp = self.http.get("/", params={{"tid": tid, "page": page_num}})
 
         root = parse.parse_html(resp.text)
         items = self._parse_items(root)
-        return {{"videos": items, "page": int(page), "has_more": len(items) >= 12}}
+        return {{"videos": items, "page": page_num, "has_more": len(items) >= 12}}
 
     def detail(self, id):
         path = f"/detail/{{id}}.html"

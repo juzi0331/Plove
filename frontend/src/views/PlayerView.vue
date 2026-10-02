@@ -110,7 +110,7 @@ const lastErrorDetail = ref<string>('')
 // 计算属性
 // ==========================================
 const videoMeta = computed(() => detail.value?.video ?? null)
-const vodTitle = computed(() => videoMeta.value?.vod_name || (route.query.name as string) || '影視大廳')
+const vodTitle = computed(() => videoMeta.value?.vod_name || (route.query.title as string) || (route.query.name as string) || '影視大廳')
 
 const currentLine = computed<number>(() => {
   if (route.query.line) return Number(route.query.line)
@@ -655,8 +655,8 @@ function trySwitchSite(): void {
   if (nextSite) {
     sites.select(nextSite.key)
     void router.replace({
-      name: 'player',
-      params: { vodId: props.vodId },
+      name: 'play',
+      params: { vodId: props.vodId, ep: props.ep },
       query: { ...route.query, site: nextSite.key },
     })
   }

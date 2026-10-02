@@ -816,6 +816,187 @@
       justify-content: space-between;
     }
 
+    /* 可视化分类与字段配置工作台样式 */
+    .studio-step-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      background: #e0e7ff;
+      color: #4338ca;
+      letter-spacing: 0.02em;
+    }
+    .taxonomy-studio-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 1.75rem 2rem;
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 2rem;
+    }
+    .taxonomy-layout {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 1.5rem;
+      margin-top: 1rem;
+    }
+    @media (max-width: 900px) {
+      .taxonomy-layout { grid-template-columns: 1fr; }
+    }
+    .primary-col, .subcat-col {
+      background: var(--bg-base);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .primary-item-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 0.75rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease-in-out;
+    }
+    .primary-item-card:hover {
+      border-color: #cbd5e1;
+      box-shadow: var(--shadow-sm);
+    }
+    .primary-item-card.is-active {
+      border-color: var(--accent-primary);
+      background: #f5f3ff;
+      box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.15);
+    }
+    .subcat-pills-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-height: 80px;
+      align-content: flex-start;
+      padding: 8px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+    }
+    .subcat-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      border: 1px solid var(--border-subtle);
+      background: #f8fafc;
+      color: var(--text-main);
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.15s;
+    }
+    .subcat-pill.is-selected {
+      background: #eef2ff;
+      border-color: #c7d2fe;
+      color: #3730a3;
+    }
+    .subcat-pill:hover {
+      background: #e2e8f0;
+    }
+    .pill-remove-btn {
+      color: #94a3b8;
+      font-size: 0.85rem;
+      line-height: 1;
+      padding: 0 2px;
+      cursor: pointer;
+    }
+    .pill-remove-btn:hover {
+      color: #ef4444;
+    }
+    .tag-pool-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      max-height: 130px;
+      overflow-y: auto;
+      padding: 8px;
+      background: var(--bg-surface);
+      border: 1px dashed var(--border-subtle);
+      border-radius: var(--radius-sm);
+    }
+    .tag-pool-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.76rem;
+      background: var(--bg-surface-subtle);
+      color: var(--text-muted);
+      border: 1px solid var(--border-subtle);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .tag-pool-chip:hover {
+      background: #e0e7ff;
+      color: #4338ca;
+      border-color: #c7d2fe;
+    }
+    .detail-fields-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    .field-card {
+      background: var(--bg-base);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 0.85rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      transition: all 0.15s;
+    }
+    .field-card.is-selected {
+      border-color: #818cf8;
+      background: #faf5ff;
+    }
+    .field-badge-found {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #059669;
+      background: #d1fae5;
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+    .field-badge-miss {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: #94a3b8;
+      background: #f1f5f9;
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+    .studio-action-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      padding: 1.25rem 1.75rem;
+      background: #f8fafc;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      margin-top: 1.5rem;
+    }
+
     [v-cloak] {
       display: none !important;
     }
@@ -885,20 +1066,31 @@
             <input 
               class="smart-input" 
               v-model="smartUrl" 
-              placeholder="输入目标影视/短剧站主页 URL，如 https://xiaoyakankan.com 或 http://example.com..."
-              @keyup.enter="startSmartExplore"
+              placeholder="输入目标影视/短剧站主页 URL，如 https://xiaoyakankan.com 或 https://rou.video..."
+              @keyup.enter="startStructureInspection"
             />
-            <button class="btn btn-hero" :disabled="smartLoading" @click="startSmartExplore">
-              <span v-if="!smartLoading">开始全自动探测</span>
-              <span v-else>正在深度分析中...</span>
+            <button class="btn btn-emerald" :disabled="structureLoading || smartLoading" @click="startStructureInspection">
+              <span v-if="!structureLoading">勘探分类与详情页结构 (可视化)</span>
+              <span v-else>正在深度勘探结构...</span>
+            </button>
+            <button class="btn btn-hero" :disabled="smartLoading || structureLoading" @click="startSmartExplore">
+              <span v-if="!smartLoading">一键全自动探测</span>
+              <span v-else>正在分析生成中...</span>
+            </button>
+            <button class="btn btn-secondary" style="border-color:var(--accent-primary);color:var(--accent-primary)" @click="openVisualPickerModal">
+              网页实时点选
             </button>
           </div>
 
           <div class="smart-quick-tags">
             <span>快速填充样例：</span>
+            <span class="quick-tag" @click="smartUrl = 'https://rou.video'">肉视频 (rou.video)</span>
             <span class="quick-tag" @click="smartUrl = 'https://xiaoyakankan.com'">小鸭看看 (小鸭影视)</span>
             <span class="quick-tag" @click="smartUrl = 'https://2048ai.vip'">2048短剧 (JSON API)</span>
             <span class="quick-tag" @click="smartUrl = 'https://example-maccms.org'">标准 MacCMS 站</span>
+            <button v-if="structureResult && isStudioCollapsed" class="btn btn-secondary" style="margin-left:8px;padding:3px 10px;font-size:0.8rem;border-color:var(--accent-primary);color:var(--accent-primary)" @click="isStudioCollapsed = false">
+              展开工作台 ({{ structureResult.site_name }})
+            </button>
             <button class="btn btn-secondary" style="margin-left:auto;padding:5px 12px;font-size:0.8rem" @click="openPromptModal">
               难搞站点？生成 AI 专用提示词 (Prompt)
             </button>
@@ -918,6 +1110,265 @@
           </div>
         </div>
 
+        <!-- 可视化分类与字段配置工作台 (勘探结果) -->
+        <div class="taxonomy-studio-card" v-if="structureResult">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;border-bottom:1px solid var(--border-subtle);padding-bottom:1rem;margin-bottom:1.25rem">
+            <div>
+              <div style="display:flex;align-items:center;gap:10px">
+                <span class="studio-step-badge">可视化配置工作台</span>
+                <h3 style="font-size:1.25rem;font-weight:800;color:var(--text-main)">
+                  目标站点分类与字段勘探: {{ structureResult.site_name }} ({{ structureResult.suggested_key }})
+                </h3>
+              </div>
+              <p style="color:var(--text-muted);font-size:0.86rem;margin-top:6px">
+                基础域名: {{ structureResult.base_url }} · 已嗅探出 {{ (structureResult.categories_tree || []).length }} 个一级分类、{{ (structureResult.unassigned_tags_pool || structureResult.unassigned_tags || []).length }} 个待选标签及详情页字段结构。请在下方勾选和微调：
+              </p>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-emerald" style="padding:5px 12px;font-size:0.8rem" @click="openVisualPickerModal">
+                进入网页可视化点选
+              </button>
+              <button class="btn btn-secondary" style="padding:5px 12px;font-size:0.8rem" @click="isStudioCollapsed = !isStudioCollapsed">
+                {{ isStudioCollapsed ? '展开工作台' : '收起工作台' }}
+              </button>
+              <button class="btn btn-secondary" style="padding:5px 12px;font-size:0.8rem" @click="resetStudio" title="清空勘探结果">
+                清空重置
+              </button>
+            </div>
+          </div>
+
+          <div v-show="!isStudioCollapsed">
+            <!-- 步骤 1: 一级分类与二级标签规划 -->
+            <div style="margin-bottom:1.75rem">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem">
+                <h4 style="font-size:1rem;font-weight:700;color:var(--text-main);display:flex;align-items:center;gap:8px">
+                  <span style="background:var(--accent-primary);color:#fff;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:0.75rem">1</span>
+                  定制分类体系 (一级分类 &amp; 二级标签)
+                </h4>
+                <div style="font-size:0.8rem;color:var(--text-muted)">
+                  点击左侧分类卡片可在右侧分配与管理二级标签
+                </div>
+              </div>
+
+              <div class="taxonomy-layout">
+                <!-- 左列: 一级分类列表 -->
+                <div class="primary-col">
+                  <div style="display:flex;align-items:center;justify-content:space-between">
+                    <span style="font-size:0.88rem;font-weight:700;color:var(--text-main)">一级分类 ({{ (structureResult.categories_tree || []).length }})</span>
+                    <span style="font-size:0.78rem;color:var(--text-dim)">勾选即采纳</span>
+                  </div>
+
+                  <!-- 快速添加一级分类 -->
+                  <div style="display:flex;gap:6px">
+                    <input 
+                      class="smart-input" 
+                      style="padding:6px 10px;font-size:0.82rem;flex:1" 
+                      placeholder="新分类名称 (如: 动漫)" 
+                      v-model="newPrimaryName"
+                    />
+                    <input 
+                      class="smart-input" 
+                      style="padding:6px 10px;font-size:0.82rem;width:80px" 
+                      placeholder="tid/路径" 
+                      v-model="newPrimaryTid"
+                      @keyup.enter="addPrimaryCategory"
+                    />
+                    <button class="btn btn-secondary" style="padding:6px 10px;font-size:0.82rem" @click="addPrimaryCategory">
+                      添加
+                    </button>
+                  </div>
+
+                  <!-- 一级分类卡片列表 -->
+                  <div style="display:flex;flex-direction:column;gap:8px;max-height:360px;overflow-y:auto;padding-right:4px">
+                    <div 
+                      v-for="(cat, idx) in structureResult.categories_tree" 
+                      :key="cat.type_id || cat.tid || idx"
+                      class="primary-item-card"
+                      :class="{ 'is-active': activePrimaryIndex === idx }"
+                      @click="activePrimaryIndex = idx"
+                    >
+                      <div style="display:flex;align-items:center;justify-content:space-between">
+                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex:1" @click.stop>
+                          <input type="checkbox" v-model="cat.selected" style="accent-color:var(--accent-primary);cursor:pointer;width:15px;height:15px">
+                          <span style="font-weight:700;font-size:0.9rem;color:var(--text-main)">{{ cat.type_name || cat.name }}</span>
+                        </label>
+                        <div style="display:flex;align-items:center;gap:6px">
+                          <span style="font-size:0.75rem;background:#e2e8f0;padding:2px 6px;border-radius:4px;color:var(--text-muted)">
+                            {{ cat.subcategories ? cat.subcategories.length : 0 }} 标签
+                          </span>
+                          <button 
+                            class="pill-remove-btn" 
+                            title="删除此分类"
+                            @click.stop="removePrimaryCategory(idx)"
+                          >×</button>
+                        </div>
+                      </div>
+                      <div style="font-size:0.75rem;color:var(--text-dim);font-family:var(--font-mono);margin-left:23px">
+                        ID/路径: {{ cat.type_id || cat.tid }}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 右列: 二级标签与分类池 -->
+                <div class="subcat-col" v-if="currentPrimaryCategory">
+                  <div style="display:flex;align-items:center;justify-content:space-between">
+                    <div>
+                      <span style="font-size:0.88rem;font-weight:700;color:var(--text-main)">
+                        「{{ currentPrimaryCategory.type_name || currentPrimaryCategory.name }}」的二级标签/子分类
+                      </span>
+                      <span style="font-size:0.78rem;color:var(--text-muted);margin-left:8px">
+                        ({{ currentPrimaryCategory.subcategories ? currentPrimaryCategory.subcategories.filter(s => s.selected).length : 0 }} / {{ currentPrimaryCategory.subcategories ? currentPrimaryCategory.subcategories.length : 0 }} 启用)
+                      </span>
+                    </div>
+                    <div style="display:flex;gap:6px">
+                      <button class="btn btn-secondary" style="padding:3px 8px;font-size:0.76rem" @click="toggleAllSubcategories(activePrimaryIndex, true)">全选</button>
+                      <button class="btn btn-secondary" style="padding:3px 8px;font-size:0.76rem" @click="toggleAllSubcategories(activePrimaryIndex, false)">全清</button>
+                    </div>
+                  </div>
+
+                  <!-- 快速添加自定义二级标签 -->
+                  <div style="display:flex;gap:6px">
+                    <input 
+                      class="smart-input" 
+                      style="padding:6px 10px;font-size:0.82rem;flex:1" 
+                      placeholder="输入自定义子标签或过滤词 (如: 4K, 连载中, 国产短剧)" 
+                      v-model="newCustomTagName"
+                      @keyup.enter="addCustomSubcategory"
+                    />
+                    <button class="btn btn-secondary" style="padding:6px 10px;font-size:0.82rem" @click="addCustomSubcategory">
+                      添加标签
+                    </button>
+                  </div>
+
+                  <!-- 当前分类已分配的标签 Pill 列表 -->
+                  <div>
+                    <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:6px">
+                      已分配标签 (点击可启用/禁用，点击 × 移除):
+                    </div>
+                    <div class="subcat-pills-wrap">
+                      <div 
+                        v-for="(sub, subIdx) in currentPrimaryCategory.subcategories" 
+                        :key="sub.type_id || sub.tid || subIdx"
+                        class="subcat-pill"
+                        :class="{ 'is-selected': sub.selected }"
+                        @click="sub.selected = !sub.selected"
+                      >
+                        <span>{{ sub.type_name || sub.name }}</span>
+                        <span class="pill-remove-btn" @click.stop="removeSubcategory(activePrimaryIndex, subIdx)">×</span>
+                      </div>
+                      <div v-if="!currentPrimaryCategory.subcategories || currentPrimaryCategory.subcategories.length === 0" style="color:var(--text-dim);font-size:0.82rem;padding:8px">
+                        暂无二级标签。可从下方候选标签池点击添加，或直接手动输入。
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 全站嗅探出的候选标签池 -->
+                  <div v-if="(structureResult.unassigned_tags_pool || structureResult.unassigned_tags || []).length > 0">
+                    <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:6px">
+                      全站嗅探出的候选标签池 (点击一键归入「{{ currentPrimaryCategory.type_name || currentPrimaryCategory.name }}」):
+                    </div>
+                    <div class="tag-pool-wrap">
+                      <span 
+                        v-for="(tag, tIdx) in (structureResult.unassigned_tags_pool || structureResult.unassigned_tags || [])" 
+                        :key="tIdx"
+                        class="tag-pool-chip"
+                        @click="addTagFromPool(tag)"
+                      >
+                        + {{ tag.tag_name || tag.type_name || tag.name }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div class="subcat-col" v-else style="display:flex;align-items:center;justify-content:center;color:var(--text-dim)">
+                  请在左侧选择一个一级分类以配置二级标签
+                </div>
+              </div>
+            </div>
+
+            <!-- 步骤 2: 详情页待采集字段清单 -->
+            <div style="margin-bottom:1.5rem;border-top:1px solid var(--border-subtle);padding-top:1.5rem">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem">
+                <h4 style="font-size:1rem;font-weight:700;color:var(--text-main);display:flex;align-items:center;gap:8px">
+                  <span style="background:var(--accent-primary);color:#fff;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:0.75rem">2</span>
+                  详情页待采集字段规划 (已自动嗅探特征)
+                </h4>
+                <div style="font-size:0.8rem;color:var(--text-muted)">
+                  勾选需要的字段，爬虫或 AI 将严格只解析与提取这些字段
+                </div>
+              </div>
+
+              <div class="detail-fields-grid">
+                <div 
+                  v-for="field in structureResult.detail_fields" 
+                  :key="field.field_key || field.field"
+                  class="field-card"
+                  :class="{ 'is-selected': field.selected }"
+                >
+                  <div style="display:flex;align-items:center;justify-content:space-between">
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                      <input type="checkbox" v-model="field.selected" style="accent-color:var(--accent-primary);cursor:pointer;width:15px;height:15px">
+                      <span style="font-weight:700;font-size:0.88rem;color:var(--text-main)">{{ field.field_label || field.label }}</span>
+                    </label>
+                    <span :class="field.found ? 'field-badge-found' : 'field-badge-miss'">
+                      {{ field.found ? '已侦测到' : '未直接侦测' }}
+                    </span>
+                  </div>
+                  <div style="font-size:0.72rem;color:var(--text-dim);font-family:var(--font-mono)">
+                    字段键名: {{ field.field_key || field.field }}
+                  </div>
+                  <div v-if="field.detected_sample || field.sample" style="font-size:0.75rem;color:var(--text-muted);background:var(--bg-surface);padding:4px 6px;border-radius:4px;border:1px solid var(--border-subtle);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" :title="field.detected_sample || field.sample">
+                    采样: {{ field.detected_sample || field.sample }}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 步骤 3: 确认与操作栏 -->
+            <div class="studio-action-bar">
+              <div>
+                <div style="font-weight:700;font-size:0.95rem;color:var(--text-main)">
+                  已配置: {{ selectedCategoriesCount }} 个主分类及标签 · {{ selectedFieldsCount }} 个详情页采集字段
+                </div>
+                <div style="font-size:0.8rem;color:var(--text-muted);margin-top:2px">
+                  确认后可立即让 AI 精准编写代码，或直接由引擎套用模板编译单文件 Python 采集器
+                </div>
+              </div>
+              <div style="display:flex;gap:12px;flex-wrap:wrap">
+                <button class="btn btn-secondary" style="border-color:var(--accent-primary);color:var(--accent-primary)" @click="generatePromptFromVisualConfig">
+                  生成 AI 专用提示词 (带当前配置)
+                </button>
+                <button class="btn btn-primary" :disabled="generatingCode" @click="generateCodeFromVisualConfig">
+                  <span v-if="!generatingCode">立即生成 Python 采集器脚本</span>
+                  <span v-else>正在编译生成中...</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 可视化配置生成的代码展示面板 -->
+            <div class="panel" style="margin-top:1.5rem" v-if="generatedConfigCode">
+              <div class="panel-head">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span class="panel-title">已根据定制结构生成采集器: sites/{{ structureResult.suggested_key }}.py</span>
+                  <span class="tag tag-python">单文件 Python 源码</span>
+                </div>
+                <div style="display:flex;gap:8px">
+                  <button class="btn btn-emerald" style="padding:4px 10px;font-size:0.8rem" @click="loadGeneratedCodeToStudio">
+                    调入工坊体检与部署
+                  </button>
+                  <button class="btn btn-secondary" style="padding:4px 10px;font-size:0.8rem" @click="copyGeneratedConfigCode">
+                    复制代码
+                  </button>
+                  <button class="btn btn-secondary" style="padding:4px 10px;font-size:0.8rem" @click="downloadScriptFile(structureResult.suggested_key, generatedConfigCode)">
+                    下载文件
+                  </button>
+                </div>
+              </div>
+              <pre class="output-box" style="max-height:280px">{{ generatedConfigCode }}</pre>
+            </div>
+          </div>
+        </div>
+
         <!-- 智能探测成功后的结果展示 -->
         <div v-if="smartResult">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem">
@@ -926,7 +1377,7 @@
                 探测分析完成: {{ smartResult.site_name }} ({{ smartResult.suggested_key }})
               </h3>
               <p style="color:var(--text-muted);font-size:0.88rem;margin-top:4px">
-                域名: {{ smartResult.base_url }} · 发现 {{ smartResult.categories.length }} 个分类 · 提取 {{ smartResult.recommend.length }} 部影片
+                域名: {{ smartResult.base_url }} · 发现 {{ (smartResult.categories || []).length }} 个分类 · 提取 {{ (smartResult.recommend || []).length }} 部影片
               </p>
             </div>
             <div style="display:flex;gap:10px;flex-wrap:wrap">
@@ -966,7 +1417,7 @@
 
           <!-- 样本影片海报 -->
           <div class="section-title" style="margin-top:2rem">
-            <span>首页提取的影片样本 ({{ smartResult.recommend.length }})</span>
+            <span>首页提取的影片样本 ({{ (smartResult.recommend || []).length }})</span>
           </div>
           <div class="video-card-grid">
             <div class="vod-poster-card" v-for="vod in smartResult.recommend" :key="vod.vod_id">
@@ -1071,7 +1522,7 @@
             </div>
 
             <div v-if="scriptTesting" style="padding:3rem 1.5rem;text-align:center;color:var(--accent-primary);font-size:0.92rem;font-weight:600">
-              正在依次执行：AST 静态审计 ➔ meta 协议冒烟 ➔ home 分类抓取 ➔ detail 详情穿透 ➔ play 直链嗅探...
+              正在依次执行：AST 静态审计 -> meta 协议冒烟 -> home 分类抓取 -> detail 详情穿透 -> play 直链嗅探...
             </div>
 
             <!-- 步骤卡片流 -->
@@ -1298,7 +1749,7 @@
           </div>
 
           <div style="display:flex;align-items:center;justify-content:space-between">
-            <div style="font-weight:700;font-size:0.95rem">选集播放 (共 {{ live.detail.episodes.length }} 集)：</div>
+            <div style="font-weight:700;font-size:0.95rem">选集播放 (共 {{ (live.detail.episodes || []).length }} 集)：</div>
             <div v-if="live.currentStreamUrl" style="font-family:var(--font-mono);font-size:0.78rem;color:var(--accent-emerald)">
               播放流: {{ live.currentStreamUrl }}
             </div>
@@ -1307,7 +1758,7 @@
           <div class="episodes-list">
             <div 
               class="ep-badge" 
-              v-for="ep in live.detail.episodes" 
+              v-for="ep in (live.detail.episodes || [])" 
               :key="ep.ep_index"
               :class="{ active: live.currentEp === ep.ep_index }"
               @click="playEpisode(ep)"
@@ -1318,7 +1769,7 @@
         </div>
 
         <!-- 推荐列表卡片 -->
-        <div v-if="live.recommendList.length > 0">
+        <div v-if="(live.recommendList || []).length > 0">
           <div class="section-title" style="margin-top:1.5rem">抓取所得影片 (点击直穿详情与播放)</div>
           <div class="video-card-grid">
             <div 
@@ -1529,6 +1980,292 @@
         </div>
       </div>
     </div>
+
+    <!-- 实时网页可视化点选拾取器弹窗 (分屏交互式) -->
+    <div class="modal-overlay" v-if="showVisualPickerModal" @click.self="showVisualPickerModal = false" style="padding:10px">
+      <div class="modal-body" style="max-width:96vw;width:96vw;height:92vh;max-height:92vh;display:flex;flex-direction:column;padding:1rem">
+        <!-- 弹窗顶栏 -->
+        <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border-subtle);padding-bottom:0.75rem;margin-bottom:0.75rem;gap:12px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span class="studio-step-badge" style="background:#2563eb;color:#fff">实时可视化拾取器</span>
+            <span style="font-weight:800;font-size:1.1rem;color:var(--text-main)">目标站点网页实时交互点选</span>
+          </div>
+
+          <!-- 模式切换与地址栏 -->
+          <div style="display:flex;align-items:center;gap:6px;flex:1;max-width:720px">
+            <div style="display:inline-flex;border:1px solid var(--border-subtle);border-radius:6px;overflow:hidden;background:var(--bg-surface-subtle)">
+              <button 
+                class="btn" 
+                style="border:none;border-radius:0;padding:5px 12px;font-size:0.78rem" 
+                :class="visualPickingMode === 'pick' ? 'btn-primary' : 'btn-secondary'"
+                @click="setVisualPickingMode('pick')"
+              >
+                点选捕获模式
+              </button>
+              <button 
+                class="btn" 
+                style="border:none;border-radius:0;padding:5px 12px;font-size:0.78rem" 
+                :class="visualPickingMode === 'browse' ? 'btn-primary' : 'btn-secondary'"
+                @click="setVisualPickingMode('browse')"
+              >
+                自由浏览模式
+              </button>
+            </div>
+
+            <button class="btn btn-secondary" style="padding:5px 8px;font-size:0.78rem" @click="historyBackProxy" title="后退到上一页">
+              &lt; 后退
+            </button>
+            <button class="btn btn-secondary" style="padding:5px 8px;font-size:0.78rem" @click="historyForwardProxy" title="前进到下一页">
+              前进 &gt;
+            </button>
+
+            <input 
+              class="smart-input" 
+              style="padding:5px 10px;font-size:0.82rem;flex:1" 
+              v-model="visualPickerUrl" 
+              placeholder="输入或跳转至目标页面 URL..." 
+              @keyup.enter="refreshVisualProxy"
+            />
+            <button class="btn btn-secondary" style="padding:5px 12px;font-size:0.8rem" @click="refreshVisualProxy">
+              加载网页
+            </button>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:8px">
+            <button class="btn btn-emerald" style="padding:5px 14px;font-size:0.82rem" @click="showVisualPickerModal = false">
+              完成并返回工作台
+            </button>
+            <button class="btn btn-secondary" style="padding:5px 10px;font-size:0.82rem" @click="showVisualPickerModal = false">
+              关闭
+            </button>
+          </div>
+        </div>
+
+        <!-- 弹窗分屏主体 -->
+        <div style="display:flex;gap:12px;flex:1;min-height:0;overflow:hidden">
+          <!-- 左侧: 真实网页内嵌视图 (70%) -->
+          <div style="flex:7;display:flex;flex-direction:column;border:1px solid var(--border-subtle);border-radius:8px;overflow:hidden;background:#fff">
+            <!-- 提示信息条 -->
+            <div style="background:var(--bg-surface-subtle);border-bottom:1px solid var(--border-subtle);padding:6px 12px;font-size:0.78rem;color:var(--text-muted);display:flex;align-items:center;justify-content:space-between">
+              <div>
+                <span v-if="visualPickingMode === 'pick'">
+                  当前处于【点选捕获模式】：鼠标移动高亮元素，点击在右侧指派规则；任何模式下按住 Ctrl 键（Mac 为 Cmd 键）点击超链接可直接穿透跳转新页面。
+                </span>
+                <span v-else>
+                  当前处于【自由浏览模式】：点击超链接即可在站内自由翻页跳转（例如点进影片详情页），进入目标页后点击【点选捕获模式】即可点选元素。
+                </span>
+              </div>
+              <span style="font-family:var(--font-mono);font-size:0.74rem;color:var(--text-dim)">
+                沙箱保护隔离
+              </span>
+            </div>
+
+            <iframe 
+              ref="visualProxyIframe" 
+              :src="visualProxyIframeSrc" 
+              style="width:100%;flex:1;border:none;background:#fff"
+              sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+            ></iframe>
+          </div>
+
+          <!-- 右侧: 拾取与分配控制台 (30%) -->
+          <div style="flex:3;display:flex;flex-direction:column;gap:10px;overflow-y:auto;padding-right:4px">
+            <!-- 状态卡片 1: 当前捕获元素 -->
+            <div class="panel" style="margin-bottom:0">
+              <div class="panel-head" style="padding:8px 12px">
+                <span class="panel-title" style="font-size:0.88rem">当前捕获的元素特征</span>
+                <span class="tag tag-python" v-if="currentPickedElement">{{ currentPickedElement.tagName }}</span>
+              </div>
+              <div style="padding:10px 12px">
+                <div v-if="currentPickedElement">
+                  <div style="margin-bottom:8px">
+                    <span style="font-size:0.76rem;color:var(--text-muted)">抓取文字：</span>
+                    <div style="font-weight:700;font-size:0.88rem;color:var(--text-main);word-break:break-all;background:var(--bg-surface-subtle);padding:4px 8px;border-radius:4px;margin-top:2px">
+                      {{ currentPickedElement.text || '（无可见文本）' }}
+                    </div>
+                  </div>
+
+                  <div style="margin-bottom:8px" v-if="currentPickedElement.href">
+                    <span style="font-size:0.76rem;color:var(--text-muted)">超链接 (href/路由)：</span>
+                    <div style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-dim);word-break:break-all;background:var(--bg-surface-subtle);padding:4px 8px;border-radius:4px;margin-top:2px">
+                      {{ currentPickedElement.href }}
+                    </div>
+                    <button class="btn btn-primary" style="margin-top:4px;padding:3px 8px;font-size:0.74rem;width:100%;justify-content:center" @click="navigateVisualProxyTo(currentPickedElement.href)">
+                      在左侧打开此链接进入页面 (保持当前模式)
+                    </button>
+                  </div>
+
+                  <div style="margin-bottom:8px" v-if="currentPickedElement.src">
+                    <span style="font-size:0.76rem;color:var(--text-muted)">图片地址 (src)：</span>
+                    <div style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-dim);word-break:break-all;background:var(--bg-surface-subtle);padding:4px 8px;border-radius:4px;margin-top:2px">
+                      {{ currentPickedElement.src }}
+                    </div>
+                  </div>
+
+                  <div style="margin-bottom:12px">
+                    <span style="font-size:0.76rem;color:var(--text-muted)">推荐 CSS 选择器：</span>
+                    <div style="font-family:var(--font-mono);font-size:0.75rem;color:var(--accent-primary);word-break:break-all;background:var(--bg-surface-subtle);padding:4px 8px;border-radius:4px;margin-top:2px">
+                      {{ currentPickedElement.selector || 'body' }}
+                    </div>
+                  </div>
+
+                  <!-- 快捷操作分配按钮 -->
+                  <div style="font-size:0.78rem;font-weight:700;color:var(--text-main);margin-bottom:6px">一键指派为体系规则：</div>
+                  <div style="display:flex;flex-direction:column;gap:6px">
+                    <button class="btn btn-secondary" style="justify-content:flex-start;padding:5px 10px;font-size:0.8rem" @click="addPickedAsPrimaryCategory">
+                      + 设为一级分类 ({{ currentPickedElement.text || '新分类' }})
+                    </button>
+                    <button class="btn btn-secondary" style="justify-content:flex-start;padding:5px 10px;font-size:0.8rem" @click="addPickedAsSubcategory">
+                      + 设为当前一级分类的二级标签
+                    </button>
+                    
+                    <div style="border-top:1px dashed var(--border-subtle);margin:4px 0"></div>
+                    <div style="font-size:0.74rem;color:var(--text-muted)">绑定为详情页采集字段：</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+                      <button class="btn btn-secondary" style="padding:4px 8px;font-size:0.75rem" @click="assignPickedToField('vod_name')">片名 (vod_name)</button>
+                      <button class="btn btn-secondary" style="padding:4px 8px;font-size:0.75rem" @click="assignPickedToField('vod_pic')">海报封面 (vod_pic)</button>
+                      <button class="btn btn-secondary" style="padding:4px 8px;font-size:0.75rem" @click="assignPickedToField('vod_remarks')">集数状态 (remarks)</button>
+                      <button class="btn btn-secondary" style="padding:4px 8px;font-size:0.75rem" @click="assignPickedToField('vod_content')">剧情简介 (content)</button>
+                      <button class="btn btn-secondary" style="padding:4px 8px;font-size:0.75rem" @click="assignPickedToField('episodes')">选集按钮 (episodes)</button>
+                      <button class="btn btn-secondary" style="padding:4px 8px;font-size:0.75rem" @click="assignPickedToField('lines')">播放线路 (lines)</button>
+                      <button class="btn btn-secondary" style="padding:4px 8px;font-size:0.75rem" @click="assignPickedToField('vod_actor')">主演演员 (actor)</button>
+                      <button class="btn btn-secondary" style="padding:4px 8px;font-size:0.75rem" @click="assignPickedToField('vod_tag')">分类标签 (tag)</button>
+                    </div>
+                  </div>
+
+                  <!-- 智能同类批量识别面板 -->
+                  <div v-if="currentPickedElement.siblings && currentPickedElement.siblings.length > 1" style="margin-top:10px;padding:8px;border-radius:6px;background:var(--bg-surface-subtle);border:1px solid #3b82f6">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                      <span style="font-weight:700;font-size:0.78rem;color:#2563eb">
+                        智能同类批量识别 (已探测 {{ currentPickedElement.siblings.length }} 个同组标签)
+                      </span>
+                      <div style="display:flex;gap:4px">
+                        <button class="btn btn-secondary" style="padding:2px 6px;font-size:0.7rem" @click="toggleSelectAllSiblings(true)">全选</button>
+                        <button class="btn btn-secondary" style="padding:2px 6px;font-size:0.7rem" @click="toggleSelectAllSiblings(false)">清空</button>
+                      </div>
+                    </div>
+
+                    <!-- 标签勾选列表 -->
+                    <div style="display:flex;flex-wrap:wrap;gap:4px;max-height:110px;overflow-y:auto;padding:6px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:4px;margin-bottom:8px">
+                      <label 
+                        v-for="sib in currentPickedElement.siblings" 
+                        :key="sib.text" 
+                        style="display:inline-flex;align-items:center;gap:3px;font-size:0.72rem;padding:2px 5px;border-radius:3px;cursor:pointer;user-select:none;border:1px solid var(--border-subtle)"
+                        :style="{ background: pickedSiblingsSelected.includes(sib.text) ? 'rgba(37,99,235,0.12)' : 'transparent', color: pickedSiblingsSelected.includes(sib.text) ? '#2563eb' : 'var(--text-muted)' }"
+                      >
+                        <input type="checkbox" :value="sib.text" v-model="pickedSiblingsSelected" style="cursor:pointer" />
+                        <span>{{ sib.text }}</span>
+                      </label>
+                    </div>
+
+                    <!-- 批量导入快捷操作 -->
+                    <div style="display:flex;flex-direction:column;gap:5px">
+                      <button 
+                        class="btn btn-primary" 
+                        style="justify-content:center;padding:5px 8px;font-size:0.78rem;font-weight:700" 
+                        @click="addPickedSiblingsAsSubcategories"
+                      >
+                        一键批量添加为二级标签 (已选 {{ pickedSiblingsSelected.length }} 项)
+                      </button>
+                      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+                        <button 
+                          class="btn btn-secondary" 
+                          style="padding:4px 6px;font-size:0.74rem;justify-content:center" 
+                          @click="addPickedSiblingsAsPrimaries"
+                        >
+                          批量添加为一级分类
+                        </button>
+                        <button 
+                          class="btn btn-secondary" 
+                          style="padding:4px 6px;font-size:0.74rem;justify-content:center" 
+                          @click="addPickedSiblingsAsTagField"
+                        >
+                          设为分类题材 (vod_tag)
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 多选暂存池 -->
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;border-top:1px dashed var(--border-subtle);padding-top:6px">
+                    <button class="btn btn-secondary" style="padding:3px 8px;font-size:0.74rem" @click="addToStashBasket">
+                      + 放入多选暂存篮
+                    </button>
+                    <span style="font-size:0.72rem;color:var(--text-dim)">
+                      暂存篮: {{ pickedStashList.length }} 项
+                    </span>
+                  </div>
+
+                  <div v-if="pickedStashList.length > 0" style="margin-top:6px;padding:6px;border-radius:6px;background:var(--bg-surface-subtle);border:1px dashed #64748b">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+                      <span style="font-size:0.74rem;font-weight:700;color:var(--text-main)">暂存篮列表</span>
+                      <button class="btn btn-secondary" style="padding:1px 5px;font-size:0.68rem" @click="clearStashBasket">清空</button>
+                    </div>
+                    <div style="display:flex;flex-wrap:wrap;gap:4px;max-height:80px;overflow-y:auto;margin-bottom:6px">
+                      <span 
+                        v-for="(item, sIdx) in pickedStashList" 
+                        :key="sIdx"
+                        class="tag" 
+                        style="font-size:0.7rem;padding:2px 6px;display:inline-flex;align-items:center;gap:4px;background:#e2e8f0;color:#1e293b"
+                      >
+                        {{ item.text }}
+                        <span style="cursor:pointer;font-weight:700" @click.stop="removeFromStashBasket(sIdx)">×</span>
+                      </span>
+                    </div>
+                    <button 
+                      class="btn btn-secondary" 
+                      style="width:100%;padding:4px 8px;font-size:0.74rem;justify-content:center" 
+                      @click="importStashToSubcategories"
+                    >
+                      一键将暂存项全部导入为二级标签 (共 {{ pickedStashList.length }} 项)
+                    </button>
+                  </div>
+                </div>
+
+                <div v-else style="text-align:center;padding:2rem 1rem;color:var(--text-dim);font-size:0.82rem">
+                  请在左侧网页中点击任意元素，此处将显示元素特征及一键分配按钮。
+                </div>
+              </div>
+            </div>
+
+            <!-- 状态卡片 2: 当前体系同步状态 -->
+            <div class="panel" style="margin-bottom:0;flex:1">
+              <div class="panel-head" style="padding:8px 12px">
+                <span class="panel-title" style="font-size:0.88rem">体系结构实时联动 (已选 {{ selectedCategoriesCount }} 分类)</span>
+              </div>
+              <div style="padding:8px 12px;font-size:0.8rem">
+                <div style="font-weight:600;margin-bottom:4px;color:var(--text-muted);font-size:0.76rem">一级分类（点击可切换归属目标）：</div>
+                <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">
+                  <span 
+                    v-for="(cat, idx) in (structureResult ? structureResult.categories_tree : [])" 
+                    :key="idx"
+                    class="tag"
+                    :style="{ background: activePrimaryIndex === idx ? 'var(--accent-primary)' : 'var(--bg-surface-subtle)', color: activePrimaryIndex === idx ? '#fff' : 'var(--text-main)', cursor: 'pointer' }"
+                    @click="activePrimaryIndex = idx"
+                  >
+                    {{ cat.type_name || cat.name }} ({{ cat.subcategories ? cat.subcategories.length : 0 }})
+                  </span>
+                </div>
+
+                <div style="font-weight:600;margin-bottom:4px;color:var(--text-muted);font-size:0.76rem">详情页已绑定字段：</div>
+                <div style="display:flex;flex-direction:column;gap:3px;max-height:160px;overflow-y:auto">
+                  <div 
+                    v-for="field in (structureResult ? structureResult.detail_fields : [])" 
+                    :key="field.field_key || field.field"
+                    style="display:flex;align-items:center;justify-content:space-between;padding:3px 6px;border-radius:4px;background:var(--bg-surface-subtle);font-size:0.74rem"
+                  >
+                    <span style="font-weight:600">{{ field.field_label || field.label }}</span>
+                    <span :style="{ color: field.detected_sample || field.sample ? '#10b981' : '#94a3b8' }">
+                      {{ field.detected_sample || field.sample ? '已采纳采样' : '未直接绑定' }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -1540,9 +2277,50 @@
         const sites = ref([]);
 
         // 智能探测状态
-        const smartUrl = ref('https://xiaoyakankan.com');
+        const smartUrl = ref('');
         const smartLoading = ref(false);
         const smartResult = ref(null);
+
+        // 目标源分类与字段可视化工作台状态
+        const structureResult = ref(null);
+        const structureLoading = ref(false);
+        const isStudioCollapsed = ref(false);
+        const activePrimaryIndex = ref(0);
+        const newPrimaryName = ref('');
+        const newPrimaryTid = ref('');
+        const newCustomTagName = ref('');
+        const generatingCode = ref(false);
+        const generatedConfigCode = ref('');
+
+        // 实时网页可视化点选拾取器状态
+        const showVisualPickerModal = ref(false);
+        const visualPickerUrl = ref('');
+        const visualProxyIframeSrc = ref('');
+        const visualPickingMode = ref('pick');
+        const currentPickedElement = ref(null);
+        const currentHoveredElement = ref(null);
+        const visualProxyIframe = ref(null);
+        const pickedSiblingsSelected = ref([]);
+        const pickedStashList = ref([]);
+
+        const currentPrimaryCategory = computed(() => {
+          if (!structureResult.value || !structureResult.value.categories_tree) return null;
+          const list = structureResult.value.categories_tree;
+          if (activePrimaryIndex.value >= 0 && activePrimaryIndex.value < list.length) {
+            return list[activePrimaryIndex.value];
+          }
+          return list[0] || null;
+        });
+
+        const selectedCategoriesCount = computed(() => {
+          if (!structureResult.value || !structureResult.value.categories_tree) return 0;
+          return structureResult.value.categories_tree.filter(c => c.selected).length;
+        });
+
+        const selectedFieldsCount = computed(() => {
+          if (!structureResult.value || !structureResult.value.detail_fields) return 0;
+          return structureResult.value.detail_fields.filter(f => f.selected).length;
+        });
 
         // 本地代理配置状态
         const showProxyModal = ref(false);
@@ -1670,6 +2448,445 @@
           } finally {
             smartLoading.value = false;
           }
+        }
+
+        // 启动目标源分类与详情页结构勘探 (可视化工作台)
+        async function startStructureInspection() {
+          if (!smartUrl.value || !smartUrl.value.trim()) {
+            alert('请输入主页 URL');
+            return;
+          }
+          structureLoading.value = true;
+          generatedConfigCode.value = '';
+          try {
+            const res = await fetch('/api/v1/smart/inspect-structure', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ url: smartUrl.value })
+            });
+            const json = await res.json();
+            if (json.ok) {
+              structureResult.value = json.data;
+              activePrimaryIndex.value = 0;
+              isStudioCollapsed.value = false;
+            } else {
+              alert('结构勘探失败: ' + (json.error ? json.error.message : '未知异常'));
+            }
+          } catch (e) {
+            alert('网络连接错误: ' + e);
+          } finally {
+            structureLoading.value = false;
+          }
+        }
+
+        function resetStudio() {
+          structureResult.value = null;
+          generatedConfigCode.value = '';
+          isStudioCollapsed.value = false;
+        }
+
+        function addPrimaryCategory() {
+          if (!newPrimaryName.value.trim() || !structureResult.value) return;
+          if (!structureResult.value.categories_tree) {
+            structureResult.value.categories_tree = [];
+          }
+          const name = newPrimaryName.value.trim();
+          const tid = newPrimaryTid.value.trim() || ('cat_' + Date.now().toString().slice(-4));
+          structureResult.value.categories_tree.push({
+            tid: tid,
+            type_id: tid,
+            name: name,
+            type_name: name,
+            selected: true,
+            subcategories: [
+              { tid: tid, type_id: tid, name: '全部' + name, type_name: '全部' + name, selected: true }
+            ]
+          });
+          newPrimaryName.value = '';
+          newPrimaryTid.value = '';
+          activePrimaryIndex.value = structureResult.value.categories_tree.length - 1;
+        }
+
+        function removePrimaryCategory(idx) {
+          if (!structureResult.value || !structureResult.value.categories_tree) return;
+          structureResult.value.categories_tree.splice(idx, 1);
+          if (activePrimaryIndex.value >= structureResult.value.categories_tree.length) {
+            activePrimaryIndex.value = Math.max(0, structureResult.value.categories_tree.length - 1);
+          }
+        }
+
+        function addCustomSubcategory() {
+          if (!newCustomTagName.value.trim() || !currentPrimaryCategory.value) return;
+          if (!currentPrimaryCategory.value.subcategories) {
+            currentPrimaryCategory.value.subcategories = [];
+          }
+          const name = newCustomTagName.value.trim();
+          currentPrimaryCategory.value.subcategories.push({
+            tid: name,
+            type_id: name,
+            name: name,
+            type_name: name,
+            selected: true
+          });
+          newCustomTagName.value = '';
+        }
+
+        function removeSubcategory(primaryIdx, subIdx) {
+          if (!structureResult.value || !structureResult.value.categories_tree) return;
+          const cat = structureResult.value.categories_tree[primaryIdx];
+          if (cat && cat.subcategories) {
+            cat.subcategories.splice(subIdx, 1);
+          }
+        }
+
+        function addTagFromPool(tag) {
+          if (!currentPrimaryCategory.value) return;
+          if (!currentPrimaryCategory.value.subcategories) {
+            currentPrimaryCategory.value.subcategories = [];
+          }
+          const tagName = tag.tag_name || tag.type_name || tag.name;
+          const tagId = tag.type_id || tag.tid || tag.url_hint || tagName;
+          const exists = currentPrimaryCategory.value.subcategories.some(s => (s.type_name || s.name) === tagName);
+          if (!exists) {
+            currentPrimaryCategory.value.subcategories.push({
+              tid: tagId,
+              type_id: tagId,
+              name: tagName,
+              type_name: tagName,
+              selected: true
+            });
+          }
+        }
+
+        function toggleAllSubcategories(primaryIdx, selectAll) {
+          if (!structureResult.value) return;
+          const cat = structureResult.value.categories_tree[primaryIdx];
+          if (cat && cat.subcategories) {
+            cat.subcategories.forEach(s => s.selected = !!selectAll);
+          }
+        }
+
+        function historyBackProxy() {
+          try {
+            if (visualProxyIframe.value && visualProxyIframe.value.contentWindow) {
+              visualProxyIframe.value.contentWindow.history.back();
+            }
+          } catch (e) {
+            console.warn(e);
+          }
+        }
+
+        function historyForwardProxy() {
+          try {
+            if (visualProxyIframe.value && visualProxyIframe.value.contentWindow) {
+              visualProxyIframe.value.contentWindow.history.forward();
+            }
+          } catch (e) {
+            console.warn(e);
+          }
+        }
+
+        function navigateVisualProxyTo(rawUrl) {
+          if (!rawUrl) return;
+          let targetUrl = rawUrl;
+          try {
+            targetUrl = new URL(rawUrl, visualPickerUrl.value || window.location.href).href;
+          } catch (e) {}
+          visualPickerUrl.value = targetUrl;
+          visualProxyIframeSrc.value = '/api/v1/smart/visual-proxy?url=' + encodeURIComponent(targetUrl) + '&mode=' + encodeURIComponent(visualPickingMode.value);
+        }
+
+        // 实时可视化点选拾取器交互逻辑
+        function openVisualPickerModal() {
+          const targetUrl = smartUrl.value || (structureResult.value ? structureResult.value.base_url : 'https://rou.video');
+          visualPickerUrl.value = targetUrl;
+          visualPickingMode.value = 'pick';
+          visualProxyIframeSrc.value = '/api/v1/smart/visual-proxy?url=' + encodeURIComponent(targetUrl) + '&mode=pick';
+          currentPickedElement.value = null;
+          pickedSiblingsSelected.value = [];
+
+          if (!structureResult.value) {
+            structureResult.value = {
+              base_url: targetUrl,
+              site_name: '自定义点选站点',
+              suggested_key: 'custom_picker',
+              categories_tree: [],
+              unassigned_tags_pool: [],
+              detail_fields: [
+                { field_key: 'vod_name', field_label: '影片名称 (vod_name)', required: true, selected: true, found: false, detected_sample: '' },
+                { field_key: 'vod_pic', field_label: '海报封面 (vod_pic)', required: true, selected: true, found: false, detected_sample: '' },
+                { field_key: 'vod_remarks', field_label: '集数状态 (vod_remarks)', required: false, selected: true, found: false, detected_sample: '' },
+                { field_key: 'vod_content', field_label: '剧情简介 (vod_content)', required: false, selected: true, found: false, detected_sample: '' },
+                { field_key: 'episodes', field_label: '选集列表 (episodes)', required: true, selected: true, found: false, detected_sample: '' },
+                { field_key: 'lines', field_label: '播放线路 (lines)', required: false, selected: true, found: false, detected_sample: '' },
+                { field_key: 'vod_actor', field_label: '主演演员 (vod_actor)', required: false, selected: false, found: false, detected_sample: '' },
+                { field_key: 'vod_tag', field_label: '分类题材 (vod_tag)', required: false, selected: true, found: false, detected_sample: '' }
+              ]
+            };
+          }
+          showVisualPickerModal.value = true;
+        }
+
+        function setVisualPickingMode(mode) {
+          visualPickingMode.value = mode;
+          if (visualProxyIframe.value && visualProxyIframe.value.contentWindow) {
+            visualProxyIframe.value.contentWindow.postMessage({ type: 'PLOVE_SET_MODE', mode: mode }, '*');
+          }
+        }
+
+        function refreshVisualProxy() {
+          if (!visualPickerUrl.value) return;
+          visualProxyIframeSrc.value = '/api/v1/smart/visual-proxy?url=' + encodeURIComponent(visualPickerUrl.value) + '&mode=' + encodeURIComponent(visualPickingMode.value);
+        }
+
+        function toggleSelectAllSiblings(selectAll) {
+          if (!currentPickedElement.value || !currentPickedElement.value.siblings) return;
+          if (selectAll) {
+            pickedSiblingsSelected.value = currentPickedElement.value.siblings.map(s => s.text);
+          } else {
+            pickedSiblingsSelected.value = [];
+          }
+        }
+
+        function addPickedSiblingsAsSubcategories() {
+          if (!currentPickedElement.value || !currentPickedElement.value.siblings) return;
+          if (!currentPrimaryCategory.value) {
+            alert('请先在右侧选择一个一级分类作为归属');
+            return;
+          }
+          if (!currentPrimaryCategory.value.subcategories) {
+            currentPrimaryCategory.value.subcategories = [];
+          }
+          const selectedList = currentPickedElement.value.siblings.filter(s => pickedSiblingsSelected.value.includes(s.text));
+          if (selectedList.length === 0) {
+            alert('请先至少勾选一个同类标签');
+            return;
+          }
+          let addedCount = 0;
+          for (const sib of selectedList) {
+            const name = sib.text.trim();
+            if (!name) continue;
+            let tid = sib.href ? sib.href.split('?')[0].split('/').filter(Boolean).pop() : name;
+            if (!tid) tid = name;
+            const exists = currentPrimaryCategory.value.subcategories.some(s => (s.type_name || s.name) === name);
+            if (!exists) {
+              currentPrimaryCategory.value.subcategories.push({
+                tid: tid,
+                type_id: tid,
+                name: name,
+                type_name: name,
+                selected: true
+              });
+              addedCount++;
+            }
+          }
+          alert(`成功将 ${addedCount} 个二级标签批量添加至【${currentPrimaryCategory.value.type_name || currentPrimaryCategory.value.name}】！`);
+        }
+
+        function addPickedSiblingsAsPrimaries() {
+          if (!currentPickedElement.value || !currentPickedElement.value.siblings || !structureResult.value) return;
+          if (!structureResult.value.categories_tree) {
+            structureResult.value.categories_tree = [];
+          }
+          const selectedList = currentPickedElement.value.siblings.filter(s => pickedSiblingsSelected.value.includes(s.text));
+          if (selectedList.length === 0) {
+            alert('请先至少勾选一个同类标签');
+            return;
+          }
+          let addedCount = 0;
+          for (const sib of selectedList) {
+            const name = sib.text.trim();
+            if (!name) continue;
+            let tid = sib.href ? sib.href.split('?')[0].split('/').filter(Boolean).pop() : ('cat_' + Date.now().toString().slice(-4));
+            if (!tid) tid = name;
+            const exists = structureResult.value.categories_tree.some(c => (c.type_name || c.name) === name);
+            if (!exists) {
+              structureResult.value.categories_tree.push({
+                tid: tid,
+                type_id: tid,
+                name: name,
+                type_name: name,
+                selected: true,
+                subcategories: [
+                  { tid: tid, type_id: tid, name: '全部' + name, type_name: '全部' + name, selected: true }
+                ]
+              });
+              addedCount++;
+            }
+          }
+          alert(`成功批量创建 ${addedCount} 个一级分类！`);
+        }
+
+        function addPickedSiblingsAsTagField() {
+          if (!currentPickedElement.value || !structureResult.value || !structureResult.value.detail_fields) return;
+          const selectedList = (currentPickedElement.value.siblings || []).filter(s => pickedSiblingsSelected.value.includes(s.text));
+          const joinedSample = selectedList.length > 0 ? selectedList.map(s => s.text).join(', ') : currentPickedElement.value.text;
+          const f = structureResult.value.detail_fields.find(item => (item.field_key || item.field) === 'vod_tag');
+          if (f) {
+            f.selected = true;
+            f.found = true;
+            f.detected_sample = joinedSample;
+            f.sample = joinedSample;
+            f.custom_selector = currentPickedElement.value.selector;
+            alert(`已将所选 ${selectedList.length} 个标签作为样例绑定至分类题材 (vod_tag) 字段！`);
+          }
+        }
+
+        function addToStashBasket() {
+          if (!currentPickedElement.value || !currentPickedElement.value.text) return;
+          const text = currentPickedElement.value.text.trim();
+          if (!text) return;
+          if (!pickedStashList.value.some(item => item.text === text)) {
+            pickedStashList.value.push({
+              text: text,
+              href: currentPickedElement.value.href,
+              selector: currentPickedElement.value.selector
+            });
+          }
+        }
+
+        function removeFromStashBasket(idx) {
+          pickedStashList.value.splice(idx, 1);
+        }
+
+        function clearStashBasket() {
+          pickedStashList.value = [];
+        }
+
+        function importStashToSubcategories() {
+          if (pickedStashList.value.length === 0) return;
+          if (!currentPrimaryCategory.value) {
+            alert('请先在右侧选择一个一级分类作为归属');
+            return;
+          }
+          if (!currentPrimaryCategory.value.subcategories) {
+            currentPrimaryCategory.value.subcategories = [];
+          }
+          let addedCount = 0;
+          for (const item of pickedStashList.value) {
+            const name = item.text.trim();
+            let tid = item.href ? item.href.split('?')[0].split('/').filter(Boolean).pop() : name;
+            if (!tid) tid = name;
+            const exists = currentPrimaryCategory.value.subcategories.some(s => (s.type_name || s.name) === name);
+            if (!exists) {
+              currentPrimaryCategory.value.subcategories.push({
+                tid: tid,
+                type_id: tid,
+                name: name,
+                type_name: name,
+                selected: true
+              });
+              addedCount++;
+            }
+          }
+          alert(`成功将暂存篮中的 ${addedCount} 个标签导入至【${currentPrimaryCategory.value.type_name || currentPrimaryCategory.value.name}】！`);
+          pickedStashList.value = [];
+        }
+
+        function addPickedAsPrimaryCategory() {
+          if (!currentPickedElement.value || !structureResult.value) return;
+          if (!structureResult.value.categories_tree) {
+            structureResult.value.categories_tree = [];
+          }
+          const text = currentPickedElement.value.text || '新分类';
+          let tid = currentPickedElement.value.href ? currentPickedElement.value.href.split('?')[0].split('/').filter(Boolean).pop() : ('cat_' + Date.now().toString().slice(-4));
+          if (!tid) tid = text;
+          structureResult.value.categories_tree.push({
+            tid: tid,
+            type_id: tid,
+            name: text,
+            type_name: text,
+            selected: true,
+            subcategories: [
+              { tid: tid, type_id: tid, name: '全部' + text, type_name: '全部' + text, selected: true }
+            ]
+          });
+          activePrimaryIndex.value = structureResult.value.categories_tree.length - 1;
+        }
+
+        function addPickedAsSubcategory() {
+          if (!currentPickedElement.value || !currentPrimaryCategory.value) {
+            alert('请先在右侧选择一个一级分类作为归属');
+            return;
+          }
+          if (!currentPrimaryCategory.value.subcategories) {
+            currentPrimaryCategory.value.subcategories = [];
+          }
+          const text = currentPickedElement.value.text || '新标签';
+          let tid = currentPickedElement.value.href ? currentPickedElement.value.href.split('?')[0].split('/').filter(Boolean).pop() : text;
+          const exists = currentPrimaryCategory.value.subcategories.some(s => (s.type_name || s.name) === text);
+          if (!exists) {
+            currentPrimaryCategory.value.subcategories.push({
+              tid: tid,
+              type_id: tid,
+              name: text,
+              type_name: text,
+              selected: true
+            });
+          }
+        }
+
+        function assignPickedToField(fieldKey) {
+          if (!currentPickedElement.value || !structureResult.value) return;
+          if (!structureResult.value.detail_fields) return;
+          const f = structureResult.value.detail_fields.find(item => (item.field_key || item.field) === fieldKey);
+          if (f) {
+            f.selected = true;
+            f.found = true;
+            const sample = currentPickedElement.value.src || currentPickedElement.value.text || currentPickedElement.value.selector;
+            f.detected_sample = sample;
+            f.sample = sample;
+            f.custom_selector = currentPickedElement.value.selector;
+          }
+        }
+
+        function generatePromptFromVisualConfig() {
+          showPromptModal.value = true;
+          copyPromptBtnText.value = '复制完整提示词';
+          refreshPromptContent();
+        }
+
+        async function generateCodeFromVisualConfig() {
+          if (!structureResult.value) return;
+          generatingCode.value = true;
+          try {
+            const res = await fetch('/api/v1/smart/generate-code', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                url: smartUrl.value,
+                site_name: structureResult.value.site_name,
+                site_key: structureResult.value.suggested_key,
+                categories_tree: structureResult.value.categories_tree,
+                detail_fields: structureResult.value.detail_fields,
+              })
+            });
+            const json = await res.json();
+            if (json.ok) {
+              generatedConfigCode.value = json.data.python_code;
+            } else {
+              alert('代码生成失败: ' + (json.error ? json.error.message : '未知异常'));
+            }
+          } catch (e) {
+            alert('网络连接错误: ' + e);
+          } finally {
+            generatingCode.value = false;
+          }
+        }
+
+        function loadGeneratedCodeToStudio() {
+          if (!generatedConfigCode.value) return;
+          testScriptCode.value = generatedConfigCode.value;
+          testCustomKey.value = (structureResult.value && structureResult.value.suggested_key) || 'custom_site';
+          testFileMeta.value = '由可视化配置工作台生成的脚本 · ' + testCustomKey.value + '.py';
+          testReport.value = null;
+          tab.value = 'test_studio';
+        }
+
+        function copyGeneratedConfigCode() {
+          if (!generatedConfigCode.value) return;
+          navigator.clipboard.writeText(generatedConfigCode.value);
+          alert('采集器代码已成功复制到剪贴板！');
         }
 
         // 调入工坊体检
@@ -1920,17 +3137,22 @@
         }
 
         async function refreshPromptContent() {
-          generatedPrompt.value = '正在根据目标源特征合成专属提示词...';
+          generatedPrompt.value = '正在根据目标源特征及定制结构合成专属提示词...';
           try {
+            const payload = {
+              url: smartUrl.value || 'https://example.com',
+              site_name: structureResult.value ? structureResult.value.site_name : (smartResult.value ? smartResult.value.site_name : ''),
+              site_key: structureResult.value ? structureResult.value.suggested_key : (smartResult.value ? smartResult.value.suggested_key : ''),
+              difficulty_note: promptDifficulty.value,
+            };
+            if (structureResult.value) {
+              payload.categories_tree = structureResult.value.categories_tree;
+              payload.detail_fields = structureResult.value.detail_fields;
+            }
             const res = await fetch('/api/v1/smart/generate-prompt', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                url: smartUrl.value || 'https://example.com',
-                site_name: smartResult.value ? smartResult.value.site_name : '',
-                site_key: smartResult.value ? smartResult.value.suggested_key : '',
-                difficulty_note: promptDifficulty.value,
-              })
+              body: JSON.stringify(payload)
             });
             const json = await res.json();
             if (json.ok) {
@@ -2253,6 +3475,26 @@ if __name__ == "__main__":
         onMounted(() => {
           fetchSites();
           fetchProxySettings();
+          // 监听来自可视化点选中继 iframe 的交互拾取消息
+          window.addEventListener('message', (e) => {
+            if (!e.data) return;
+            if (e.data.type === 'PLOVE_ELEMENT_CLICKED') {
+              currentPickedElement.value = e.data.data;
+              if (e.data.data && e.data.data.siblings && e.data.data.siblings.length > 0) {
+                pickedSiblingsSelected.value = e.data.data.siblings.map(s => s.text);
+              } else {
+                pickedSiblingsSelected.value = [];
+              }
+            } else if (e.data.type === 'PLOVE_ELEMENT_HOVERED') {
+              currentHoveredElement.value = e.data.data;
+            } else if (e.data.type === 'PLOVE_NAVIGATE_PAGE') {
+              if (e.data.url) visualPickerUrl.value = e.data.url;
+              if (e.data.mode) visualPickingMode.value = e.data.mode;
+            } else if (e.data.type === 'PLOVE_PAGE_READY') {
+              if (e.data.url) visualPickerUrl.value = e.data.url;
+              if (e.data.mode) visualPickingMode.value = e.data.mode;
+            }
+          });
           // 全局拦截页面空白处的 drop，防止浏览器默认在当前窗口以文本打开本地文件导致页面空白
           window.addEventListener('dragover', (e) => { e.preventDefault(); }, false);
           window.addEventListener('drop', (e) => { e.preventDefault(); }, false);
@@ -2264,6 +3506,56 @@ if __name__ == "__main__":
           smartUrl,
           smartLoading,
           smartResult,
+          structureResult,
+          structureLoading,
+          isStudioCollapsed,
+          resetStudio,
+          showVisualPickerModal,
+          visualPickerUrl,
+          visualProxyIframeSrc,
+          visualPickingMode,
+          currentPickedElement,
+          currentHoveredElement,
+          visualProxyIframe,
+          pickedSiblingsSelected,
+          pickedStashList,
+          historyBackProxy,
+          historyForwardProxy,
+          navigateVisualProxyTo,
+          toggleSelectAllSiblings,
+          addPickedSiblingsAsSubcategories,
+          addPickedSiblingsAsPrimaries,
+          addPickedSiblingsAsTagField,
+          addToStashBasket,
+          removeFromStashBasket,
+          clearStashBasket,
+          importStashToSubcategories,
+          openVisualPickerModal,
+          setVisualPickingMode,
+          refreshVisualProxy,
+          addPickedAsPrimaryCategory,
+          addPickedAsSubcategory,
+          assignPickedToField,
+          activePrimaryIndex,
+          newPrimaryName,
+          newPrimaryTid,
+          newCustomTagName,
+          generatingCode,
+          generatedConfigCode,
+          currentPrimaryCategory,
+          selectedCategoriesCount,
+          selectedFieldsCount,
+          startStructureInspection,
+          addPrimaryCategory,
+          removePrimaryCategory,
+          addCustomSubcategory,
+          removeSubcategory,
+          addTagFromPool,
+          toggleAllSubcategories,
+          generatePromptFromVisualConfig,
+          generateCodeFromVisualConfig,
+          loadGeneratedCodeToStudio,
+          copyGeneratedConfigCode,
           scriptFileInputRef,
           triggerScriptFileInput,
           onDragLeaveDropzone,
@@ -2339,7 +3631,8 @@ if __name__ == "__main__":
 
     app.config.errorHandler = (err, vm, info) => {
       console.error('Vue 全局异常捕获:', err, info);
-      alert('界面渲染捕获异常: ' + (err && err.message ? err.message : err));
+      const detail = (err && err.message) ? err.message : String(err);
+      alert('界面渲染捕获异常: ' + detail + (info ? ` (${info})` : ''));
     };
 
     app.mount('#app');

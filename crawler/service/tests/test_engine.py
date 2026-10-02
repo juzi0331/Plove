@@ -1,18 +1,13 @@
 """引擎与基础工具离线单元测试。"""
 
-import pytest
-
 from crawler.service.core.cleaner import (
-    clean_title,
-    collapse_whitespace,
     safe_resolve_url,
     strip_decorated_ad_words,
 )
 from crawler.service.core.gates import solve_cdndefend_cookie
 from crawler.service.engine.extractor_html import extract_html_field, parse_html
-from crawler.service.engine.extractor_json import extract_json_field, get_json_path_value
-from crawler.service.engine.models import ExtractorType, FieldExtractor, SiteRule
-from crawler.service.engine.rule_manager import RuleManager
+from crawler.service.engine.extractor_json import extract_json_field
+from crawler.service.engine.models import ExtractorType, FieldExtractor
 
 
 def test_cleaner_strip_decorated():
@@ -20,6 +15,13 @@ def test_cleaner_strip_decorated():
     raw = "𝕜𝕜𝕪𝕤𝟘𝟙.𝕔𝕠𝕞 最糟糕的初恋 𝕜𝕜𝕪𝕤𝟘𝟙.𝕔𝕠𝕞"
     cleaned = strip_decorated_ad_words(raw)
     assert cleaned == "最糟糕的初恋"
+
+
+def test_cleaner_strip_emojis():
+    from crawler.service.core.cleaner import clean_title, strip_emojis
+    raw = "18+ 🔞 - 肉视频 ⚡🤖"
+    assert strip_emojis(raw) == "18+  - 肉视频 "
+    assert clean_title(raw) == "18+ - 肉视频"
 
 
 def test_cleaner_safe_resolve_url():

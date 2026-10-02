@@ -10,7 +10,7 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Optional
+from typing import Any
 
 from .models import FieldExtractor
 from ..core.cleaner import collapse_whitespace, safe_resolve_url

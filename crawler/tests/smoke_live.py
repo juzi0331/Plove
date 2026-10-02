@@ -24,7 +24,7 @@ from urllib.parse import urljoin
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from crawler_kit import cli, log  # noqa: E402
+from crawler_kit import cli  # noqa: E402
 from crawler_kit.errors import CrawlerError  # noqa: E402
 from crawler_kit.http import Client  # noqa: E402
 

@@ -14,6 +14,16 @@
           "default": "",
           "title": "Name",
           "type": "string"
+        },
+        "custom_name": {
+          "default": "",
+          "title": "Custom Name",
+          "type": "string"
+        },
+        "hidden": {
+          "default": false,
+          "title": "Hidden",
+          "type": "boolean"
         }
       },
       "required": [
@@ -34,6 +44,16 @@
       "default": "",
       "title": "Name",
       "type": "string"
+    },
+    "custom_name": {
+      "default": "",
+      "title": "Custom Name",
+      "type": "string"
+    },
+    "hidden": {
+      "default": false,
+      "title": "Hidden",
+      "type": "boolean"
     },
     "subcategories": {
       "description": "该分类下的子分类列表",

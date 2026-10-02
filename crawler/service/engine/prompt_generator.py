@@ -8,7 +8,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Optional
+from typing import Any
 
 
 def build_ai_crawler_prompt(
@@ -18,6 +18,8 @@ def build_ai_crawler_prompt(
     html_preview: str = "",
     api_preview: str = "",
     difficulty_note: str = "",
+    categories_tree: list[dict[str, Any]] | None = None,
+    detail_fields: list[dict[str, Any]] | None = None,
 ) -> str:
     """合成针对外部顶级 AI (ChatGPT / Claude / DeepSeek) 的高质量生产级 Prompt。"""
     key = site_key or "custom_site"
@@ -36,7 +38,49 @@ def build_ai_crawler_prompt(
     note_section = f"""### 特殊难点与逆向重点（加密/混淆/防盗链）：
 {difficulty_note}""" if difficulty_note else ""
 
+    cats_lines = []
+    if categories_tree:
+        for idx, cat in enumerate(categories_tree, 1):
+            if not cat.get("selected", True):
+                continue
+            cat_name = cat.get("type_name") or cat.get("name") or "未命名分类"
+            cat_tid = cat.get("type_id") or cat.get("tid") or str(idx)
+            subs = cat.get("subcategories") or []
+            subs_str = ", ".join(
+                f"{s.get('type_name') or s.get('name')}(tid='{s.get('type_id') or s.get('tid')}')"
+                for s in subs
+                if s.get("selected", True)
+            )
+            cats_lines.append(f"{idx}. 一级分类【{cat_name}】(tid: '{cat_tid}'):\n   - 二级分类选项: {subs_str or '全部'}")
+
+    cats_section = f"""### 用户明确指定的分类结构（必须在代码中严格实现，不可随意变动）：
+你编写的采集器中的 `home()` 和 `category(tid, page)` 必须严格实现以下一级分类与二级子分类映射，确保每个分类点进去都能正确翻页抓取：
+{chr(10).join(cats_lines)}
+""" if cats_lines else ""
+
+    fields_lines = []
+    if detail_fields:
+        for f in detail_fields:
+            if f.get("selected", True):
+                f_key = f.get("field_key") or f.get("field") or ""
+                f_label = f.get("field_label") or f.get("label") or f_key
+                f_sample = f.get("detected_sample") or f.get("sample") or ""
+                status = f"（已探测到样本：{f_sample}）" if (f.get("found") or f_sample) else "（源站可能无此数据，拿不到勿编造）"
+                fields_lines.append(f"- `{f_key}` ({f_label}): 必须采集 = {f.get('required', False)} {status}")
+
+    fields_section = f"""### 用户明确指定的详情页信息采集清单（detail 方法提取标准）：
+在 `detail(self, id)` 返回的字典中，必须根据源站实际提取以下已确认字段：
+{chr(10).join(fields_lines)}
+- 注意：站点没有提供的字段（如某些站无演员/导演）切勿编造虚假数据，留空或不返回对应键即可。
+""" if fields_lines else ""
+
     prompt = f"""你是一名精通 Python 网络逆向与高并发爬虫架构的专家。请为我们的影视聚合流媒体系统编写一个针对目标源站【{name}】（目标主页：{target_url}）的单文件采集器脚本（适配器）。
+
+{cats_section}
+{fields_section}
+{note_section}
+{html_section}
+{api_section}
 
 ### 一、系统核心硬约束（极其严格，不可违背）：
 1. **零外部第三方重依赖**：
@@ -166,6 +210,13 @@ class {name.title().replace(' ', '')}Crawler:
    - 若传入的字节已是正常图片（头部为 JPEG `\\xff\\xd8\\xff`、PNG `\\x89PNG`、WEBP `RIFF`、GIF `GIF8`）必须直接返回 `None`；
    - 若为密文，解密成功后返回 `(decrypted_bytes, "image/jpeg" 或 "image/png")`，解密失败返回 `None`；
    - 系统图片中继代理会自动感知该钩子并自动流式解密，爬虫的 `home`/`category`/`detail` 依然正常输出图片原 URL 即可，无需在抓取时阻塞下载。
+
+7. **【可选扩展】`mode = "proxy"` 与 `decode_media(content: bytes) -> bytes | None`**：
+   若该源站对视频串流进行了伪装容器封装（如把 m3u8 清单与 TS 分片伪装包装进 PNG 图片容器，如 rou 等）或存在严格防盗链/白名单：
+   - 在爬虫类上声明 `mode = "proxy"`（默认为 `"direct"`）；
+   - 在爬虫类上增加静态方法 `@staticmethod def decode_media(content: bytes) -> bytes | None:`（也可作为模块级函数）；
+   - 传入的字节若是伪装/加密数据，解封装后返回真实字节（m3u8 返回 `b"#EXTM3U..."` 文本字节，TS 分片返回以 `0x47` 同步字开头的 MPEG-TS 字节）；若无需解封装或非目标数据返回 `None`；
+   - 系统流媒体中继代理（Stream Proxy）会自动把清单和分片递归改写并接管，自动调用该钩子解封装，吐出纯正的 m3u8 和 TS 流，前台播放器直接无缝播放。
 
 ### 四、内置 `crawler_kit` 核心工具链使用指南：
 - **HTML 解析**：`root = parse.parse_html(html_text)`

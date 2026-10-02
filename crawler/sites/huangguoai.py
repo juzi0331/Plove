@@ -624,15 +624,6 @@ class 黄果短剧官网Crawler:
             raise CrawlerError("NOT_FOUND", f"无效的分类 id: {tid}")
         return value
 
-    def _channel_tags(self, tid: str, limit: int = 12):
-        """二级分类 = 该频道自己页面上的题材标签；取不到就留空，不让 home 整体失败。"""
-        try:
-            root = parse.parse_html(self._page(f"/{tid}/"))
-        except CrawlerError as exc:
-            log.warn(f"{tid} 的题材标签取不到（{exc.message}），二级分类留空")
-            return []
-        return _tag_links(root, limit=limit)
-
     # ---------------------------------------------------------------- 动作
 
     def meta(self):
