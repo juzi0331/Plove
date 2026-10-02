@@ -2491,6 +2491,16 @@
           return structureResult.value.detail_fields.filter(f => f.selected).length;
         });
 
+        const totalSubcategoriesCount = computed(() => {
+          if (!structureResult.value || !structureResult.value.categories_tree) return 0;
+          return structureResult.value.categories_tree.reduce((acc, cat) => acc + (cat.subcategories ? cat.subcategories.length : 0), 0);
+        });
+
+        const boundFieldsCount = computed(() => {
+          if (!structureResult.value || !structureResult.value.detail_fields) return 0;
+          return structureResult.value.detail_fields.filter(f => Boolean(f.detected_sample || f.sample)).length;
+        });
+
         // 本地代理配置状态
         const showProxyModal = ref(false);
         const proxyConfig = ref({ enabled: false, proxy_url: 'http://127.0.0.1:10809' });
