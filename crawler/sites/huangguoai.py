@@ -524,9 +524,56 @@ def _parse_play_id(value):
     return None
 
 
+# ------------------------------------------------------------------ 解密扩展
+def decode_image(content: bytes) -> tuple[bytes, str] | None:
+    """针对黄果短剧前端 AES-128-CBC 加密的封面图片进行自动解密。
+
+    若输入不是加密字节流或解密失败返回 None；
+    解密成功返回 (decrypted_bytes, content_type)。
+    """
+    if not content or len(content) < 16:
+        return None
+    # 常见标准图片头部直接跳过
+    if (
+        content.startswith(b"\xff\xd8\xff")  # JPEG
+        or content.startswith(b"\x89PNG")    # PNG
+        or content.startswith(b"RIFF")       # WEBP
+        or content.startswith(b"GIF8")       # GIF
+    ):
+        return None
+
+    try:
+        from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+        from cryptography.hazmat.backends import default_backend
+
+        # 黄果短剧的固定媒体密钥 (来自 plugins/crypto-worker.js)
+        cipher = Cipher(
+            algorithms.AES(b"f5d965df75336270"),
+            modes.CBC(b"97b60394abc2fbe1"),
+            backend=default_backend(),
+        )
+        decryptor = cipher.decryptor()
+        decrypted = decryptor.update(content) + decryptor.finalize()
+        if decrypted.startswith(b"\xff\xd8\xff"):
+            return decrypted, "image/jpeg"
+        if decrypted.startswith(b"\x89PNG"):
+            return decrypted, "image/png"
+        if decrypted.startswith(b"RIFF"):
+            return decrypted, "image/webp"
+        return None
+    except Exception:
+        return None
+
+
 # ----------------------------------------------------------------------- 站点
 class 黄果短剧官网Crawler:
     """黄果短剧官网采集器（单文件适配器）。"""
+
+    @staticmethod
+    def decode_image(content: bytes) -> tuple[bytes, str] | None:
+        """图片解密钩子。"""
+        return decode_image(content)
+
 
     key = KEY
     name = NAME

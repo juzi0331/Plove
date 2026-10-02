@@ -41,7 +41,7 @@ def build_ai_crawler_prompt(
 ### 一、系统核心硬约束（极其严格，不可违背）：
 1. **零外部第三方重依赖**：
    - 严禁 `import requests`, `scrapy`, `selenium`, `playwright`, `bs4`, `parsel` 等外部库。
-   - 只允许导入我们定制的轻量高性能工具箱 `from crawler_kit import Client, CrawlerError, clean, cli, log, parse` 以及 Python 标准库（`json`, `re`, `time`, `urllib`, `hashlib`, `base64`, `math` 等）。
+   - 只允许导入我们定制的轻量高性能工具箱 `from crawler_kit import Client, CrawlerError, clean, cli, log, parse` 以及 Python 标准库（`json`, `re`, `time`, `urllib`, `hashlib`, `base64`, `math` 等）；若遇到封面图片或媒体解密需求（如 AES-128-CBC/DES/ECB），明确允许导入标准 `cryptography` 库（如 `from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes`）。
 2. **受限环境与 AST 安全审计**：
    - 代码将在沙盒进程中被 AST 语法树审计。严禁导入 `subprocess`, `ctypes`, `socket`, `pty`, `multiprocessing`, `shutil`, `importlib`，严禁使用 `eval()`, `exec()`, `os.system()`。
 3. **统一输出信封与正常退出码**：
@@ -159,6 +159,13 @@ class {name.title().replace(' ', '')}Crawler:
      "headers": {{ "Referer": "{target_url}/" }}
    }}
    ```
+
+6. **【可选扩展】`decode_image(content: bytes) -> tuple[bytes, str] | None`**：
+   若该源站对封面/海报图片进行了前端加密（如 AES-128-CBC、异或或自定义混淆）：
+   - 在爬虫类上增加静态方法 `@staticmethod def decode_image(content: bytes) -> tuple[bytes, str] | None:`（也可作为模块级函数）；
+   - 若传入的字节已是正常图片（头部为 JPEG `\\xff\\xd8\\xff`、PNG `\\x89PNG`、WEBP `RIFF`、GIF `GIF8`）必须直接返回 `None`；
+   - 若为密文，解密成功后返回 `(decrypted_bytes, "image/jpeg" 或 "image/png")`，解密失败返回 `None`；
+   - 系统图片中继代理会自动感知该钩子并自动流式解密，爬虫的 `home`/`category`/`detail` 依然正常输出图片原 URL 即可，无需在抓取时阻塞下载。
 
 ### 四、内置 `crawler_kit` 核心工具链使用指南：
 - **HTML 解析**：`root = parse.parse_html(html_text)`

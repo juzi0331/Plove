@@ -10,8 +10,11 @@
 from __future__ import annotations
 
 import hashlib
+import importlib
+import json
 import os
 import shutil
+import sys
 import time
 from pathlib import Path
 from typing import Any
@@ -24,12 +27,89 @@ from app.core.config import BACKEND_DIR
 from app.db.session import commit_now
 from app.models.system_setting import SystemSetting
 from app.schemas.admin_extended import ImageProxyClearResult, ImageProxyConfig, ImageProxyStats
-import json
 
 CACHE_DIR = BACKEND_DIR / "data" / "img_cache"
 PROXY_CONFIG_KEY = "image_proxy_config"
 
+# 注入爬虫目录以便动态加载各站点适配器解密钩子
+_crawler_dir = Path(__file__).resolve().parents[3] / "crawler"
+if _crawler_dir.is_dir() and str(_crawler_dir) not in sys.path:
+    sys.path.insert(0, str(_crawler_dir))
+
+# 内存缓存站点解码器映射表 {site_key: decoder_callable}
+_site_decoders: dict[str, Any] = {}
+
+
+def _get_site_decoder(site_key: str) -> Any | None:
+    """获取指定站点的图片解码器（如果有的话）。"""
+    if site_key in _site_decoders:
+        return _site_decoders[site_key]
+    try:
+        mod = importlib.import_module(f"sites.{site_key}")
+        decoder = getattr(mod, "decode_image", None)
+        if decoder is None:
+            for attr_name in dir(mod):
+                attr = getattr(mod, attr_name)
+                if isinstance(attr, type) and hasattr(attr, "decode_image"):
+                    decoder = getattr(attr, "decode_image")
+                    break
+        _site_decoders[site_key] = decoder
+        return decoder
+    except Exception:
+        _site_decoders[site_key] = None
+        return None
+
+
+def _decode_image_via_sites(content: bytes, site: str | None = None) -> tuple[bytes, str] | None:
+    """尝试通过站点插件解码加密图片。
+
+    1. 若指定 site，优先调用该 site 的 decode_image 插件方法；
+    2. 若未指定 site 或指定站点未能成功解密，且 content 不是标准图片格式，
+       自动扫描探测其它站点插件尝试解密。
+    """
+    if not content or len(content) < 16:
+        return None
+    # 已经是标准图片格式（JPEG, PNG, WEBP, GIF），无需解密
+    if (
+        content.startswith(b"\xff\xd8\xff")
+        or content.startswith(b"\x89PNG")
+        or content.startswith(b"RIFF")
+        or content.startswith(b"GIF8")
+    ):
+        return None
+
+    # 1. 尝试指定站点
+    if site:
+        decoder = _get_site_decoder(site)
+        if callable(decoder):
+            try:
+                res = decoder(content)
+                if res and isinstance(res, tuple) and len(res) == 2:
+                    return res
+            except Exception:
+                pass
+
+    # 2. 自动探测：扫描 sites/ 目录下所有实现了 decode_image 的站点
+    sites_dir = _crawler_dir / "sites"
+    if sites_dir.is_dir():
+        for file in sites_dir.glob("*.py"):
+            site_key = file.stem
+            if site_key.startswith("_") or site_key == site:
+                continue
+            decoder = _get_site_decoder(site_key)
+            if callable(decoder):
+                try:
+                    res = decoder(content)
+                    if res and isinstance(res, tuple) and len(res) == 2:
+                        return res
+                except Exception:
+                    pass
+
+    return None
+
+
 _cached_config: ImageProxyConfig | None = None
+
 
 
 def get_image_proxy_config(db: Any = None) -> ImageProxyConfig:
@@ -101,6 +181,7 @@ def fetch_image_with_cache(
     url: str,
     custom_referer: str | None = None,
     timeout_seconds: float = 10.0,
+    site: str | None = None,
 ) -> tuple[bytes, str, str]:
     """获取图片内容，返回 (二进制数据, Content-Type, ETag)。"""
     if not _is_safe_url(url):
@@ -145,20 +226,11 @@ def fetch_image_with_cache(
         content = resp.content
         c_type = resp.headers.get("content-type", "image/jpeg")
 
-    # 针对部分源站（如黄果短剧等）的前端 AES-128-CBC 加密图片进行自动解密
-    if not (content.startswith(b"\xff\xd8\xff") or content.startswith(b"\x89PNG") or content.startswith(b"RIFF") or content.startswith(b"GIF8")):
-        try:
-            from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-            from cryptography.hazmat.backends import default_backend
-            # 黄果短剧的固定媒体密钥 (来自 plugins/crypto-worker.js)
-            cipher = Cipher(algorithms.AES(b"f5d965df75336270"), modes.CBC(b"97b60394abc2fbe1"), backend=default_backend())
-            decryptor = cipher.decryptor()
-            decrypted = decryptor.update(content) + decryptor.finalize()
-            if decrypted.startswith(b"\xff\xd8\xff") or decrypted.startswith(b"\x89PNG"):
-                content = decrypted
-                c_type = "image/jpeg" if decrypted.startswith(b"\xff\xd8\xff") else "image/png"
-        except Exception:
-            pass
+    # 委托对应站点适配器（或探测站点插件）解码可能加密的图片格式
+    decoded = _decode_image_via_sites(content, site=site)
+    if decoded is not None:
+        content, c_type = decoded
+
 
     # 3. 异步/即时落盘（必须显式开启磁盘缓存时才写盘）
     if cfg.disk_cache_enabled:

@@ -32,11 +32,13 @@ def system_status(
 def proxy_image(
     url: str = Query(..., description="目标图片完整公网 URL"),
     referer: str | None = Query(None, description="可选的自定义 Referer"),
+    site: str | None = Query(None, description="可选的来源站点 Key，用于调用站点专用解码插件"),
     if_none_match: str | None = Header(None, alias="If-None-Match"),
 ) -> RawResponse:
     """代理获取带有防盗链（403）或跨域限制的第三方图片。
 
     - 自动欺骗 Referer 与 User-Agent
+    - 委托站点适配器钩子自动解密（如黄果短剧等加密图床）
     - 本地磁盘/内存持久化缓存
     - 支持 ETag 304 快速协商
     """
@@ -44,6 +46,7 @@ def proxy_image(
         content, content_type, etag = image_proxy_service.fetch_image_with_cache(
             url=url,
             custom_referer=referer,
+            site=site,
         )
     except Exception as exc:
         return RawResponse(

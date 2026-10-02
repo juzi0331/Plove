@@ -34,7 +34,8 @@ import { formatPosterUrl } from '@/utils/format'
 // 容错与防盗链代理图片
 const displayPic = computed(() => {
   const raw = props.item.vod_pic || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&q=80'
-  return formatPosterUrl(raw)
+  const siteKey = (props.item as any)?.site || (props.item as any)?.site_key
+  return formatPosterUrl(raw, siteKey)
 })
 
 function handleImgError(e: Event): void {
@@ -42,7 +43,9 @@ function handleImgError(e: Event): void {
   if (!target) return
   // 如果直接加载失败且未走代理，自动切换到防盗链代理中继重试一次
   if (target.src && !target.src.includes('/api/v1/proxy/image') && target.src.startsWith('http')) {
-    target.src = `/api/v1/proxy/image?url=${encodeURIComponent(target.src)}`
+    const siteKey = (props.item as any)?.site || (props.item as any)?.site_key
+    const siteParam = siteKey ? `&site=${encodeURIComponent(siteKey)}` : ''
+    target.src = `/api/v1/proxy/image?url=${encodeURIComponent(target.src)}${siteParam}`
     return
   }
   target.style.display = 'none'

@@ -13,7 +13,7 @@
  */
 
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import * as api from '@/api/client'
 import { describeError } from '@/api/http'
@@ -29,6 +29,7 @@ const props = defineProps<{ vodId: string }>()
 
 const sites = useSitesStore()
 const device = useDeviceStore()
+const route = useRoute()
 const router = useRouter()
 
 const detail = ref<DetailPayload | null>(null)
@@ -73,11 +74,35 @@ async function loadDetail(): Promise<void> {
   descOpen.value = false
   try {
     await sites.load()
-    const key = sites.currentKey
+    const siteFromQuery = typeof route.query.site === 'string' ? route.query.site : null
+    let key = siteFromQuery || sites.currentKey
+    if (!key && sites.sites.length > 0) {
+      key = sites.sites[0].key
+    }
+    if (siteFromQuery && sites.currentKey !== siteFromQuery) {
+      sites.select(siteFromQuery)
+    }
     if (!key) throw new Error('後端暫無可用片源站')
 
-    // 拉取影片真实详情
-    const result = await api.getDetail(key, props.vodId)
+    // 拉取影片真实详情（带候选站自动探测）
+    let result: DetailPayload | null = null
+    try {
+      result = await api.getDetail(key, props.vodId)
+    } catch (initialErr) {
+      const candidates = sites.sites.map((s) => s.key).filter((k) => k !== key)
+      for (const cand of candidates) {
+        try {
+          result = await api.getDetail(cand, props.vodId)
+          key = cand
+          sites.select(cand)
+          break
+        } catch {
+          // 尝试下一源
+        }
+      }
+      if (!result) throw initialErr
+    }
+
     detail.value = result
     activeLine.value = result.lines?.length ? result.lines[0]?.line : undefined
 
@@ -103,10 +128,12 @@ async function loadRelated(key: string): Promise<void> {
 function play(episode: Episode | null): void {
   if (!episode) return
   const label = epLabel(episode)
+  const siteKey = sites.currentKey || (typeof route.query.site === 'string' ? route.query.site : undefined)
   void router.push({
     name: 'play',
     params: { vodId: props.vodId, ep: String(episode.ep_index) },
     query: {
+      site: siteKey || undefined,
       line: episode.line ?? activeLine.value,
       play_id: episode.play_id || undefined,
       name: label === `第 ${episode.ep_index} 集` ? undefined : label,
@@ -231,7 +258,7 @@ function scrollRow(direction: 'left' | 'right'): void {
       <section class="nf-detail-hero">
         <div
           class="nf-hero-bg"
-          :style="{ backgroundImage: `url(${formatPosterUrl(video.vod_pic) || ''})` }"
+          :style="{ backgroundImage: `url(${formatPosterUrl(video.vod_pic, sites.currentKey) || ''})` }"
         />
         <div class="nf-hero-vignette" />
 

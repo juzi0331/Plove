@@ -75,9 +75,9 @@ const categories = computed(() => (home.value?.categories ?? []).filter((c) => !
 const recommend = computed(() => home.value?.recommend ?? [])
 const sections = computed(() => home.value?.sections ?? [])
 
-async function load(): Promise<void> {
-  if (loading.value) return
-  loading.value = true
+const homeCache = new Map<string, HomePayload>()
+
+async function load(force = false): Promise<void> {
   error.value = null
   try {
     await sites.load()
@@ -87,10 +87,27 @@ async function load(): Promise<void> {
       error.value = '後端暫無可用片源站'
       return
     }
-    home.value = await api.getHome(key)
+
+    // 内存瞬时还原：若已加载过当前源的首页，秒开展示（0ms），彻底解决从分类返回主页卡顿
+    if (!force && homeCache.has(key)) {
+      home.value = homeCache.get(key)!
+      // 后台静默对齐最新数据，不打扰当前展示
+      void api.getHome(key).then((res) => {
+        homeCache.set(key, res)
+        home.value = res
+      }).catch(() => undefined)
+      return
+    }
+
+    loading.value = true
+    const result = await api.getHome(key)
+    homeCache.set(key, result)
+    home.value = result
   } catch (err) {
-    home.value = null
-    error.value = describeError(err)
+    if (!home.value) {
+      home.value = null
+      error.value = describeError(err)
+    }
   } finally {
     loading.value = false
   }
@@ -232,7 +249,7 @@ function scrollRow(rowId: string, direction: 'left' | 'right'): void {
         <div class="nf-state-icon">⚠️</div>
         <p class="nf-state-text">{{ error }}</p>
         <div class="nf-state-actions">
-          <button class="nf-action-btn primary" type="button" @click="load">重新嘗試</button>
+          <button class="nf-action-btn primary" type="button" @click="() => load(true)">重新嘗試</button>
           <button class="nf-action-btn" type="button" @click="siteSelectorRef?.open()">選擇其他片源站</button>
         </div>
       </div>
