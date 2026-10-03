@@ -104,6 +104,7 @@ def fake_settings() -> Settings:
         crawler_timeout=2.0,
         crawler_timeout_play=1.0,
         admin_token="",
+        rate_limit_enabled=False,
     )
 
 

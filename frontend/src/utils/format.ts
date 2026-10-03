@@ -24,6 +24,8 @@ export function formatExpiry(time: number | string | null | undefined): string {
   }
 }
 
+import { getDeviceToken } from '@/api/session'
+
 let _globalImageProxy = false
 
 export function setGlobalImageProxy(enabled: boolean): void {
@@ -41,7 +43,9 @@ export function formatPosterUrl(rawUrl: string | undefined | null, siteKey?: str
   if (trimmed.startsWith('/api/v1/proxy/image')) return trimmed
   if (_globalImageProxy && (trimmed.startsWith('http://') || trimmed.startsWith('https://'))) {
     const siteParam = siteKey ? `&site=${encodeURIComponent(siteKey)}` : ''
-    return `/api/v1/proxy/image?url=${encodeURIComponent(trimmed)}${siteParam}`
+    const devToken = getDeviceToken()
+    const tokenParam = devToken ? `&token=${encodeURIComponent(devToken)}` : ''
+    return `/api/v1/proxy/image?url=${encodeURIComponent(trimmed)}${siteParam}${tokenParam}`
   }
   return trimmed
 }

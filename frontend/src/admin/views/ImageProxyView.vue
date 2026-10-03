@@ -115,13 +115,17 @@ function selectSample(poster: SamplePosterItem): void {
   ElMessage.success(`已选入《${poster.title}》真实源站海报并开始对比！`)
 }
 
+import { getAdminToken } from '@/admin/token'
+
 function runSandboxTest(): void {
   const url = testUrl.value.trim()
   if (!url) {
     ElMessage.warning('请输入待测试的图片链接')
     return
   }
-  let proxySrc = `/api/v1/proxy/image?url=${encodeURIComponent(url)}`
+  const adminToken = getAdminToken()
+  const tokenParam = adminToken ? `&token=${encodeURIComponent(adminToken)}` : ''
+  let proxySrc = `/api/v1/proxy/image?url=${encodeURIComponent(url)}${tokenParam}`
   if (testReferer.value.trim()) {
     proxySrc += `&referer=${encodeURIComponent(testReferer.value.trim())}`
   }

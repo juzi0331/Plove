@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import commit_now, device_token_header, get_content_cache, get_db, get_registry
 from app.cache.content import ContentCache
 from app.core.middleware import get_request_id
+from app.core.rate_limit import RateLimitGuard
 from app.crawler.registry import SiteRegistry
 from app.schemas.activation import (
     ActivationResult,
@@ -23,9 +24,15 @@ from app.schemas.envelope import Envelope, ok
 from app.services import activation_service, catalog_service
 
 router = APIRouter(tags=["激活"], prefix="/activation")
+redeem_limiter = RateLimitGuard(limit=5, window_seconds=60, scope="redeem")
 
 
-@router.post("/redeem", response_model=Envelope[ActivationResult], summary="激活 / 在此设备继续")
+@router.post(
+    "/redeem",
+    response_model=Envelope[ActivationResult],
+    summary="激活 / 在此设备继续",
+    dependencies=[Depends(redeem_limiter)],
+)
 def redeem(
     payload: RedeemRequest,
     request_id: str = Depends(get_request_id),
@@ -76,14 +83,13 @@ def trending(
 ) -> Envelope[list[VodItem]]:
     """未激活落地页使用的公开片单与封面数据（现正热播与背景海报墙）。"""
     items: list[VodItem] = []
-    for key in ("ai2048", "ncat21"):
-        if key in registry.keys():
-            try:
-                data = catalog_service.home(registry, cache, key)
-                items = data.recommend or (data.sections[0].videos if data.sections else [])
-                if items:
-                    break
-            except Exception:
-                continue
+    for key in list(registry.keys()):
+        try:
+            data = catalog_service.home(registry, cache, key)
+            items = data.recommend or (data.sections[0].videos if data.sections else [])
+            if items:
+                break
+        except Exception:
+            continue
     return ok(items, request_id)
 

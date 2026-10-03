@@ -19,7 +19,7 @@ def test_list_rules():
     assert envelope["ok"] is True
     assert len(envelope["data"]) >= 2
     keys = [r["key"] for r in envelope["data"]]
-    assert "ai2048" in keys
+    assert "huangguoai_com" in keys
     assert "maccms_demo" in keys
 
 

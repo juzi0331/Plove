@@ -38,6 +38,8 @@ class Settings(BaseSettings):
     #: 它不泄露密码，但会把全部接口形状公开（包括后台接口的路径）。
     #: 关掉只需一行环境变量，比"改代码重新部署"轻。
     docs_enabled: bool = True
+    #: 是否开启接口速率限制
+    rate_limit_enabled: bool = True
 
     #: 爬虫目录（默认仓库根下的 ``crawler/``）
     crawler_dir: Path = PROJECT_DIR / "crawler"

@@ -116,7 +116,7 @@ def redeem(
             select(ActivationCode).where(ActivationCode.code == normalize_code(code))
         )
         if record is None:
-            raise AppError(ErrorCode.ACTIVATION_INVALID, "激活码无效")
+            raise AppError(ErrorCode.ACTIVATION_INVALID, "激活码无效或已到期")
         # 拿别的码来，且这码被停用/过期 → 拦掉
         _ensure_usable(record)
 

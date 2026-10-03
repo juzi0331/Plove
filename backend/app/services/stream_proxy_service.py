@@ -97,6 +97,7 @@ def fetch_and_rewrite_m3u8(
     upstream_url: str,
     site: str | None = None,
     custom_referer: str | None = None,
+    token: str | None = None,
 ) -> tuple[str, str]:
     """拉取上游 m3u8 清单，解封装并重写其中的分片与密钥地址。
 
@@ -126,13 +127,19 @@ def fetch_and_rewrite_m3u8(
             raise RuntimeError(f"解析后的内容不是有效 HLS 清单（长度 {len(text)} 字节）")
 
     # 2. 改写清单中的 URI
-    rewritten = rewrite_m3u8_content(text, base_url=final_url, site=site)
+    rewritten = rewrite_m3u8_content(text, base_url=final_url, site=site, token=token)
     return rewritten, "application/vnd.apple.mpegurl; charset=utf-8"
 
 
-def rewrite_m3u8_content(m3u8_text: str, base_url: str, site: str | None = None) -> str:
+def rewrite_m3u8_content(
+    m3u8_text: str,
+    base_url: str,
+    site: str | None = None,
+    token: str | None = None,
+) -> str:
     """改写 m3u8 清单文本，将所有变体、分片与密钥链接路由到后端流中继。"""
     site_param = f"&site={quote(site)}" if site else ""
+    token_param = f"&token={quote(token)}" if token else ""
     lines = m3u8_text.splitlines()
     output_lines: list[str] = []
     is_variant_stream = False
@@ -155,7 +162,7 @@ def rewrite_m3u8_content(m3u8_text: str, base_url: str, site: str | None = None)
             def replace_key_uri(match: re.Match) -> str:
                 original_uri = match.group(1)
                 abs_key_url = urljoin(base_url, original_uri)
-                proxy_key_url = f"/api/v1/proxy/stream/key?url={quote(abs_key_url)}{site_param}"
+                proxy_key_url = f"/api/v1/proxy/stream/key?url={quote(abs_key_url)}{site_param}{token_param}"
                 return f'URI="{proxy_key_url}"'
 
             new_line = re.sub(r'URI="([^"]+)"', replace_key_uri, line)
@@ -167,7 +174,7 @@ def rewrite_m3u8_content(m3u8_text: str, base_url: str, site: str | None = None)
             def replace_map_uri(match: re.Match) -> str:
                 original_uri = match.group(1)
                 abs_map_url = urljoin(base_url, original_uri)
-                proxy_seg_url = f"/api/v1/proxy/stream/segment?url={quote(abs_map_url)}{site_param}"
+                proxy_seg_url = f"/api/v1/proxy/stream/segment?url={quote(abs_map_url)}{site_param}{token_param}"
                 return f'URI="{proxy_seg_url}"'
 
             new_line = re.sub(r'URI="([^"]+)"', replace_map_uri, line)
@@ -183,11 +190,11 @@ def rewrite_m3u8_content(m3u8_text: str, base_url: str, site: str | None = None)
         abs_target_url = urljoin(base_url, stripped)
         if is_variant_stream:
             # 变体流子清单 -> 继续走 m3u8 中继
-            proxy_url = f"/api/v1/proxy/stream/m3u8?url={quote(abs_target_url)}{site_param}"
+            proxy_url = f"/api/v1/proxy/stream/m3u8?url={quote(abs_target_url)}{site_param}{token_param}"
             is_variant_stream = False
         else:
             # 媒体切片 -> 走 segment 中继
-            proxy_url = f"/api/v1/proxy/stream/segment?url={quote(abs_target_url)}{site_param}"
+            proxy_url = f"/api/v1/proxy/stream/segment?url={quote(abs_target_url)}{site_param}{token_param}"
 
         output_lines.append(proxy_url)
 

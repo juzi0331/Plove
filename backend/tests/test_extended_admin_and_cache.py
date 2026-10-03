@@ -163,7 +163,7 @@ def test_playground_probe(authed_client: TestClient, fake_app, two_sites):
     assert "elapsed_ms" in data
 
 
-def test_system_notice_and_maintenance(authed_client: TestClient, client: TestClient, fake_app):
+def test_system_notice_and_maintenance(authed_client: TestClient, anon_client: TestClient, fake_app):
     # 1. 读公告
     res_n = authed_client.get("/api/v1/admin/system/notice", headers=ADMIN_HEADERS)
     assert res_n.status_code == 200
@@ -184,7 +184,7 @@ def test_system_notice_and_maintenance(authed_client: TestClient, client: TestCl
     assert up_n.json()["data"]["enabled"] is True
 
     # 3. 公开接口检查公告生效
-    pub_res = client.get("/api/v1/system/status")
+    pub_res = anon_client.get("/api/v1/system/status")
     assert pub_res.status_code == 200
     pub_data = pub_res.json()["data"]
     assert pub_data["notice"] is not None
@@ -199,7 +199,7 @@ def test_system_notice_and_maintenance(authed_client: TestClient, client: TestCl
     assert m_res.status_code == 200
 
     # 5. 验证普通接口被 503 拦截，而后台放行
-    normal_res = client.get("/api/v1/sites")
+    normal_res = anon_client.get("/api/v1/sites")
     assert normal_res.status_code == 503
     assert normal_res.json()["error"]["code"] == "SERVER_MAINTENANCE"
 
@@ -212,7 +212,7 @@ def test_system_notice_and_maintenance(authed_client: TestClient, client: TestCl
         json={"enabled": False, "message": ""},
         headers=ADMIN_HEADERS,
     )
-    normal_res2 = client.get("/api/v1/sites")
+    normal_res2 = anon_client.get("/api/v1/sites")
     assert normal_res2.status_code != 503
 
 

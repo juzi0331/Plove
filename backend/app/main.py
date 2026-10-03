@@ -111,13 +111,14 @@ def create_app() -> FastAPI:
     settings = get_settings()
     configure_logging(settings)
 
-    #: 线上可以把 /docs 关掉（PLOVE_DOCS_ENABLED=false），一行环境变量的事。
+    #: 生产环境下强制禁用 /docs（Swagger）与 /openapi.json，防止 API 契约暴露
+    docs_active = bool(settings.docs_enabled and settings.is_dev)
     app = FastAPI(
         title=settings.name,
         version=__version__,
-        docs_url="/docs" if settings.docs_enabled else None,
+        docs_url="/docs" if docs_active else None,
         redoc_url=None,
-        openapi_url="/openapi.json" if settings.docs_enabled else None,
+        openapi_url="/openapi.json" if docs_active else None,
         lifespan=lifespan,
     )
 

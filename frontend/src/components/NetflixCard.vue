@@ -126,13 +126,25 @@ function handleImgError(e: Event): void {
 
 @media (max-width: 768px) {
   .nf-card {
-    width: 180px;
+    width: 165px;
   }
 }
 
-.nf-card:hover {
-  transform: scale(1.18);
-  z-index: 10;
+@media (max-width: 480px) {
+  .nf-card {
+    width: 142px;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .nf-card:hover {
+    transform: scale(1.18);
+    z-index: 10;
+  }
+}
+
+.nf-card:active {
+  transform: scale(0.97);
 }
 
 .nf-card__inner {
