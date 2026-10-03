@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-playground-probe-request.json",
+  "description": "发起探针测试请求。",
+  "properties": {
+    "site": {
+      "description": "目标站点 key",
+      "title": "Site",
+      "type": "string"
+    },
+    "command": {
+      "description": "测试命令：home(首页推荐), category(分类列表), detail(影视详情), play(播放地址解析)",
+      "enum": [
+        "home",
+        "category",
+        "detail",
+        "play"
+      ],
+      "title": "Command",
+      "type": "string"
+    },
+    "tid": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "分类 ID（category 命令可用）",
+      "title": "Tid"
+    },
+    "page": {
+      "default": 1,
+      "description": "页码",
+      "minimum": 1,
+      "title": "Page",
+      "type": "integer"
+    },
+    "vod_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "影片 ID（detail / play 命令必填）",
+      "title": "Vod Id"
+    },
+    "ep": {
+      "default": 1,
+      "description": "集数（play 命令可用）",
+      "minimum": 1,
+      "title": "Ep",
+      "type": "integer"
+    },
+    "bypass_cache": {
+      "default": false,
+      "description": "是否强制穿透缓存（即强制调用真实爬虫进程）",
+      "title": "Bypass Cache",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "site",
+    "command"
+  ],
+  "title": "PlaygroundProbeRequest",
+  "type": "object"
+}

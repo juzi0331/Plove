@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/vod-category.json",
+  "$defs": {
+    "SubCategory": {
+      "description": "子分类或过滤标签。",
+      "properties": {
+        "tid": {
+          "description": "子分类 id",
+          "title": "Tid",
+          "type": "string"
+        },
+        "name": {
+          "default": "",
+          "title": "Name",
+          "type": "string"
+        },
+        "custom_name": {
+          "default": "",
+          "title": "Custom Name",
+          "type": "string"
+        },
+        "hidden": {
+          "default": false,
+          "title": "Hidden",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "tid"
+      ],
+      "title": "SubCategory",
+      "type": "object"
+    }
+  },
+  "description": "站级动态分类，由爬虫的 ``home`` 返回，前端不写死。",
+  "properties": {
+    "tid": {
+      "description": "站内分类 id，原样透传",
+      "title": "Tid",
+      "type": "string"
+    },
+    "name": {
+      "default": "",
+      "title": "Name",
+      "type": "string"
+    },
+    "custom_name": {
+      "default": "",
+      "title": "Custom Name",
+      "type": "string"
+    },
+    "hidden": {
+      "default": false,
+      "title": "Hidden",
+      "type": "boolean"
+    },
+    "subcategories": {
+      "description": "该分类下的子分类列表",
+      "items": {
+        "$ref": "#/$defs/SubCategory"
+      },
+      "title": "Subcategories",
+      "type": "array"
+    }
+  },
+  "required": [
+    "tid"
+  ],
+  "title": "VodCategory",
+  "type": "object"
+}

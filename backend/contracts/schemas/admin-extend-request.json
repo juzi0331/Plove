@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-extend-request.json",
+  "description": "延长时长。**只能加时间，不能减** —— 减时间应该用停用。",
+  "properties": {
+    "hours": {
+      "maximum": 8760,
+      "minimum": 1,
+      "title": "Hours",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "hours"
+  ],
+  "title": "ExtendRequest",
+  "type": "object"
+}

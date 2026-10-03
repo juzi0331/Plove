@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-cache-stats.json",
+  "description": "缓存全局命中率与容量看板数据。",
+  "properties": {
+    "size": {
+      "description": "当前已缓存的条目总数",
+      "title": "Size",
+      "type": "integer"
+    },
+    "maxsize": {
+      "description": "缓存最大允许容量上限",
+      "title": "Maxsize",
+      "type": "integer"
+    },
+    "hits": {
+      "description": "累计命中次数",
+      "title": "Hits",
+      "type": "integer"
+    },
+    "misses": {
+      "description": "累计未命中（击穿查源）次数",
+      "title": "Misses",
+      "type": "integer"
+    },
+    "hit_ratio_percent": {
+      "description": "实时缓存命中率百分比（0.0 ~ 100.0）",
+      "title": "Hit Ratio Percent",
+      "type": "number"
+    },
+    "inflight": {
+      "default": 0,
+      "description": "当前正在并发保护中的任务数",
+      "title": "Inflight",
+      "type": "integer"
+    },
+    "ttl": {
+      "additionalProperties": {
+        "type": "number"
+      },
+      "description": "全局默认 TTL 配置秒数",
+      "title": "Ttl",
+      "type": "object"
+    },
+    "disk": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "L2 磁盘持久化统计（条数、占用体积等）",
+      "title": "Disk"
+    },
+    "enabled": {
+      "default": false,
+      "description": "全局内容缓存是否开启（默认关闭，需手动开启）",
+      "title": "Enabled",
+      "type": "boolean"
+    },
+    "warmup_enabled": {
+      "default": false,
+      "description": "自动定时预热是否开启（默认关闭，需手动开启）",
+      "title": "Warmup Enabled",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "size",
+    "maxsize",
+    "hits",
+    "misses",
+    "hit_ratio_percent"
+  ],
+  "title": "CacheStatsPayload",
+  "type": "object"
+}

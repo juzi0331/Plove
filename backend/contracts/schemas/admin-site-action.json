@@ -1,0 +1,167 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-site-action.json",
+  "$defs": {
+    "AdminSiteItem": {
+      "description": "后台「站点管理」里的一行。\n\n它比用户端的 ``SiteMeta`` 多三样东西：**开关、顺序、健康** ——\n这三样正好是\"要不要动它、动完对不对\"的全部依据。",
+      "properties": {
+        "key": {
+          "title": "Key",
+          "type": "string"
+        },
+        "name": {
+          "description": "源自己声明的名字；meta 取不到时退化成 key",
+          "title": "Name",
+          "type": "string"
+        },
+        "enabled": {
+          "description": "是否对用户可见。停用后用户端列表里没有它，内容接口回 SITE_DISABLED",
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "sort_order": {
+          "description": "用户端列表里的顺序，小的在前",
+          "title": "Sort Order",
+          "type": "integer"
+        },
+        "note": {
+          "default": "",
+          "title": "Note",
+          "type": "string"
+        },
+        "version": {
+          "default": "",
+          "title": "Version",
+          "type": "string"
+        },
+        "mode": {
+          "default": "direct",
+          "description": "direct = 前端直连源站；proxy = 需要后端流代理",
+          "title": "Mode",
+          "type": "string"
+        },
+        "capabilities": {
+          "description": "源声明支持的命令",
+          "items": {
+            "type": "string"
+          },
+          "title": "Capabilities",
+          "type": "array"
+        },
+        "meta_error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "meta 取不到的原因。**非空不代表这个源坏了**，但它是排查问题时第一个该看的东西（比如爬虫文件刚上传、还没跑通）",
+          "title": "Meta Error"
+        },
+        "health": {
+          "$ref": "#/$defs/SiteHealth"
+        }
+      },
+      "required": [
+        "key",
+        "name",
+        "enabled",
+        "sort_order",
+        "health"
+      ],
+      "title": "AdminSiteItem",
+      "type": "object"
+    },
+    "SiteHealth": {
+      "description": "单个源的守护状态。",
+      "properties": {
+        "site": {
+          "title": "Site",
+          "type": "string"
+        },
+        "state": {
+          "description": "closed（正常）/ open（已熔断）/ half_open（探测恢复中）",
+          "title": "State",
+          "type": "string"
+        },
+        "failures": {
+          "description": "连续失败次数；任何一次内容调用成功都会清零",
+          "title": "Failures",
+          "type": "integer"
+        },
+        "fail_threshold": {
+          "title": "Fail Threshold",
+          "type": "integer"
+        },
+        "retry_after": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "熔断中时还有多久冷却完（秒）",
+          "title": "Retry After"
+        },
+        "probing": {
+          "title": "Probing",
+          "type": "boolean"
+        },
+        "max_concurrency": {
+          "description": "该源的并发上限",
+          "title": "Max Concurrency",
+          "type": "integer"
+        },
+        "reset_seconds": {
+          "title": "Reset Seconds",
+          "type": "number"
+        },
+        "global_limit": {
+          "default": 0,
+          "description": "全站并发上限；0 表示不限",
+          "title": "Global Limit",
+          "type": "integer"
+        },
+        "probed": {
+          "default": false,
+          "description": "这个源的 meta 取到过没有。新的守护也是 state=closed 且 failures=0，所以只看那两个字段分不出「从没碰过」和「一直很正常」",
+          "title": "Probed",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "site",
+        "state",
+        "failures",
+        "fail_threshold",
+        "probing",
+        "max_concurrency",
+        "reset_seconds"
+      ],
+      "title": "SiteHealth",
+      "type": "object"
+    }
+  },
+  "description": "启用 / 停用 / 重排之后的回执：说一句 + 回带上这一行。",
+  "properties": {
+    "message": {
+      "title": "Message",
+      "type": "string"
+    },
+    "site": {
+      "$ref": "#/$defs/AdminSiteItem"
+    }
+  },
+  "required": [
+    "message",
+    "site"
+  ],
+  "title": "AdminSiteActionResult",
+  "type": "object"
+}

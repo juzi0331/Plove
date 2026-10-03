@@ -1,0 +1,137 @@
+{
+  "key": "maccms_demo",
+  "name": "标准 MacCMS 影视站点 (HTML 规则模板)",
+  "version": "1.0.0",
+  "base_url": "https://example-maccms.org",
+  "mode": "direct",
+  "data_type": "html",
+  "encoding": "utf-8",
+  "ad_patterns": [
+    "广告.*",
+    "官方唯一域名.*"
+  ],
+  "home": {
+    "path": "/",
+    "method": "GET",
+    "categories_container": ".nav-menu > li > a",
+    "category_item": {
+      "tid": {
+        "attribute": "href",
+        "regex": "/type/(\\d+)\\.html"
+      },
+      "name": {
+        "strip": true
+      }
+    },
+    "recommend_container": ".module-items .module-item",
+    "recommend_item": {
+      "vod_id": {
+        "selector": ".module-item-title a",
+        "attribute": "href",
+        "regex": "/detail/(\\d+)\\.html"
+      },
+      "vod_name": {
+        "selector": ".module-item-title a"
+      },
+      "vod_pic": {
+        "selector": ".module-item-cover img",
+        "attribute": "data-original"
+      },
+      "vod_remarks": {
+        "selector": ".module-item-text"
+      }
+    }
+  },
+  "category": {
+    "path": "/show/{tid}--------{page}---.html",
+    "method": "GET",
+    "list_container": ".module-items .module-item",
+    "item": {
+      "vod_id": {
+        "selector": ".module-item-title a",
+        "attribute": "href",
+        "regex": "/detail/(\\d+)\\.html"
+      },
+      "vod_name": {
+        "selector": ".module-item-title a"
+      },
+      "vod_pic": {
+        "selector": ".module-item-cover img",
+        "attribute": "data-original"
+      },
+      "vod_remarks": {
+        "selector": ".module-item-text"
+      }
+    },
+    "has_more_extractor": {
+      "selector": ".page-next"
+    },
+    "page_size": 24
+  },
+  "detail": {
+    "path": "/detail/{id}.html",
+    "method": "GET",
+    "title_extractor": {
+      "selector": ".page-title"
+    },
+    "pic_extractor": {
+      "selector": ".module-item-cover img",
+      "attribute": "data-original"
+    },
+    "desc_extractor": {
+      "selector": ".video-info-content"
+    },
+    "remarks_extractor": {
+      "selector": ".video-info-remark"
+    },
+    "episodes_container": ".module-play-list-link",
+    "episode_item": {
+      "ep_name": {
+        "selector": "span"
+      },
+      "play_id": {
+        "attribute": "href"
+      }
+    },
+    "lines_container": ".module-tab-item",
+    "line_item": {
+      "line": {
+        "attribute": "data-dropdown-id"
+      },
+      "name": {
+        "selector": "span"
+      }
+    }
+  },
+  "play": {
+    "path": "{play_id}",
+    "method": "GET",
+    "play_url_extractor": {
+      "type": "regex",
+      "regex": "\"url\"\\s*:\\s*\"(https?://[^\"]+\\.m3u8[^\"]*)\""
+    },
+    "format": "m3u8"
+  },
+  "search": {
+    "path": "/search/-------------.html?wd={kw}&page={page}",
+    "method": "GET",
+    "list_container": ".module-search-item",
+    "item": {
+      "vod_id": {
+        "selector": ".video-info-header h3 a",
+        "attribute": "href",
+        "regex": "/detail/(\\d+)\\.html"
+      },
+      "vod_name": {
+        "selector": ".video-info-header h3 a"
+      },
+      "vod_pic": {
+        "selector": ".module-item-pic img",
+        "attribute": "data-original"
+      },
+      "vod_remarks": {
+        "selector": ".video-serial"
+      }
+    }
+  }
+}

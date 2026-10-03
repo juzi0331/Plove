@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-cache-clear-result.json",
+  "description": "清除缓存执行结果。",
+  "properties": {
+    "cleared_count": {
+      "description": "清除掉的条目数量",
+      "title": "Cleared Count",
+      "type": "integer"
+    },
+    "message": {
+      "description": "执行结果提示",
+      "title": "Message",
+      "type": "string"
+    }
+  },
+  "required": [
+    "cleared_count",
+    "message"
+  ],
+  "title": "CacheClearResult",
+  "type": "object"
+}

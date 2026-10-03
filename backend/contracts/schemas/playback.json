@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/playback.json",
+  "description": "一次调用的播放结果。",
+  "properties": {
+    "url": {
+      "title": "Url",
+      "type": "string"
+    },
+    "format": {
+      "default": "m3u8",
+      "enum": [
+        "m3u8",
+        "mp4"
+      ],
+      "title": "Format",
+      "type": "string"
+    },
+    "headers": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "防盗链用的 Referer / User-Agent；直连和代理都要带上",
+      "title": "Headers",
+      "type": "object"
+    }
+  },
+  "required": [
+    "url"
+  ],
+  "title": "Playback",
+  "type": "object"
+}

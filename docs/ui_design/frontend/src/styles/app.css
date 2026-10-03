@@ -1,0 +1,260 @@
+/**
+ * Plove 的设计层：**所有颜色、间距、圆角只在这里定义一次**。
+ *
+ * 视觉方向是"沉浸式影院"（对标 Netflix 那一类流媒体 App），三条理由：
+ *
+ * 1. **海报是主角**，浅色底会把海报衬得发灰；
+ * 2. 纯黑（#000 而不是 #111）在 OLED 手机上**真的省电**，而用户一集要看 40 分钟；
+ * 3. 播放页本来就是全屏黑，首页也跟着黑，两个页面之间就不会"闪一下白底"。
+ *
+ * 组件里**不要再写十六进制颜色**（除了确实一次性的场合），否则改一次主题要翻遍所有文件。
+ */
+
+:root {
+  /* ---------------------------------------------------------------- 颜色 */
+  --plove-bg: #000000;
+  --plove-surface: #141414; /* 卡片、输入框、对话框的底 */
+  --plove-surface-2: #1f1f1f; /* 再高一层的表面（选中态、输入框内部） */
+  --plove-line: #2a2a2a; /* 分隔线：要看得见，但不能抢戏 */
+  --plove-text: #ffffff;
+  --plove-text-dim: #d2d2d2;
+  --plove-muted: #8c8c8c;
+  --plove-accent: #e50914; /* 流媒体那种红：只在"要看/要播"的地方出现 */
+  --plove-accent-press: #b20710;
+  --plove-accent-deep: #b1060e; /* 暗红：字标用它做侧面，和亮红叠出厚度 */
+  --plove-danger: #e50914;
+  /*
+   * 舞台背景的三个颜色（未激活页的"画面"，见 HeroBackdrop.vue）。
+   * 它们只在那一处出现，但仍然放在这里：这三个值是**一组**，
+   * 拆开散进组件里，改一次"舞台的色调"就要去翻样式表。
+   */
+  --plove-glow: #461518;
+  --plove-beam: #6f181d;
+  /*
+   * 浮在"画面之上"的字段。
+   *
+   * 面和描边**都必须半透明**，这是它能在任何画面之上成立的唯一原因：
+   * 实心的 #141414 面和 #2a2a2a 描边在纯黑页面上没问题，
+   * 但背后一旦有图（落地页的头图、海报），它们就等于消失。
+   */
+  --plove-field: rgba(22, 22, 22, 0.7);
+  --plove-field-line: rgba(128, 128, 128, 0.7);
+
+  /* ---------------------------------------------------------------- 形状 */
+  /* 几乎没有圆角是刻意的：大圆角会立刻变成"卡片 App"，而这个方向要的是"影院" */
+  --plove-radius: 4px;
+  --plove-radius-sm: 3px;
+  --plove-radius-pill: 999px;
+
+  /* ---------------------------------------------------------------- 间距 */
+  --plove-pad: 16px;
+  --plove-pad-sm: 12px;
+  --plove-gap: 10px;
+  --plove-row-gap: 22px; /* 横向行与行之间：影院感靠留白撑 */
+
+  /* ---------------------------------------------------------------- 其它 */
+  --plove-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --plove-safe-top: env(safe-area-inset-top, 0px);
+  /* 顶部条高度。首页要把它叠在头图上，所以必须是变量而不是写死的数字 */
+  --plove-bar-height: 48px;
+}
+
+/* -------------------------------------------------------------------- 基础 */
+
+* {
+  box-sizing: border-box;
+}
+
+/* ====================================================================
+   Netflix 官方级暗夜极简微光滚动条 (彻底替换 Windows 原生浅灰宽滚动条)
+==================================================================== */
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+}
+
+/* Chrome, Edge, Safari */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.45);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  background-color: #000000;
+}
+
+body {
+  background: var(--plove-bg);
+  color: var(--plove-text);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC',
+    'Hiragino Sans GB', 'Noto Sans CJK SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+/* 影院风靠"字重拉开对比"：标题很重、正文很轻，中间那档基本不用 */
+h1,
+h2,
+h3 {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* 横向滚动行会用到的滚动条隐藏 —— 手机上滚动条只会闪一下，纯属噪音 */
+.plove-no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.plove-no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* -------------------------------------------------------------------- 页面 */
+
+.page {
+  min-height: 100vh;
+  padding-bottom: calc(24px + var(--plove-safe-bottom));
+}
+
+.page--dark {
+  background: #000;
+  color: #fff;
+}
+
+/* 品牌字标：红色 + 加粗 + 拉开字距。**不是 Netflix 的商标字体**，
+   只是同一类"红色粗字标"的观感 */
+.brand {
+  margin: 0;
+  color: var(--plove-accent);
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+/* 横向滚动行：首页和详情页共用 */
+.row {
+  margin-top: var(--plove-row-gap);
+}
+
+.row__title {
+  margin: 0 0 10px;
+  padding: 0 var(--plove-pad);
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.row__track {
+  display: flex;
+  gap: var(--plove-gap);
+  padding: 0 var(--plove-pad);
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+
+.row__item {
+  flex: 0 0 auto;
+  width: 31vw; /* 约 3 张半露头 —— 露出半张才让人知道"还能往右划" */
+  max-width: 130px;
+  scroll-snap-align: start;
+}
+
+/* ==================================================================== Vant */
+/*
+ * Vant 整套组件都吃 `--van-*` 变量，所以**改主题只需要在这里覆盖一次**，
+ * 不用去重写 .van-xxx 的选择器（那是最容易在升级时炸掉的做法）。
+ * 顺序要紧：要先设 `--van-primary-color` 这类"源"变量，Vant 自己会把它们
+ * 派生到按钮、开关等具体组件上。
+ */
+:root {
+  --van-primary-color: var(--plove-accent);
+  --van-danger-color: var(--plove-accent);
+  --van-success-color: #2f9e6f;
+
+  --van-background: var(--plove-bg);
+  --van-background-2: var(--plove-surface);
+  --van-background-3: var(--plove-surface-2);
+  --van-text-color: var(--plove-text);
+  --van-text-color-2: var(--plove-text-dim);
+  --van-text-color-3: var(--plove-muted);
+  --van-border-color: var(--plove-line);
+  --van-active-color: var(--plove-surface-2);
+
+  /* 导航条：首页要让它透明叠在头图上 */
+  --van-nav-bar-height: var(--plove-bar-height);
+  --van-nav-bar-background: var(--plove-bg);
+  --van-nav-bar-title-text-color: var(--plove-text);
+  --van-nav-bar-icon-color: var(--plove-text);
+  --van-nav-bar-text-color: var(--plove-accent);
+  --van-nav-bar-title-font-size: 17px;
+
+  /* 按钮：Vant 的默认按钮太软，影院风需要"方、实、狠" */
+  --van-button-border-radius: var(--plove-radius);
+  --van-button-default-background: var(--plove-surface-2);
+  --van-button-default-color: var(--plove-text);
+  --van-button-primary-background: var(--plove-accent);
+  --van-button-primary-border-color: var(--plove-accent);
+  --van-button-default-height: 44px;
+  --van-button-normal-font-size: 15px;
+
+  /* 输入框 / 表单：默认是"白底卡片"，这里要变成深色面板 */
+  --van-cell-background: var(--plove-surface);
+  --van-cell-text-color: var(--plove-text);
+  --van-cell-value-color: var(--plove-muted);
+  --van-cell-border-color: var(--plove-line);
+  --van-field-label-color: var(--plove-text-dim);
+  --van-field-input-text-color: var(--plove-text);
+  --van-field-placeholder-text-color: #5c5c5c;
+  --van-cell-group-inset-radius: var(--plove-radius);
+
+  /* 标签页：用作"分类 / 线路"切换 */
+  --van-tabs-default-color: var(--plove-muted);
+  --van-tabs-bottom-bar-color: var(--plove-accent);
+  --van-tab-text-color: var(--plove-muted);
+  --van-tab-active-text-color: var(--plove-text);
+  --van-tab-font-size: 14px;
+  --van-tabs-nav-background: transparent;
+
+  /* 对话框 / 轻提示：默认白底，在纯黑页面里会像一块补丁 */
+  --van-dialog-background: var(--plove-surface);
+  --van-dialog-header-font-weight: 800;
+  --van-dialog-message-color: var(--plove-text-dim);
+  --van-dialog-confirm-button-text-color: var(--plove-accent);
+  --van-toast-background: rgba(40, 40, 40, 0.95);
+  --van-empty-description-color: var(--plove-muted);
+
+  --van-loading-spinner-color: var(--plove-muted);
+  --van-image-placeholder-text-color: var(--plove-muted);
+}

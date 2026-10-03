@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-crawler-code.json",
+  "description": "查看采集器脚本源码。",
+  "properties": {
+    "key": {
+      "description": "站点 key",
+      "title": "Key",
+      "type": "string"
+    },
+    "code": {
+      "description": "源码内容",
+      "title": "Code",
+      "type": "string"
+    },
+    "updated_at": {
+      "default": "",
+      "description": "文件最后修改时间",
+      "title": "Updated At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "key",
+    "code"
+  ],
+  "title": "CrawlerCodePayload",
+  "type": "object"
+}

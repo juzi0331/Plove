@@ -1,0 +1,313 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-status.json",
+  "$defs": {
+    "CacheStats": {
+      "description": "缓存现状。``hits`` / ``misses`` 是进程启动以来的累计值。",
+      "properties": {
+        "size": {
+          "description": "当前条目数",
+          "title": "Size",
+          "type": "integer"
+        },
+        "maxsize": {
+          "title": "Maxsize",
+          "type": "integer"
+        },
+        "hits": {
+          "title": "Hits",
+          "type": "integer"
+        },
+        "misses": {
+          "title": "Misses",
+          "type": "integer"
+        },
+        "inflight": {
+          "description": "正在合并中的 key 数（防击穿那一层）",
+          "title": "Inflight",
+          "type": "integer"
+        },
+        "ttl": {
+          "$ref": "#/$defs/CacheTtl"
+        },
+        "disk": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "L2 磁盘持久化缓存统计",
+          "title": "Disk"
+        }
+      },
+      "required": [
+        "size",
+        "maxsize",
+        "hits",
+        "misses",
+        "inflight",
+        "ttl"
+      ],
+      "title": "CacheStats",
+      "type": "object"
+    },
+    "CacheTtl": {
+      "description": "三类内容的缓存时长（秒）。0 表示该类缓存已关闭。",
+      "properties": {
+        "home": {
+          "title": "Home",
+          "type": "number"
+        },
+        "category": {
+          "title": "Category",
+          "type": "number"
+        },
+        "detail": {
+          "title": "Detail",
+          "type": "number"
+        }
+      },
+      "required": [
+        "home",
+        "category",
+        "detail"
+      ],
+      "title": "CacheTtl",
+      "type": "object"
+    },
+    "SiteHealth": {
+      "description": "单个源的守护状态。",
+      "properties": {
+        "site": {
+          "title": "Site",
+          "type": "string"
+        },
+        "state": {
+          "description": "closed（正常）/ open（已熔断）/ half_open（探测恢复中）",
+          "title": "State",
+          "type": "string"
+        },
+        "failures": {
+          "description": "连续失败次数；任何一次内容调用成功都会清零",
+          "title": "Failures",
+          "type": "integer"
+        },
+        "fail_threshold": {
+          "title": "Fail Threshold",
+          "type": "integer"
+        },
+        "retry_after": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "熔断中时还有多久冷却完（秒）",
+          "title": "Retry After"
+        },
+        "probing": {
+          "title": "Probing",
+          "type": "boolean"
+        },
+        "max_concurrency": {
+          "description": "该源的并发上限",
+          "title": "Max Concurrency",
+          "type": "integer"
+        },
+        "reset_seconds": {
+          "title": "Reset Seconds",
+          "type": "number"
+        },
+        "global_limit": {
+          "default": 0,
+          "description": "全站并发上限；0 表示不限",
+          "title": "Global Limit",
+          "type": "integer"
+        },
+        "probed": {
+          "default": false,
+          "description": "这个源的 meta 取到过没有。新的守护也是 state=closed 且 failures=0，所以只看那两个字段分不出「从没碰过」和「一直很正常」",
+          "title": "Probed",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "site",
+        "state",
+        "failures",
+        "fail_threshold",
+        "probing",
+        "max_concurrency",
+        "reset_seconds"
+      ],
+      "title": "SiteHealth",
+      "type": "object"
+    },
+    "WarmupSiteResult": {
+      "description": "一次预热里某个源的结果。",
+      "properties": {
+        "site": {
+          "title": "Site",
+          "type": "string"
+        },
+        "ok": {
+          "title": "Ok",
+          "type": "boolean"
+        },
+        "home_items": {
+          "default": 0,
+          "description": "首页预热回来的推荐条数",
+          "title": "Home Items",
+          "type": "integer"
+        },
+        "categories": {
+          "default": 0,
+          "description": "成功预热的分类个数",
+          "title": "Categories",
+          "type": "integer"
+        },
+        "seconds": {
+          "default": 0.0,
+          "title": "Seconds",
+          "type": "number"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "失败原因，形如 ``UPSTREAM_TIMEOUT: …``",
+          "title": "Error"
+        }
+      },
+      "required": [
+        "site",
+        "ok"
+      ],
+      "title": "WarmupSiteResult",
+      "type": "object"
+    },
+    "WarmupStatus": {
+      "description": "主动预热的状态。``last_*`` 为空表示这个进程还从没跑过。",
+      "properties": {
+        "enabled": {
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "running": {
+          "title": "Running",
+          "type": "boolean"
+        },
+        "interval_seconds": {
+          "title": "Interval Seconds",
+          "type": "number"
+        },
+        "last_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Reason"
+        },
+        "last_started_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Started At"
+        },
+        "last_finished_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Finished At"
+        },
+        "last_seconds": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Seconds"
+        },
+        "sites": {
+          "items": {
+            "$ref": "#/$defs/WarmupSiteResult"
+          },
+          "title": "Sites",
+          "type": "array"
+        }
+      },
+      "required": [
+        "enabled",
+        "running",
+        "interval_seconds"
+      ],
+      "title": "WarmupStatus",
+      "type": "object"
+    }
+  },
+  "description": "后台一眼看全：缓存、预热、每个源的健康。",
+  "properties": {
+    "env": {
+      "title": "Env",
+      "type": "string"
+    },
+    "sites": {
+      "items": {
+        "$ref": "#/$defs/SiteHealth"
+      },
+      "title": "Sites",
+      "type": "array"
+    },
+    "cache": {
+      "$ref": "#/$defs/CacheStats"
+    },
+    "warmup": {
+      "$ref": "#/$defs/WarmupStatus"
+    }
+  },
+  "required": [
+    "env",
+    "cache",
+    "warmup"
+  ],
+  "title": "AdminStatusPayload",
+  "type": "object"
+}

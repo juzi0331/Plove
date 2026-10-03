@@ -1,0 +1,28 @@
+{
+  "enabled": true,
+  "default_proxy_url": "http://127.0.0.1:10808",
+  "proxy_url": "http://127.0.0.1:10808",
+  "nodes": [
+    {
+      "id": "node_default",
+      "name": "本地默认代理 (10809)",
+      "protocol": "http",
+      "proxy_url": "http://127.0.0.1:10808",
+      "raw_url": "http://127.0.0.1:10808",
+      "server": "127.0.0.1",
+      "port": 10809
+    },
+    {
+      "id": "node_c7101d95",
+      "name": "本地Clash",
+      "protocol": "http",
+      "raw_url": "http://127.0.0.1:10809",
+      "proxy_url": "http://127.0.0.1:10809",
+      "local_http_proxy": "http://127.0.0.1:10809",
+      "created_at": "2026-10-03 12:56:02"
+    }
+  ],
+  "bindings": {
+    "huangguoai_com": "node_default"
+  }
+}

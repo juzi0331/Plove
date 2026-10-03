@@ -1,0 +1,46 @@
+{
+  "code": 200,
+  "message": "ok",
+  "data": [
+    {
+      "id": 27,
+      "name": "麻豆原创",
+      "productId": 1,
+      "type": "video",
+      "sortOrder": 1,
+      "enabled": true,
+      "menuId": 3,
+      "createdAt": "2026-01-01T00:00:00"
+    },
+    {
+      "id": 1,
+      "name": "国产AV",
+      "productId": 1,
+      "type": "video",
+      "sortOrder": 2,
+      "enabled": true,
+      "menuId": 3,
+      "createdAt": "2026-01-01T00:00:00"
+    },
+    {
+      "id": 99,
+      "name": "已下线分类",
+      "productId": 1,
+      "type": "video",
+      "sortOrder": 3,
+      "enabled": false,
+      "menuId": 3,
+      "createdAt": "2026-01-01T00:00:00"
+    },
+    {
+      "id": 5,
+      "name": "别的产品线",
+      "productId": 2,
+      "type": "video",
+      "sortOrder": 4,
+      "enabled": true,
+      "menuId": 3,
+      "createdAt": "2026-01-01T00:00:00"
+    }
+  ]
+}

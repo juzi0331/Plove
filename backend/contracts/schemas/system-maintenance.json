@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/system-maintenance.json",
+  "description": "紧急停服维护模式。",
+  "properties": {
+    "enabled": {
+      "default": false,
+      "description": "是否开启维护模式（开启后非管理员请求一律被拦截并提示维护）",
+      "title": "Enabled",
+      "type": "boolean"
+    },
+    "message": {
+      "default": "系统维护升级中，请稍后访问",
+      "description": "前台展示给用户的维护文案",
+      "title": "Message",
+      "type": "string"
+    },
+    "allow_admin": {
+      "default": true,
+      "description": "是否放行后台管理界面访问",
+      "title": "Allow Admin",
+      "type": "boolean"
+    },
+    "updated_at": {
+      "default": "",
+      "description": "最后更新时间",
+      "title": "Updated At",
+      "type": "string"
+    }
+  },
+  "title": "SystemMaintenancePayload",
+  "type": "object"
+}

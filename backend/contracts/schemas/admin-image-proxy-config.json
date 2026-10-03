@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-image-proxy-config.json",
+  "description": "全局图片防盗链代理总控配置。",
+  "properties": {
+    "global_proxy_enabled": {
+      "default": false,
+      "description": "是否全局启用海报防盗链中继（开启后前台所有海报经由本站代理中继并高速缓存，彻底免除第三方防盗链 403 破图）",
+      "title": "Global Proxy Enabled",
+      "type": "boolean"
+    },
+    "disk_cache_enabled": {
+      "default": false,
+      "description": "是否开启图片本地持久化磁盘缓存（默认关闭，需手动开启；开启后将图片缓存在本地 backend/data/img_cache 避免重复请求源站）",
+      "title": "Disk Cache Enabled",
+      "type": "boolean"
+    },
+    "auto_strip_referer": {
+      "default": true,
+      "description": "中继时是否自动去除 Referer 或伪造为源站同源 Referer",
+      "title": "Auto Strip Referer",
+      "type": "boolean"
+    },
+    "custom_referer": {
+      "default": "",
+      "description": "全局自定义伪造 Referer（若为空则自动根据图片 URL 提取 host）",
+      "title": "Custom Referer",
+      "type": "string"
+    },
+    "cache_max_mb": {
+      "default": 1024,
+      "description": "磁盘缓存最大容量限制（MB）",
+      "title": "Cache Max Mb",
+      "type": "integer"
+    },
+    "updated_at": {
+      "default": "",
+      "description": "配置最后更新时间",
+      "title": "Updated At",
+      "type": "string"
+    }
+  },
+  "title": "ImageProxyConfig",
+  "type": "object"
+}

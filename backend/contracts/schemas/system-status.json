@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/system-status.json",
+  "$defs": {
+    "SystemNoticePayload": {
+      "description": "全站公告内容与弹窗策略。",
+      "properties": {
+        "enabled": {
+          "default": false,
+          "description": "是否发布并生效",
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "title": {
+          "default": "",
+          "description": "公告标题",
+          "title": "Title",
+          "type": "string"
+        },
+        "content": {
+          "default": "",
+          "description": "公告详细正文",
+          "title": "Content",
+          "type": "string"
+        },
+        "level": {
+          "default": "info",
+          "description": "展示等级：info 提示, warning 警告, danger 紧急",
+          "enum": [
+            "info",
+            "warning",
+            "danger"
+          ],
+          "title": "Level",
+          "type": "string"
+        },
+        "display_type": {
+          "default": "banner",
+          "description": "展示形式：banner 顶部条幅, modal 首次强弹窗, both 两者兼具",
+          "enum": [
+            "banner",
+            "modal",
+            "both"
+          ],
+          "title": "Display Type",
+          "type": "string"
+        },
+        "dismissible": {
+          "default": true,
+          "description": "用户是否可手动点击关闭",
+          "title": "Dismissible",
+          "type": "boolean"
+        },
+        "updated_at": {
+          "default": "",
+          "description": "最后更新时间",
+          "title": "Updated At",
+          "type": "string"
+        }
+      },
+      "title": "SystemNoticePayload",
+      "type": "object"
+    }
+  },
+  "description": "公共系统状态（客户端 App / Web 启动时调用的公开接口）。",
+  "properties": {
+    "maintenance": {
+      "default": false,
+      "description": "当前是否处于全站维护中",
+      "title": "Maintenance",
+      "type": "boolean"
+    },
+    "maintenance_message": {
+      "default": "",
+      "description": "维护文案",
+      "title": "Maintenance Message",
+      "type": "string"
+    },
+    "notice": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SystemNoticePayload"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "当前生效的公告信息"
+    },
+    "image_proxy_enabled": {
+      "default": false,
+      "description": "是否全局开启图片防盗链代理",
+      "title": "Image Proxy Enabled",
+      "type": "boolean"
+    }
+  },
+  "title": "SystemStatusPayload",
+  "type": "object"
+}

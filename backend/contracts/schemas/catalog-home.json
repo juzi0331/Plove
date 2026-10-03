@@ -1,0 +1,222 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/catalog-home.json",
+  "$defs": {
+    "HomeSection": {
+      "description": "首页板块。源站自己的分组结构或后台自定义首页分类楼层。",
+      "properties": {
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "tid": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tid"
+        },
+        "videos": {
+          "items": {
+            "$ref": "#/$defs/VodItem"
+          },
+          "title": "Videos",
+          "type": "array"
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "title": "HomeSection",
+      "type": "object"
+    },
+    "SubCategory": {
+      "description": "子分类或过滤标签。",
+      "properties": {
+        "tid": {
+          "description": "子分类 id",
+          "title": "Tid",
+          "type": "string"
+        },
+        "name": {
+          "default": "",
+          "title": "Name",
+          "type": "string"
+        },
+        "custom_name": {
+          "default": "",
+          "title": "Custom Name",
+          "type": "string"
+        },
+        "hidden": {
+          "default": false,
+          "title": "Hidden",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "tid"
+      ],
+      "title": "SubCategory",
+      "type": "object"
+    },
+    "VodCategory": {
+      "description": "站级动态分类，由爬虫的 ``home`` 返回，前端不写死。",
+      "properties": {
+        "tid": {
+          "description": "站内分类 id，原样透传",
+          "title": "Tid",
+          "type": "string"
+        },
+        "name": {
+          "default": "",
+          "title": "Name",
+          "type": "string"
+        },
+        "custom_name": {
+          "default": "",
+          "title": "Custom Name",
+          "type": "string"
+        },
+        "hidden": {
+          "default": false,
+          "title": "Hidden",
+          "type": "boolean"
+        },
+        "subcategories": {
+          "description": "该分类下的子分类列表",
+          "items": {
+            "$ref": "#/$defs/SubCategory"
+          },
+          "title": "Subcategories",
+          "type": "array"
+        }
+      },
+      "required": [
+        "tid"
+      ],
+      "title": "VodCategory",
+      "type": "object"
+    },
+    "VodItem": {
+      "description": "统一的影片卡片。\n\n必填四项是硬约定（见 crawler-plan.md 2.4）——缺了就该在爬虫那侧被丢掉，\n不允许\"凑合入库\"。\n\n源站可能带扩展字段，一律忽略而不是报错：扩展字段是给上游自己玩的，\n不进契约。",
+      "properties": {
+        "vod_id": {
+          "description": "站内唯一且可复现；多线路时用完整路径，不要抠数字",
+          "title": "Vod Id",
+          "type": "string"
+        },
+        "vod_name": {
+          "title": "Vod Name",
+          "type": "string"
+        },
+        "vod_pic": {
+          "title": "Vod Pic",
+          "type": "string"
+        },
+        "vod_remarks": {
+          "title": "Vod Remarks",
+          "type": "string"
+        },
+        "vod_year": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Vod Year"
+        },
+        "vod_area": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Vod Area"
+        },
+        "vod_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Vod Type"
+        },
+        "vod_actor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Vod Actor"
+        },
+        "vod_score": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Vod Score"
+        }
+      },
+      "required": [
+        "vod_id",
+        "vod_name",
+        "vod_pic",
+        "vod_remarks"
+      ],
+      "title": "VodItem",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "categories": {
+      "items": {
+        "$ref": "#/$defs/VodCategory"
+      },
+      "title": "Categories",
+      "type": "array"
+    },
+    "recommend": {
+      "items": {
+        "$ref": "#/$defs/VodItem"
+      },
+      "title": "Recommend",
+      "type": "array"
+    },
+    "sections": {
+      "items": {
+        "$ref": "#/$defs/HomeSection"
+      },
+      "title": "Sections",
+      "type": "array"
+    }
+  },
+  "title": "HomePayload",
+  "type": "object"
+}

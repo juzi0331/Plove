@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-cache-key-entry.json",
+  "description": "当前内存缓存里的单个 Key 条目。",
+  "properties": {
+    "key": {
+      "description": "完整的缓存 Key，如 alpha|home|-",
+      "title": "Key",
+      "type": "string"
+    },
+    "site": {
+      "description": "所属站点 key",
+      "title": "Site",
+      "type": "string"
+    },
+    "namespace": {
+      "description": "命名空间：home / category / detail",
+      "title": "Namespace",
+      "type": "string"
+    },
+    "ident": {
+      "description": "标识符：- / tid:page / vod_id",
+      "title": "Ident",
+      "type": "string"
+    },
+    "remaining_seconds": {
+      "description": "剩余存活秒数（TTL 倒计时）",
+      "title": "Remaining Seconds",
+      "type": "number"
+    },
+    "is_disk": {
+      "default": false,
+      "description": "是否来自 L2 本地磁盘持久化镜像",
+      "title": "Is Disk",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "key",
+    "site",
+    "namespace",
+    "ident",
+    "remaining_seconds"
+  ],
+  "title": "CacheKeyEntry",
+  "type": "object"
+}

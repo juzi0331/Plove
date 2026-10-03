@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-site-detail-policy-update.json",
+  "description": "更新详情页策略。",
+  "properties": {
+    "ad_patterns": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "广告清理词汇列表",
+      "title": "Ad Patterns"
+    },
+    "line_name_overrides": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "线路别名映射",
+      "title": "Line Name Overrides"
+    },
+    "ep_naming_rule": {
+      "anyOf": [
+        {
+          "enum": [
+            "auto",
+            "standard",
+            "raw"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "剧集命名规则",
+      "title": "Ep Naming Rule"
+    },
+    "default_poster": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "兜底海报 URL",
+      "title": "Default Poster"
+    },
+    "hide_fields": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "隐藏字段列表",
+      "title": "Hide Fields"
+    },
+    "auto_select_fastest_line": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "是否开启后端测速优选单线路",
+      "title": "Auto Select Fastest Line"
+    }
+  },
+  "title": "SiteDetailPolicyUpdateRequest",
+  "type": "object"
+}

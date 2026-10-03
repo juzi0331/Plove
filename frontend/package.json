@@ -1,0 +1,31 @@
+{
+  "name": "plove-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Plove 用户端（Vue3 + Vite + TS + Vant + hls.js），日后用 Capacitor 封 ipa",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "vue-tsc --noEmit",
+    "gen:types": "node tools/gen-types.mjs",
+    "check:types": "node tools/gen-types.mjs --check"
+  },
+  "dependencies": {
+    "@element-plus/icons-vue": "^2.3.2",
+    "element-plus": "^2.14.6",
+    "hls.js": "^1.5.20",
+    "pinia": "^2.3.0",
+    "vant": "^4.9.15",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "typescript": "^5.7.3",
+    "vite": "^6.0.7",
+    "vue-tsc": "^2.2.0"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-issue-result.json",
+  "description": "发码的回执。**码本身一定要回给调用方** —— 它是唯一的交付物。",
+  "properties": {
+    "codes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Codes",
+      "type": "array"
+    },
+    "duration_hours": {
+      "title": "Duration Hours",
+      "type": "integer"
+    },
+    "note": {
+      "default": "",
+      "title": "Note",
+      "type": "string"
+    }
+  },
+  "required": [
+    "duration_hours"
+  ],
+  "title": "IssueCodesResult",
+  "type": "object"
+}

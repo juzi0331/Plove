@@ -1,0 +1,60 @@
+{
+  "code": 200,
+  "message": "ok",
+  "data": {
+    "id": 249,
+    "title": "2048原创短剧 - 我是爸爸的新妻子",
+    "description": "我是爸爸的新妻子  永久地址发布页",
+    "coverUrl": "/uploads/images/7baf35bba6cd4e688cbf733faf3d9406.jpg",
+    "rating": 9.4,
+    "episodeSegmentSize": 20,
+    "episodeCount": 7,
+    "heatCount": 1354523,
+    "publishedAt": "2026-09-28T17:22:42",
+    "episodes": [
+      {
+        "videoId": 20568,
+        "episodeNo": 7,
+        "title": "我是爸爸的新妻子第七集",
+        "titleOverride": null,
+        "videoUrl": "jpd/20260928/7o/aa/bb/cc/7.m3u8",
+        "orientation": null,
+        "sourcePlatform": "gossip",
+        "durationSec": 260
+      },
+      {
+        "videoId": 20562,
+        "episodeNo": 1,
+        "title": "我是爸爸的新妻子第一集",
+        "titleOverride": null,
+        "videoUrl": "jpd/20260928/1o/b6/bj/bf/430846dc47884812bbebfb601e8e15e8.m3u8",
+        "orientation": null,
+        "sourcePlatform": "gossip",
+        "durationSec": 262
+      },
+      {
+        "videoId": 20563,
+        "episodeNo": 2,
+        "title": "",
+        "titleOverride": null,
+        "videoUrl": "jpd/20260928/2o/dd/ee/ff/2.m3u8",
+        "orientation": null,
+        "sourcePlatform": "gossip",
+        "durationSec": 255
+      },
+      {
+        "videoId": null,
+        "episodeNo": null,
+        "title": "坏数据：没有集号应被丢弃",
+        "videoUrl": "jpd/nope.m3u8"
+      },
+      {
+        "videoId": 20564,
+        "episodeNo": 3,
+        "title": "第三集",
+        "videoUrl": "",
+        "durationSec": 100
+      }
+    ]
+  }
+}

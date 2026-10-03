@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/error-info.json",
+  "$defs": {
+    "ErrorCode": {
+      "description": "对外暴露的全部错误码。加新码时记得补 :data:`HTTP_STATUS`。",
+      "enum": [
+        "UPSTREAM_TIMEOUT",
+        "UPSTREAM_HTTP_ERROR",
+        "UPSTREAM_PARSE_ERROR",
+        "UPSTREAM_BLOCKED",
+        "UPSTREAM_UNKNOWN",
+        "UPSTREAM_BUSY",
+        "UPSTREAM_CIRCUIT_OPEN",
+        "NOT_FOUND",
+        "UNSUPPORTED",
+        "SITE_DISABLED",
+        "BAD_REQUEST",
+        "VALIDATION_ERROR",
+        "UNAUTHORIZED",
+        "FORBIDDEN",
+        "RATE_LIMITED",
+        "ACTIVATION_INVALID",
+        "ACTIVATION_EXPIRED",
+        "SESSION_KICKED",
+        "NOT_IMPLEMENTED",
+        "INTERNAL"
+      ],
+      "title": "ErrorCode",
+      "type": "string"
+    }
+  },
+  "description": "错误对象。``code`` / ``message`` 与爬虫那侧完全一致，多一个可选 ``detail``。",
+  "properties": {
+    "code": {
+      "$ref": "#/$defs/ErrorCode"
+    },
+    "message": {
+      "title": "Message",
+      "type": "string"
+    },
+    "detail": {
+      "anyOf": [
+        {},
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Detail"
+    }
+  },
+  "required": [
+    "code",
+    "message"
+  ],
+  "title": "ErrorInfo",
+  "type": "object"
+}

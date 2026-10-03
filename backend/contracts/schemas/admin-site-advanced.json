@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-site-advanced.json",
+  "description": "单站的高级配置载荷。",
+  "properties": {
+    "key": {
+      "description": "站点 key",
+      "title": "Key",
+      "type": "string"
+    },
+    "custom_name": {
+      "default": "",
+      "description": "前台自定义别名（空则显示源站原名）",
+      "title": "Custom Name",
+      "type": "string"
+    },
+    "badge": {
+      "default": "",
+      "description": "前台站点角标（如 4K, 极速, 独家）",
+      "title": "Badge",
+      "type": "string"
+    },
+    "timeout_seconds": {
+      "default": 0.0,
+      "description": "单站自定义超时时间秒数，0 为跟随全局",
+      "title": "Timeout Seconds",
+      "type": "number"
+    },
+    "note": {
+      "default": "",
+      "description": "运维备注",
+      "title": "Note",
+      "type": "string"
+    }
+  },
+  "required": [
+    "key"
+  ],
+  "title": "SiteAdvancedSettingPayload",
+  "type": "object"
+}

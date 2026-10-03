@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-cache-policy.json",
+  "description": "单站点独立定制的缓存 TTL 策略。",
+  "properties": {
+    "home_ttl": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "首页缓存秒数（None 跟随全局，0 表示不缓存）",
+      "title": "Home Ttl"
+    },
+    "category_ttl": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "分类列表缓存秒数（None 跟随全局，0 表示不缓存）",
+      "title": "Category Ttl"
+    },
+    "detail_ttl": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "详情页缓存秒数（None 跟随全局，0 表示不缓存）",
+      "title": "Detail Ttl"
+    },
+    "long_term_static_ttl": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": 86400.0,
+      "description": "海报与剧情简介等静态元信息长效缓存秒数（默认 24 小时）",
+      "title": "Long Term Static Ttl"
+    }
+  },
+  "title": "SiteCachePolicy",
+  "type": "object"
+}
