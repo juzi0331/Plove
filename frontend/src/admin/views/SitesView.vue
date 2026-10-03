@@ -12,12 +12,15 @@
  */
 
 import {
+  Connection,
   Delete,
   Document,
   FolderOpened,
+  Lightning,
   Operation,
   Refresh,
   Setting,
+  TopRight,
   Upload,
   UploadFilled,
 } from '@element-plus/icons-vue'
@@ -34,6 +37,7 @@ import {
   ElMessage,
   ElMessageBox,
   ElOption,
+  ElOptionGroup,
   ElPopover,
   ElRadio,
   ElRadioGroup,
@@ -44,6 +48,7 @@ import {
   ElTooltip,
 } from 'element-plus'
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
 import { describeError } from '@/api/http'
 import type {
@@ -51,6 +56,7 @@ import type {
   AdminSiteListPayload,
   CategoryRuleItem,
   CrawlerValidateResult,
+  ProxyNodeItem,
   SiteAdvancedSettingPayload,
   SiteCachePolicy,
   SiteCategoryRulePayload,
@@ -62,18 +68,26 @@ import * as api from '../api'
 import EmptyState from '../components/EmptyState.vue'
 import ErrorState from '../components/ErrorState.vue'
 import PageHeader from '../components/PageHeader.vue'
+import { adminPath } from '../config'
 import { type TagType } from '../format'
 import { ui } from '../ui'
 
+const router = useRouter()
 const data = ref<AdminSiteListPayload | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
 const busyKey = ref<string | null>(null)
+const proxyNodes = ref<ProxyNodeItem[]>([])
 
 async function load(): Promise<void> {
   loading.value = true
   try {
-    data.value = await api.listSites()
+    const [sitesRes, nodesRes] = await Promise.all([
+      api.listSites(),
+      api.listProxyNodes().catch(() => ({ total: 0, nodes: [] })),
+    ])
+    data.value = sitesRes
+    proxyNodes.value = nodesRes?.nodes ?? []
     error.value = null
   } catch (err) {
     error.value = describeError(err)
@@ -83,6 +97,39 @@ async function load(): Promise<void> {
 }
 
 onMounted(load)
+
+function getNodeById(id?: string): ProxyNodeItem | undefined {
+  if (!id || id === 'direct') return undefined
+  return proxyNodes.value.find((n) => n.id === id)
+}
+
+function formatNodeLabel(node: ProxyNodeItem): string {
+  const ping = node.ping_ms ? ` (${node.ping_ms}ms)` : ''
+  return `[${node.protocol.toUpperCase()}] ${node.name} · ${node.server}:${node.port}${ping}`
+}
+
+function getBoundNodeBadgeText(site: AdminSiteItem): string {
+  if (site.proxy_node_id) {
+    const node = getNodeById(site.proxy_node_id)
+    if (node) {
+      return node.name.length > 8 ? node.name.slice(0, 8) + '…' : node.name
+    }
+  }
+  return '代理'
+}
+
+function getProxyTooltip(site: AdminSiteItem): string {
+  if (site.proxy_enabled) {
+    if (site.proxy_node_id) {
+      const node = getNodeById(site.proxy_node_id)
+      if (node) {
+        return `独立代理已开启：已绑定「${node.name}」（${node.protocol.toUpperCase()} · ${node.server}:${node.port}），点击快速切换`
+      }
+    }
+    return `独立代理已开启：${site.proxy_url || '未配置端口'}，点击快速切换`
+  }
+  return '独立代理已关闭（直连源站），点击快速开启或配置'
+}
 
 const sites = computed(() => data.value?.sites ?? [])
 const isEmpty = computed(() => !loading.value && !error.value && sites.value.length === 0)
@@ -334,6 +381,9 @@ async function handleDeleteCrawler(key: string): Promise<void> {
 const isAdvancedVisible = ref(false)
 const advancedLoading = ref(false)
 const advancedSaving = ref(false)
+const selectedProxyChoice = ref<string>('direct')
+const testingNode = ref(false)
+
 const currentAdvanced = ref<SiteAdvancedSettingPayload>({
   key: '',
   custom_name: '',
@@ -342,12 +392,72 @@ const currentAdvanced = ref<SiteAdvancedSettingPayload>({
   note: '',
   proxy_enabled: false,
   proxy_url: '',
+  proxy_node_id: '',
 })
 const currentCachePolicy = ref<SiteCachePolicy>({
   home_ttl: null,
   category_ttl: null,
   detail_ttl: null,
 })
+
+const selectedNode = computed(() => {
+  if (!currentAdvanced.value.proxy_node_id) return undefined
+  return getNodeById(currentAdvanced.value.proxy_node_id)
+})
+
+function onProxyChoiceChange(choice: string): void {
+  selectedProxyChoice.value = choice
+  if (choice === 'direct') {
+    currentAdvanced.value.proxy_enabled = false
+    currentAdvanced.value.proxy_node_id = ''
+    currentAdvanced.value.proxy_url = ''
+  } else if (choice === 'custom') {
+    currentAdvanced.value.proxy_enabled = true
+    currentAdvanced.value.proxy_node_id = ''
+    if (!currentAdvanced.value.proxy_url) {
+      currentAdvanced.value.proxy_url = 'http://127.0.0.1:10809'
+    }
+  } else {
+    const node = proxyNodes.value.find((n) => n.id === choice)
+    if (node) {
+      currentAdvanced.value.proxy_enabled = true
+      currentAdvanced.value.proxy_node_id = node.id
+      currentAdvanced.value.proxy_url = node.proxy_url
+    }
+  }
+}
+
+async function testCurrentNode(): Promise<void> {
+  if (!selectedNode.value) return
+  testingNode.value = true
+  try {
+    const res = await api.testProxyNode({ node_id: selectedNode.value.id })
+    if (res.ok) {
+      ElMessage.success(`节点测速成功：延迟 ${res.duration_ms} ms`)
+      selectedNode.value.ping_ms = res.duration_ms
+      selectedNode.value.last_tested_at = new Date().toLocaleTimeString()
+    } else {
+      ElMessage.warning(`测速失败：${res.message || '连接超时'}`)
+    }
+  } catch (err) {
+    ElMessage.error(describeError(err))
+  } finally {
+    testingNode.value = false
+  }
+}
+
+function resolveProxyChoice(enabled: boolean, nodeId?: string, proxyUrl?: string): string {
+  if (!enabled) return 'direct'
+  if (nodeId && proxyNodes.value.some((n) => n.id === nodeId)) {
+    return nodeId
+  }
+  if (proxyUrl) {
+    const matched = proxyNodes.value.find((n) => n.proxy_url === proxyUrl)
+    if (matched) return matched.id
+    return 'custom'
+  }
+  return 'direct'
+}
 
 async function openAdvanced(site: AdminSiteItem): Promise<void> {
   currentAdvanced.value = {
@@ -358,7 +468,13 @@ async function openAdvanced(site: AdminSiteItem): Promise<void> {
     note: site.note || '',
     proxy_enabled: Boolean(site.proxy_enabled),
     proxy_url: site.proxy_url || '',
+    proxy_node_id: site.proxy_node_id || '',
   }
+  selectedProxyChoice.value = resolveProxyChoice(
+    Boolean(site.proxy_enabled),
+    site.proxy_node_id,
+    site.proxy_url,
+  )
   currentCachePolicy.value = {
     home_ttl: null,
     category_ttl: null,
@@ -379,7 +495,13 @@ async function openAdvanced(site: AdminSiteItem): Promise<void> {
       note: adv.note ?? '',
       proxy_enabled: Boolean(adv.proxy_enabled),
       proxy_url: adv.proxy_url ?? '',
+      proxy_node_id: adv.proxy_node_id ?? '',
     }
+    selectedProxyChoice.value = resolveProxyChoice(
+      Boolean(adv.proxy_enabled),
+      adv.proxy_node_id,
+      adv.proxy_url,
+    )
     currentCachePolicy.value = cacheP
   } catch (err) {
     ElMessage.error(describeError(err))
@@ -391,18 +513,28 @@ async function openAdvanced(site: AdminSiteItem): Promise<void> {
 async function saveAdvanced(): Promise<void> {
   advancedSaving.value = true
   try {
+    const isDirect = selectedProxyChoice.value === 'direct' || !currentAdvanced.value.proxy_enabled
+    const sendProxyEnabled = !isDirect
+    const sendProxyNodeId = isDirect ? '' : currentAdvanced.value.proxy_node_id
+    const sendProxyUrl = isDirect ? '' : currentAdvanced.value.proxy_url
+
     await Promise.all([
       api.updateSiteAdvanced(currentAdvanced.value.key, {
         custom_name: currentAdvanced.value.custom_name,
         badge: currentAdvanced.value.badge,
         timeout_seconds: currentAdvanced.value.timeout_seconds,
         note: currentAdvanced.value.note,
-        proxy_enabled: currentAdvanced.value.proxy_enabled,
-        proxy_url: currentAdvanced.value.proxy_url,
+        proxy_enabled: sendProxyEnabled,
+        proxy_url: sendProxyUrl,
+        proxy_node_id: sendProxyNodeId,
+      }),
+      api.bindSiteProxyNode({
+        site_key: currentAdvanced.value.key,
+        node_id: isDirect ? 'direct' : (sendProxyNodeId || 'custom'),
       }),
       api.updateSiteCachePolicy(currentAdvanced.value.key, currentCachePolicy.value),
     ])
-    ElMessage.success('单站配置、代理与缓存策略已保存')
+    ElMessage.success('单站配置、代理节点与缓存策略已保存')
     isAdvancedVisible.value = false
     await load()
   } catch (err) {
@@ -413,18 +545,26 @@ async function saveAdvanced(): Promise<void> {
 }
 
 async function toggleSiteProxy(site: AdminSiteItem): Promise<void> {
-  if (!site.proxy_enabled && !site.proxy_url) {
-    ElMessage.info(`请先配置 ${site.name} 的代理服务器地址`)
+  if (!site.proxy_enabled && !site.proxy_url && !site.proxy_node_id) {
+    ElMessage.info(`请先为 ${site.name} 选择或配置代理节点`)
     await openAdvanced(site)
     return
   }
   const next = !site.proxy_enabled
   busyKey.value = site.key
   try {
-    await api.updateSiteAdvanced(site.key, {
-      proxy_enabled: next,
-    })
-    ElMessage.success(`${site.name} 已${next ? '开启' : '关闭'}独立代理`)
+    await Promise.all([
+      api.updateSiteAdvanced(site.key, {
+        proxy_enabled: next,
+        proxy_node_id: next ? (site.proxy_node_id || '') : '',
+        proxy_url: next ? (site.proxy_url || '') : '',
+      }),
+      api.bindSiteProxyNode({
+        site_key: site.key,
+        node_id: next ? (site.proxy_node_id || 'default') : 'direct',
+      }),
+    ])
+    ElMessage.success(`${site.name} 已${next ? '开启' : '关闭'}代理中转`)
     await load()
   } catch (err) {
     ElMessage.error(describeError(err))
@@ -649,6 +789,9 @@ async function saveDetailPolicy(): Promise<void> {
       desc="全功能控制：采集器脚本上传与热插拔、单站别名/角标/超时、分类与子分类控制、详情页广告清洗与线路别名映射。"
     >
       <template #actions>
+        <ElButton :icon="Connection" @click="router.push(adminPath('/proxy-nodes'))">
+          🌐 代理节点池 ({{ proxyNodes.length }})
+        </ElButton>
         <ElButton type="primary" :icon="Upload" @click="openUploadDialog">
           上传采集器
         </ElButton>
@@ -692,7 +835,7 @@ async function saveDetailPolicy(): Promise<void> {
               </ElTag>
               <!-- 独立代理状态徽章 -->
               <ElTooltip
-                :content="site.proxy_enabled ? `独立代理已开启：${site.proxy_url || '未配置具体端口'}（点击快速切换或配置）` : '独立代理已关闭（直连源站，点击快速开启或配置）'"
+                :content="getProxyTooltip(site)"
                 placement="top"
               >
                 <ElTag
@@ -703,7 +846,12 @@ async function saveDetailPolicy(): Promise<void> {
                   style="cursor: pointer"
                   @click.stop="toggleSiteProxy(site)"
                 >
-                  {{ site.proxy_enabled ? '🌐 代理' : '⚡ 直连' }}
+                  <template v-if="site.proxy_enabled">
+                    🌐 {{ getBoundNodeBadgeText(site) }}
+                  </template>
+                  <template v-else>
+                    ⚡ 直连
+                  </template>
                 </ElTag>
               </ElTooltip>
             </div>
@@ -958,24 +1106,103 @@ async function saveDetailPolicy(): Promise<void> {
             <ElInput v-model="currentAdvanced.note" type="textarea" :rows="2" placeholder="填写备忘信息" />
           </ElFormItem>
 
-          <ElDivider content-position="left">🌐 网络代理独立控制 (Proxy)</ElDivider>
+          <ElDivider content-position="left">🌐 采集代理节点配置 (Proxy Routing)</ElDivider>
 
-          <ElFormItem label="独立网络代理开关">
-            <div class="proxy-switch-row">
-              <ElSwitch
-                v-model="currentAdvanced.proxy_enabled"
-                active-text="开启独立代理"
-                inactive-text="直连（关闭代理）"
-              />
-              <span class="a-muted desc-hint">
-                {{ currentAdvanced.proxy_enabled ? '该适配器所有网络请求（分类/搜索/详情/播放）将经由指定代理中转' : '该适配器直接与源站通信，不使用任何代理' }}
-              </span>
+          <ElFormItem label="网络请求通道">
+            <div class="proxy-select-wrap">
+              <ElSelect
+                v-model="selectedProxyChoice"
+                placeholder="请选择网络通道或代理节点"
+                style="width: 100%"
+                @change="onProxyChoiceChange"
+              >
+                <ElOption label="⚡ 直连源站（不走代理，各源站互不干扰）" value="direct" />
+                <ElOptionGroup v-if="proxyNodes.length > 0" label="📦 已添加的代理节点池">
+                  <ElOption
+                    v-for="node in proxyNodes"
+                    :key="node.id"
+                    :label="formatNodeLabel(node)"
+                    :value="node.id"
+                  >
+                    <div class="node-option-row">
+                      <ElTag size="small" :type="node.protocol === 'vless' ? 'warning' : 'primary'" effect="plain">
+                        {{ node.protocol.toUpperCase() }}
+                      </ElTag>
+                      <span class="node-name-text">{{ node.name }}</span>
+                      <span class="node-meta-text">{{ node.server }}:{{ node.port }}</span>
+                      <ElTag v-if="node.ping_ms" size="small" type="success" effect="light">
+                        {{ node.ping_ms }}ms
+                      </ElTag>
+                    </div>
+                  </ElOption>
+                </ElOptionGroup>
+                <ElOption label="🛠️ 自定义本地中转端口 / 地址（手动输入）" value="custom" />
+              </ElSelect>
+
+              <div class="proxy-nodes-pool-link">
+                <ElButton
+                  type="primary"
+                  link
+                  size="small"
+                  :icon="TopRight"
+                  @click="router.push(adminPath('/proxy-nodes'))"
+                >
+                  前往代理节点池 (添加多个 VLESS 节点 / 管理 / 测速)
+                </ElButton>
+              </div>
             </div>
           </ElFormItem>
 
+          <!-- 当选择了节点池中的具体节点时展示卡片 -->
           <transition name="el-fade-in-linear">
-            <div v-if="currentAdvanced.proxy_enabled" class="proxy-setting-box">
-              <ElFormItem label="代理服务器地址 (Proxy URL)">
+            <div v-if="selectedNode" class="node-detail-card">
+              <div class="node-card-head">
+                <div class="node-card-title">
+                  <ElTag size="small" :type="selectedNode.protocol === 'vless' ? 'warning' : 'primary'" effect="dark">
+                    {{ selectedNode.protocol.toUpperCase() }}
+                  </ElTag>
+                  <strong>{{ selectedNode.name }}</strong>
+                  <span class="a-muted">({{ selectedNode.server }}:{{ selectedNode.port }})</span>
+                </div>
+                <div class="node-card-actions">
+                  <ElButton
+                    size="small"
+                    type="success"
+                    plain
+                    :loading="testingNode"
+                    :icon="Lightning"
+                    @click="testCurrentNode"
+                  >
+                    测试延迟 {{ selectedNode.ping_ms ? `(${selectedNode.ping_ms}ms)` : '' }}
+                  </ElButton>
+                </div>
+              </div>
+
+              <div class="node-card-grid">
+                <div class="node-grid-item">
+                  <span class="grid-label">传输 / 安全：</span>
+                  <span>{{ selectedNode.network_type || 'tcp' }} / {{ selectedNode.security || 'none' }}</span>
+                </div>
+                <div v-if="selectedNode.sni" class="node-grid-item">
+                  <span class="grid-label">SNI 伪装：</span>
+                  <span>{{ selectedNode.sni }}</span>
+                </div>
+                <div class="node-grid-item">
+                  <span class="grid-label">本地中转地址：</span>
+                  <code>{{ selectedNode.proxy_url || 'http://127.0.0.1:10809' }}</code>
+                </div>
+              </div>
+
+              <div class="node-card-tip">
+                💡 <strong>隔离生效</strong>：该采集器适配器所有网络请求（分类/搜索/详情/播放流探测）将全自动通过此节点中转。
+              </div>
+            </div>
+          </transition>
+
+          <!-- 自定义代理地址输入框 -->
+          <transition name="el-fade-in-linear">
+            <div v-if="selectedProxyChoice === 'custom'" class="proxy-setting-box">
+              <ElFormItem label="自定义代理地址 (Proxy URL)">
                 <ElInput
                   v-model="currentAdvanced.proxy_url"
                   placeholder="如 http://192.168.31.5:10809 或 http://127.0.0.1:10809 (支持 http / socks5)"
@@ -1000,7 +1227,7 @@ async function saveDetailPolicy(): Promise<void> {
               </div>
 
               <div class="proxy-notice-tip">
-                <strong>💡 隔离说明</strong>：此开关仅对当前适配器生效。关闭此开关后该站将严格走直连，各源站互不干扰。部署在宝塔/Docker 时若代理运行在宿主机，请填宿主机局域网 IP（如 <code>http://192.168.31.5:10809</code>）。
+                <strong>💡 隔离说明</strong>：此配置仅对当前适配器生效。部署在宝塔/Docker 时若代理运行在宿主机，请填宿主机局域网 IP（如 <code>http://192.168.31.5:10809</code>）。
               </div>
             </div>
           </transition>
@@ -2154,6 +2381,90 @@ async function saveDetailPolicy(): Promise<void> {
 
 .proxy-notice-tip strong {
   color: var(--el-color-primary);
+}
+
+.proxy-select-wrap {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.node-option-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.node-name-text {
+  font-weight: 500;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.node-meta-text {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  margin-left: auto;
+  margin-right: 6px;
+}
+
+.proxy-nodes-pool-link {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.node-detail-card {
+  background: var(--el-fill-color-light);
+  border: 1px solid var(--el-color-primary-light-7);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin: 10px 0 16px 0;
+}
+
+.node-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.node-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.node-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px 16px;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+.node-grid-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.grid-label {
+  color: var(--el-text-color-secondary);
+}
+
+.node-card-tip {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  line-height: 1.6;
+  background: var(--el-fill-color-blank);
+  border-radius: 6px;
+  padding: 8px 12px;
+  border-left: 3px solid var(--el-color-success);
 }
 </style>
 

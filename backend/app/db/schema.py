@@ -32,6 +32,7 @@ def _align_columns(engine: Engine) -> None:
             "cache_policy_json": "TEXT",
             "proxy_enabled": "BOOLEAN DEFAULT 0",
             "proxy_url": "VARCHAR(255) DEFAULT ''",
+            "proxy_node_id": "VARCHAR(64) DEFAULT ''",
         }
         with engine.begin() as conn:
             for col_name, col_def in needed.items():

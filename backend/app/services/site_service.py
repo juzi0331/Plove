@@ -77,6 +77,7 @@ def site_item(
         health=SiteHealth(**snapshot),
         proxy_enabled=getattr(config, "proxy_enabled", False),
         proxy_url=getattr(config, "proxy_url", "") or "",
+        proxy_node_id=getattr(config, "proxy_node_id", "") or "",
     )
 
 

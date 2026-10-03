@@ -232,6 +232,7 @@ class AdminSiteItem(BaseModel):
     health: SiteHealth
     proxy_enabled: bool = Field(default=False, description="是否为该站点开启独立代理")
     proxy_url: str = Field(default="", description="该站点使用的代理地址")
+    proxy_node_id: str = Field(default="", description="绑定的代理节点 ID")
 
 
 class AdminSiteListPayload(BaseModel):

@@ -76,6 +76,19 @@ async def lifespan(app: FastAPI):
         boot_timer.daemon = True
         boot_timer.start()
 
+    # 启动内置 Xray-core 守护进程（如果有已配置的 VLESS 节点且内核已就绪）
+    try:
+        from app.services.proxy_node_service import proxy_node_service, xray_engine
+        nodes = proxy_node_service.get_nodes()
+        if any(n.get("protocol") == "vless" for n in nodes):
+            if xray_engine.find_binary():
+                xray_engine.start_engine(nodes)
+                from app.core.logging import get_logger
+                get_logger("xray").info("内置 Xray-core 守护引擎已开机自启完成")
+    except Exception as xray_boot_err:
+        from app.core.logging import get_logger
+        get_logger("xray").warning("内置 Xray 引擎开机自启跳过: %s", xray_boot_err)
+
     try:
         yield
     finally:
@@ -83,6 +96,11 @@ async def lifespan(app: FastAPI):
             boot_timer.cancel()
         if job is not None:
             job.stop()
+        try:
+            from app.services.proxy_node_service import xray_engine
+            xray_engine.stop_engine()
+        except Exception:
+            pass
 
 
 _PORTAL_HTML_PATH = Path(__file__).resolve().parent / "core" / "portal.html"

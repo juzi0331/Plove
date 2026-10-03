@@ -26,6 +26,14 @@ import type {
   IssueCodesRequest,
   IssueCodesResult,
   KickResult,
+  ProxyEngineActionResponse,
+  ProxyEngineStatusPayload,
+  ProxyNodeBindRequest,
+  ProxyNodeCreateRequest,
+  ProxyNodeItem,
+  ProxyNodeListPayload,
+  ProxyTestRequest,
+  ProxyTestResult,
   RefreshResult,
   SiteAdvancedSettingPayload,
   SiteAdvancedSettingUpdateRequest,
@@ -378,5 +386,72 @@ export function updateSystemMaintenance(payload: SystemMaintenancePayload): Prom
 export function getPublicSystemStatus(): Promise<SystemStatusPayload> {
   return request<SystemStatusPayload>('/system/status')
 }
+
+// ------------------------------------------------------------------ 代理节点池管理
+
+export function listProxyNodes(): Promise<ProxyNodeListPayload> {
+  return admin('/admin/proxy-nodes')
+}
+
+export function addProxyNode(payload: ProxyNodeCreateRequest): Promise<ProxyNodeItem> {
+  assertWritable()
+  return admin('/admin/proxy-nodes', {
+    method: 'POST',
+    body: payload,
+  })
+}
+
+export function deleteProxyNode(nodeId: string): Promise<{ message: string; deleted: boolean }> {
+  assertWritable()
+  return admin(`/admin/proxy-nodes/${encodeURIComponent(nodeId)}`, {
+    method: 'DELETE',
+  })
+}
+
+export function testProxyNode(payload: ProxyTestRequest): Promise<ProxyTestResult> {
+  return admin('/admin/proxy-nodes/test', {
+    method: 'POST',
+    body: payload,
+  })
+}
+
+export function exportNodeXray(nodeId: string, httpPort = 10809, socksPort = 10808): Promise<Record<string, unknown>> {
+  return admin(`/admin/proxy-nodes/${encodeURIComponent(nodeId)}/xray?http_port=${httpPort}&socks_port=${socksPort}`)
+}
+
+export function bindSiteProxyNode(payload: ProxyNodeBindRequest): Promise<{ message: string }> {
+  assertWritable()
+  return admin('/admin/proxy-nodes/bind', {
+    method: 'POST',
+    body: payload,
+  })
+}
+
+// ------------------------------------------------------------------ Xray 核心引擎自动管理
+
+export function getProxyEngineStatus(): Promise<ProxyEngineStatusPayload> {
+  return admin('/admin/proxy-engine/status')
+}
+
+export function installProxyEngine(): Promise<ProxyEngineActionResponse> {
+  assertWritable()
+  return admin('/admin/proxy-engine/install', { method: 'POST' })
+}
+
+export function startProxyEngine(): Promise<ProxyEngineActionResponse> {
+  assertWritable()
+  return admin('/admin/proxy-engine/start', { method: 'POST' })
+}
+
+export function restartProxyEngine(): Promise<ProxyEngineActionResponse> {
+  assertWritable()
+  return admin('/admin/proxy-engine/restart', { method: 'POST' })
+}
+
+export function stopProxyEngine(): Promise<ProxyEngineActionResponse> {
+  assertWritable()
+  return admin('/admin/proxy-engine/stop', { method: 'POST' })
+}
+
 
 

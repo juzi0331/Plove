@@ -53,5 +53,6 @@ class SiteSetting(Base):
     #: 单站独立代理控制开关与地址
     proxy_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     proxy_url: Mapped[str] = mapped_column(String(255), default="")
+    proxy_node_id: Mapped[str] = mapped_column(String(64), default="")
 
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)

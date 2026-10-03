@@ -36,6 +36,7 @@ export interface AdminSiteItem {
   health: SiteHealth
   proxy_enabled?: boolean
   proxy_url?: string
+  proxy_node_id?: string
 }
 
 /** 站点管理页的全部数据：**包括被停用的源**（运维要能看到自己关掉了什么）。 */
@@ -446,6 +447,7 @@ export interface SiteAdvancedSettingPayload {
   note?: string
   proxy_enabled?: boolean
   proxy_url?: string
+  proxy_node_id?: string
 }
 
 /** 修改单站高级设置请求。 */
@@ -456,6 +458,79 @@ export interface SiteAdvancedSettingUpdateRequest {
   note?: string | null
   proxy_enabled?: boolean | null
   proxy_url?: string | null
+  proxy_node_id?: string | null
+}
+
+/** 代理节点信息 */
+export interface ProxyNodeItem {
+  id: string
+  name: string
+  protocol: 'vless' | 'http' | 'socks5' | string
+  proxy_url: string
+  raw_url?: string
+  server?: string
+  port?: number
+  security?: string
+  network_type?: string
+  local_port?: number
+  sni?: string
+  ping_ms?: number | null
+  last_tested_at?: string | null
+  created_at?: string
+}
+
+/** 代理节点池列表与采集器绑定关系 */
+export interface ProxyNodeListPayload {
+  nodes?: ProxyNodeItem[]
+  bindings?: Record<string, string>
+}
+
+/** 添加或解析代理节点请求 */
+export interface ProxyNodeCreateRequest {
+  raw_url: string
+  name?: string
+  local_port?: number
+}
+
+/** 连通性测速请求 */
+export interface ProxyTestRequest {
+  node_id?: string | null
+  proxy_url?: string | null
+  target_url?: string
+}
+
+/** 连通性测速结果 */
+export interface ProxyTestResult {
+  ok: boolean
+  duration_ms: number
+  status_code: number
+  proxy_used: string
+  message: string
+}
+
+/** 采集器绑定代理节点请求 */
+export interface ProxyNodeBindRequest {
+  site_key: string
+  node_id: string
+}
+
+/** Xray 引擎状态 */
+export interface ProxyEngineStatusPayload {
+  installed: boolean
+  running: boolean
+  pid?: number | null
+  version?: string | null
+  bin_path?: string | null
+  managed_ports: number[]
+  managed_nodes: string[]
+  error?: string | null
+}
+
+/** Xray 引擎操作结果 */
+export interface ProxyEngineActionResponse {
+  success: boolean
+  message: string
+  status: ProxyEngineStatusPayload
 }
 
 /** 单站点独立定制的缓存 TTL 策略。 */

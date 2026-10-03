@@ -80,6 +80,12 @@ const router = createRouter({
           meta: { admin: true, title: '图片代理' },
         },
         {
+          path: 'proxy-nodes',
+          name: 'admin-proxy-nodes',
+          component: () => import('@/admin/views/ProxyNodesView.vue'),
+          meta: { admin: true, title: '代理节点池' },
+        },
+        {
           path: 'system',
           name: 'admin-system',
           component: () => import('@/admin/views/SystemNoticeView.vue'),

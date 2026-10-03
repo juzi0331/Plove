@@ -68,6 +68,14 @@ from app.schemas.admin_site_control import (
     CrawlerUploadResult,
     CrawlerValidateRequest,
     CrawlerValidateResult,
+    ProxyEngineActionResponse,
+    ProxyEngineStatusPayload,
+    ProxyNodeBindRequest,
+    ProxyNodeCreateRequest,
+    ProxyNodeItem,
+    ProxyNodeListPayload,
+    ProxyTestRequest,
+    ProxyTestResult,
     SiteAdvancedSettingPayload,
     SiteAdvancedSettingUpdateRequest,
     SiteCategoryRulePayload,
@@ -75,6 +83,7 @@ from app.schemas.admin_site_control import (
     SiteDetailPolicyPayload,
     SiteDetailPolicyUpdateRequest,
 )
+from app.services.proxy_node_service import proxy_node_service, xray_engine
 from app.schemas.admin_extended import (
     AggregateSearchPayload,
     CacheClearRequest,
@@ -627,6 +636,7 @@ def get_site_advanced(
             note=config.note,
             proxy_enabled=getattr(config, "proxy_enabled", False),
             proxy_url=getattr(config, "proxy_url", "") or "",
+            proxy_node_id=getattr(config, "proxy_node_id", "") or "",
         ),
         request_id,
     )
@@ -641,8 +651,38 @@ def update_site_advanced(
     registry: SiteRegistry = Depends(get_registry),
     store: SiteSettingsStore = Depends(get_site_settings),
 ) -> Envelope[SiteAdvancedSettingPayload]:
-    """更新别名、角标、超时秒数、备注及独立代理开关/地址。"""
+    """更新别名、角标、超时秒数、备注及独立代理开关/地址/绑定的节点。"""
     _require_known_site(registry, key)
+    # 如果指定了节点 ID 或开关，自动同步代理地址与节点池绑定
+    effective_proxy_url = payload.proxy_url
+    if payload.proxy_enabled is False:
+        # 用户明确关闭了独立代理或切换到直连
+        payload.proxy_node_id = ""
+        effective_proxy_url = ""
+        try:
+            proxy_node_service.bind_site(key, "direct")
+        except Exception:
+            pass
+    elif payload.proxy_node_id is not None:
+        if not payload.proxy_node_id or payload.proxy_node_id in ("direct", "none"):
+            payload.proxy_enabled = False
+            payload.proxy_node_id = ""
+            effective_proxy_url = ""
+            try:
+                proxy_node_service.bind_site(key, "direct")
+            except Exception:
+                pass
+        else:
+            node = proxy_node_service.get_node(payload.proxy_node_id)
+            if node:
+                effective_proxy_url = node.get("proxy_url") or node.get("local_http_proxy")
+                if payload.proxy_enabled is None:
+                    payload.proxy_enabled = True
+            try:
+                proxy_node_service.bind_site(key, payload.proxy_node_id)
+            except Exception:
+                pass
+
     conf = site_settings.update_advanced(
         db,
         key,
@@ -651,7 +691,8 @@ def update_site_advanced(
         timeout_seconds=payload.timeout_seconds,
         note=payload.note,
         proxy_enabled=payload.proxy_enabled,
-        proxy_url=payload.proxy_url,
+        proxy_url=effective_proxy_url if payload.proxy_enabled else "",
+        proxy_node_id=payload.proxy_node_id if payload.proxy_enabled else "",
     )
     commit_now(db)
     store.refresh(db, force=True)
@@ -665,6 +706,7 @@ def update_site_advanced(
             note=conf.note,
             proxy_enabled=getattr(conf, "proxy_enabled", False),
             proxy_url=getattr(conf, "proxy_url", "") or "",
+            proxy_node_id=getattr(conf, "proxy_node_id", "") or "",
         ),
         request_id,
     )
@@ -1133,4 +1175,247 @@ def update_system_maintenance(
     res = system_service.update_maintenance(db, payload)
     _audit("update_system_maintenance", request_id, enabled=res.enabled)
     return ok(res, request_id)
+
+
+# ------------------------------------------------------------------ 代理节点池管理 (VLESS / HTTP / SOCKS5)
+
+
+@router.get("/proxy-nodes", response_model=Envelope[ProxyNodeListPayload], summary="获取代理节点池与采集器绑定清单")
+def list_proxy_nodes(
+    request_id: str = Depends(get_request_id),
+    db: Session = Depends(get_db),
+) -> Envelope[ProxyNodeListPayload]:
+    data = proxy_node_service.get_data()
+    bindings = dict(data.get("bindings", {}))
+
+    # 动态与数据库 site_settings 进行权威同步，确保已设置直连的适配器绝对不会残留旧节点绑定
+    try:
+        from app.models.site_setting import SiteSetting
+        rows = db.query(SiteSetting).all()
+        for row in rows:
+            site_k = (row.key or "").strip().lower()
+            if not row.proxy_enabled or not row.proxy_node_id or row.proxy_node_id in ("direct", "none"):
+                # 如果该站点在数据库中为直连或关闭代理，确保从 bindings 中移除
+                if site_k in bindings:
+                    bindings.pop(site_k, None)
+                    proxy_node_service.bind_site(site_k, "direct")
+            else:
+                # 如果已开启且指定了节点，确保 bindings 包含
+                bindings[site_k] = row.proxy_node_id
+    except Exception as exc:
+        logger.warning("同步采集器代理绑定状态失败: %s", exc)
+
+    items = [
+        ProxyNodeItem(
+            id=n.get("id", ""),
+            name=n.get("name", ""),
+            protocol=n.get("protocol", "http"),
+            proxy_url=n.get("proxy_url", ""),
+            raw_url=n.get("raw_url", ""),
+            server=n.get("server", ""),
+            port=int(n.get("port", 0) or 0),
+            security=n.get("security", "none"),
+            network_type=n.get("network_type", "tcp"),
+            local_port=int(n.get("local_port", 10809) or 10809),
+            created_at=n.get("created_at", ""),
+        )
+        for n in data.get("nodes", [])
+    ]
+    return ok(ProxyNodeListPayload(nodes=items, bindings=bindings), request_id)
+@router.post("/proxy-nodes", response_model=Envelope[ProxyNodeItem], summary="添加或解析代理节点 (支持 VLESS / HTTP / SOCKS5)")
+def add_proxy_node(
+    payload: ProxyNodeCreateRequest,
+    request_id: str = Depends(get_request_id),
+) -> Envelope[ProxyNodeItem]:
+    try:
+        n = proxy_node_service.add_node(
+            raw_input=payload.raw_url,
+            custom_name=payload.name,
+            local_port=payload.local_port,
+        )
+        _audit("add_proxy_node", request_id, name=n.get("name"), protocol=n.get("protocol"))
+        return ok(
+            ProxyNodeItem(
+                id=n.get("id", ""),
+                name=n.get("name", ""),
+                protocol=n.get("protocol", "http"),
+                proxy_url=n.get("proxy_url", ""),
+                raw_url=n.get("raw_url", ""),
+                server=n.get("server", ""),
+                port=int(n.get("port", 0) or 0),
+                security=n.get("security", "none"),
+                network_type=n.get("network_type", "tcp"),
+                local_port=int(n.get("local_port", 10809) or 10809),
+                created_at=n.get("created_at", ""),
+            ),
+            request_id,
+        )
+    except Exception as exc:
+        raise AppError(ErrorCode.BAD_REQUEST, f"解析或添加节点失败: {exc}")
+
+
+@router.delete("/proxy-nodes/{node_id}", response_model=Envelope[dict], summary="删除指定的代理节点")
+def delete_proxy_node(
+    node_id: str,
+    request_id: str = Depends(get_request_id),
+) -> Envelope[dict]:
+    ok_deleted = proxy_node_service.delete_node(node_id)
+    _audit("delete_proxy_node", request_id, node_id=node_id, success=ok_deleted)
+    return ok({"message": f"节点 {node_id} 已移除", "deleted": ok_deleted}, request_id)
+
+
+@router.post("/proxy-nodes/test", response_model=Envelope[ProxyTestResult], summary="测试节点或代理连通性")
+async def test_proxy_node(
+    payload: ProxyTestRequest,
+    request_id: str = Depends(get_request_id),
+) -> Envelope[ProxyTestResult]:
+    res = await proxy_node_service.test_node_connection(
+        node_id=payload.node_id,
+        custom_proxy=payload.proxy_url,
+        target_url=payload.target_url or "https://www.google.com",
+    )
+    return ok(
+        ProxyTestResult(
+            ok=res["ok"],
+            duration_ms=res["duration_ms"],
+            status_code=res["status_code"],
+            proxy_used=res["proxy_used"],
+            message=res["message"],
+        ),
+        request_id,
+    )
+
+
+@router.get("/proxy-nodes/{node_id}/xray", response_model=Envelope[dict], summary="导出 VLESS 节点的 Xray config.json")
+def export_node_xray_config(
+    node_id: str,
+    http_port: int = Query(10809, ge=1024, le=65535, description="本地 HTTP 监听端口"),
+    socks_port: int = Query(10808, ge=1024, le=65535, description="本地 SOCKS5 监听端口"),
+    request_id: str = Depends(get_request_id),
+) -> Envelope[dict]:
+    try:
+        cfg = proxy_node_service.export_xray(node_id, http_port=http_port, socks_port=socks_port)
+        return ok(cfg, request_id)
+    except Exception as exc:
+        raise AppError(ErrorCode.BAD_REQUEST, f"导出 Xray 配置失败: {exc}")
+
+
+@router.post("/proxy-nodes/bind", response_model=Envelope[dict], summary="指派采集器绑定代理节点")
+def bind_proxy_node(
+    payload: ProxyNodeBindRequest,
+    request_id: str = Depends(get_request_id),
+    db: Session = Depends(get_db),
+    store: SiteSettingsStore = Depends(get_site_settings),
+) -> Envelope[dict]:
+    clean_target = (payload.node_id or "").strip()
+    if not clean_target or clean_target in ("direct", "none", "default"):
+        proxy_node_service.bind_site(payload.site_key, "direct")
+        site_settings.update_advanced(db, payload.site_key, proxy_enabled=False, proxy_node_id="", proxy_url="")
+        commit_now(db)
+        store.refresh(db, force=True)
+        _audit("bind_proxy_node", request_id, site_key=payload.site_key, node_id="direct")
+        return ok({"message": f"采集器 {payload.site_key} 已成功切换为直连模式"}, request_id)
+
+    res = proxy_node_service.bind_site(payload.site_key, clean_target)
+    node = proxy_node_service.get_node(clean_target)
+    if node:
+        proxy_url = node.get("proxy_url") or node.get("local_http_proxy")
+        site_settings.update_advanced(
+            db, payload.site_key, proxy_enabled=True, proxy_url=proxy_url, proxy_node_id=clean_target
+        )
+    commit_now(db)
+    store.refresh(db, force=True)
+    _audit("bind_proxy_node", request_id, site_key=payload.site_key, node_id=clean_target)
+    return ok({"message": f"采集器 {payload.site_key} 已成功绑定节点 {clean_target}"}, request_id)
+
+
+# ------------------------------------------------------------------ Xray 核心引擎自动管理
+
+@router.get("/proxy-engine/status", response_model=Envelope[ProxyEngineStatusPayload], summary="获取 Xray 核心引擎状态")
+def get_proxy_engine_status(
+    request_id: str = Depends(get_request_id),
+) -> Envelope[ProxyEngineStatusPayload]:
+    status = xray_engine.get_status(proxy_node_service.get_nodes())
+    return ok(ProxyEngineStatusPayload(**status), request_id)
+
+
+@router.post("/proxy-engine/install", response_model=Envelope[ProxyEngineActionResponse], summary="一键下载并安装 Xray 核心引擎")
+async def install_proxy_engine(
+    request_id: str = Depends(get_request_id),
+) -> Envelope[ProxyEngineActionResponse]:
+    try:
+        await xray_engine.install_binary()
+        xray_engine.start_engine(proxy_node_service.get_nodes())
+        status = xray_engine.get_status(proxy_node_service.get_nodes())
+        _audit("install_proxy_engine", request_id, success=True)
+        return ok(
+            ProxyEngineActionResponse(
+                success=True,
+                message="Xray 核心已成功安装并启动托管",
+                status=ProxyEngineStatusPayload(**status),
+            ),
+            request_id,
+        )
+    except Exception as exc:
+        logger.error("安装 Xray 引擎失败: %s", exc)
+        status = xray_engine.get_status(proxy_node_service.get_nodes())
+        return ok(
+            ProxyEngineActionResponse(
+                success=False,
+                message=f"安装失败: {exc}",
+                status=ProxyEngineStatusPayload(**status),
+            ),
+            request_id,
+        )
+
+
+@router.post("/proxy-engine/start", response_model=Envelope[ProxyEngineActionResponse], summary="启动 Xray 核心引擎")
+def start_proxy_engine(
+    request_id: str = Depends(get_request_id),
+) -> Envelope[ProxyEngineActionResponse]:
+    res = xray_engine.start_engine(proxy_node_service.get_nodes())
+    status = xray_engine.get_status(proxy_node_service.get_nodes())
+    _audit("start_proxy_engine", request_id, running=status["running"])
+    return ok(
+        ProxyEngineActionResponse(
+            success=bool(status["running"]),
+            message="Xray 引擎已启动" if status["running"] else f"启动失败: {res.get('error', '未知错误')}",
+            status=ProxyEngineStatusPayload(**status),
+        ),
+        request_id,
+    )
+
+
+@router.post("/proxy-engine/restart", response_model=Envelope[ProxyEngineActionResponse], summary="重启 Xray 核心引擎")
+def restart_proxy_engine(
+    request_id: str = Depends(get_request_id),
+) -> Envelope[ProxyEngineActionResponse]:
+    res = xray_engine.start_engine(proxy_node_service.get_nodes())
+    status = xray_engine.get_status(proxy_node_service.get_nodes())
+    _audit("restart_proxy_engine", request_id, running=status["running"])
+    return ok(
+        ProxyEngineActionResponse(
+            success=bool(status["running"]),
+            message="Xray 引擎已重启" if status["running"] else f"重启失败: {res.get('error', '未知错误')}",
+            status=ProxyEngineStatusPayload(**status),
+        ),
+        request_id,
+    )
+
+
+@router.post("/proxy-engine/stop", response_model=Envelope[ProxyEngineActionResponse], summary="停止 Xray 核心引擎")
+def stop_proxy_engine(
+    request_id: str = Depends(get_request_id),
+) -> Envelope[ProxyEngineActionResponse]:
+    xray_engine.stop_engine()
+    status = xray_engine.get_status(proxy_node_service.get_nodes())
+    _audit("stop_proxy_engine", request_id)
+    return ok(
+        ProxyEngineActionResponse(
+            success=True,
+            message="Xray 引擎已停止",
+            status=ProxyEngineStatusPayload(**status),
+        ),
+        request_id,
+    )
 

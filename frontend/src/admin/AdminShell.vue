@@ -25,6 +25,7 @@ import {
 import {
   Aim,
   Bell,
+  Connection,
   Expand,
   Fold,
   Grid,
@@ -163,6 +164,10 @@ function logout(): void {
               <ElMenuItem :index="adminPath('/sites')">
                 <ElIcon><Grid /></ElIcon>
                 <template #title>内容源管理</template>
+              </ElMenuItem>
+              <ElMenuItem :index="adminPath('/proxy-nodes')">
+                <ElIcon><Connection /></ElIcon>
+                <template #title>代理节点池</template>
               </ElMenuItem>
               <ElMenuItem :index="adminPath('/playground')">
                 <ElIcon><Aim /></ElIcon>
