@@ -63,6 +63,7 @@ docs/
 *.md
 !README.md
 !**/README.md
+!deploy_fnos_baota.md
 
 # 采集器适配器脚本（动态采集脚本，不同步至远程仓库，保持仓库清空纯净）
 crawler/sites/*
