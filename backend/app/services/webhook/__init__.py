@@ -1,29 +1,35 @@
-"""外部机器人与 Webhook 自动化推送服务（向后兼容导出层）。
+"""外部机器人与 Webhook 自动化推送服务子包。
 
-业务逻辑已模块化重构至 app.services.webhook 子包：
-- app.services.webhook.config: 配置持久化与环境变量读取
-- app.services.webhook.signing: 鉴权签名与速率限制
-- app.services.webhook.templates: 各通道消息模版与简报统计
-- app.services.webhook.dispatch: 统一分发与通道投递
+模块结构：
+- config: 配置文件路径与持久化管理
+- signing: 鉴权签名与速率限制器
+- templates: 各通道格式化与简报模版
+- dispatch: 统一分发调度与通道投递核心
 """
 
 from __future__ import annotations
 
-from app.services.webhook import (
+from app.services.webhook.config import (
     DEFAULT_CONFIG_PATH,
-    TelegramRateLimiter,
-    WebhookService,
     _get_default_config_path,
+    load_config,
+    save_config,
+)
+from app.services.webhook.dispatch import (
+    WebhookService,
+    webhook_service,
+)
+from app.services.webhook.signing import (
+    TelegramRateLimiter,
     _resolve_telegram_proxy,
+    generate_feishu_sign,
+)
+from app.services.webhook.templates import (
     collect_daily_report_metrics,
     format_custom_http_payload,
     format_feishu_content,
     format_telegram_message,
     format_wechat_markdown,
-    generate_feishu_sign,
-    load_config,
-    save_config,
-    webhook_service,
 )
 
 __all__ = [
