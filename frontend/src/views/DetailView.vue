@@ -115,4 +115,6 @@ const {
   </div>
 </template>
 
-<style scoped src="./detail/detail.css"></style>
+<style>
+@import './detail/detail.css';
+</style>

@@ -276,4 +276,6 @@ onMounted(() => {
   </div>
 </template>
 
-<style scoped src="./image-proxy/image-proxy.css"></style>
+<style>
+@import './image-proxy/image-proxy.css';
+</style>

@@ -137,4 +137,6 @@ const {
   </div>
 </template>
 
-<style scoped src="./codes/codes.css"></style>
+<style>
+@import './codes/codes.css';
+</style>

@@ -213,4 +213,6 @@ async function copyText(text: string): Promise<void> {
   </div>
 </template>
 
-<style scoped src="./proxy-nodes/proxy-nodes.css"></style>
+<style>
+@import './proxy-nodes/proxy-nodes.css';
+</style>

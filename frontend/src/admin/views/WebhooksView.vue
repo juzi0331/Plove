@@ -141,4 +141,6 @@ const {
   </div>
 </template>
 
-<style scoped src="./webhooks/webhooks.css"></style>
+<style>
+@import './webhooks/webhooks.css';
+</style>

@@ -115,4 +115,6 @@ const {
   </div>
 </template>
 
-<style scoped src="./playground/playground.css"></style>
+<style>
+@import './playground/playground.css';
+</style>

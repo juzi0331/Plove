@@ -376,4 +376,6 @@ const {
   </div>
 </template>
 
-<style scoped src="./cache/cache-center.css"></style>
+<style>
+@import './cache/cache-center.css';
+</style>

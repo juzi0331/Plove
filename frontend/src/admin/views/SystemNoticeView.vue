@@ -319,4 +319,6 @@ const {
   </div>
 </template>
 
-<style scoped src="./notice/system-notice.css"></style>
+<style>
+@import './notice/system-notice.css';
+</style>

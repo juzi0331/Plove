@@ -75,7 +75,12 @@ const emit = defineEmits<{
       </ElAlert>
 
       <div v-if="props.result.preview_data_url" class="test-modal-preview">
-        <img :src="props.result.preview_data_url" alt="解密成功预览" class="modal-preview-img" />
+        <img
+          :src="props.result.preview_data_url"
+          alt="解密成功预览"
+          class="modal-preview-img"
+          style="width: 90px; height: 126px; max-width: 90px; max-height: 126px; object-fit: cover; border-radius: 6px; flex-shrink: 0;"
+        />
         <div class="modal-preview-meta">
           <div>MIME 类型: <b>{{ props.result.mime_type }}</b></div>
           <div>图片大小: <b>{{ (((props.result.size_bytes || 0)) / 1024).toFixed(1) }} KB</b></div>
@@ -89,3 +94,31 @@ const emit = defineEmits<{
     </template>
   </ElDialog>
 </template>
+
+<style scoped>
+.test-modal-preview {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: #ffffff;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--a-border, #e2e8f0);
+}
+.modal-preview-img {
+  width: 90px;
+  height: 126px;
+  max-width: 90px;
+  max-height: 126px;
+  object-fit: cover;
+  border-radius: 6px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
+  flex-shrink: 0;
+}
+.modal-preview-meta {
+  font-size: 13px;
+  color: var(--a-text-2, #64748b);
+  line-height: 1.8;
+}
+</style>
