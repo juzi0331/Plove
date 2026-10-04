@@ -1,6 +1,6 @@
-"""后台站点高级控制、分类/子分类规则、详情清洗策略与采集器管理契约。
+"""后台站点高级控制、分类/子分类规则与详情清洗策略契约。
 
-严格遵循契约规范：全部字段有 description，带默认值的字段在前端 TS 生成时为可选。
+采集器管理契约与代理节点池契约已分别模块化抽取至 admin_crawler 与 admin_proxy，在本模块保持完全兼容重导出。
 """
 
 from __future__ import annotations
@@ -9,52 +9,24 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from app.schemas.site import SiteMeta
-
-
-# ------------------------------------------------------------------ 采集器上传与校验
-
-class CrawlerValidateRequest(BaseModel):
-    """请求验证采集器脚本代码。"""
-
-    code: str = Field(min_length=10, description="Python 采集器源码")
-    key: str | None = Field(default=None, description="可选的站点 key（若不提供则从代码中探测）")
-
-
-class CrawlerValidateResult(BaseModel):
-    """采集器校验结果。"""
-
-    valid: bool = Field(description="是否通过全部安全检查与冒烟协议测试")
-    key: str = Field(description="探测到的站点 key")
-    meta: SiteMeta | None = Field(default=None, description="如果协议测试通过，返回的站点元信息")
-    error: str | None = Field(default=None, description="未通过时的具体错误原因")
-    checks: list[str] = Field(default_factory=list, description="通过的检查项目列表")
-
-
-class CrawlerUploadRequest(BaseModel):
-    """上传采集器脚本。"""
-
-    key: str = Field(pattern=r"^[a-z_][a-z0-9_]{1,63}$", description="站点 key，如 custom_site")
-    code: str = Field(min_length=10, description="Python 源码")
-    overwrite: bool = Field(default=False, description="若站点已存在是否允许覆盖")
-    auto_bump_version: bool = Field(default=True, description="若覆盖已存在脚本且版本号未变动，是否自动自增修订号(如 1.0.0 -> 1.0.1)")
-    custom_version: str | None = Field(default=None, description="自定义版本号（如 1.2.0），若指定则优先使用该版本号注入/更新 meta")
-
-
-class CrawlerUploadResult(BaseModel):
-    """上传采集器结果。"""
-
-    success: bool = Field(description="是否成功落盘并激活")
-    message: str = Field(description="提示信息")
-    meta: SiteMeta = Field(description="站点元信息")
-
-
-class CrawlerCodePayload(BaseModel):
-    """查看采集器脚本源码。"""
-
-    key: str = Field(description="站点 key")
-    code: str = Field(description="源码内容")
-    updated_at: str = Field(default="", description="文件最后修改时间")
+# 保持向前兼容重导出
+from app.schemas.admin_crawler import (
+    CrawlerCodePayload,
+    CrawlerUploadRequest,
+    CrawlerUploadResult,
+    CrawlerValidateRequest,
+    CrawlerValidateResult,
+)
+from app.schemas.admin_proxy import (
+    ProxyEngineActionResponse,
+    ProxyEngineStatusPayload,
+    ProxyNodeBindRequest,
+    ProxyNodeCreateRequest,
+    ProxyNodeItem,
+    ProxyNodeListPayload,
+    ProxyTestRequest,
+    ProxyTestResult,
+)
 
 
 # ------------------------------------------------------------------ 单站高级控制
@@ -82,90 +54,6 @@ class SiteAdvancedSettingUpdateRequest(BaseModel):
     proxy_enabled: bool | None = Field(default=None, description="是否为该站点开启独立代理")
     proxy_url: str | None = Field(default=None, description="该站点使用的代理地址")
     proxy_node_id: str | None = Field(default=None, description="绑定的代理节点 ID")
-
-
-# ------------------------------------------------------------------ 代理节点池管理
-
-class ProxyNodeItem(BaseModel):
-    """单个代理节点信息。"""
-
-    id: str = Field(description="节点唯一 ID")
-    name: str = Field(description="节点名称备注")
-    protocol: str = Field(description="协议类型: vless / http / socks5")
-    proxy_url: str = Field(description="供爬虫访问的本地或目标 HTTP 代理地址")
-    raw_url: str = Field(default="", description="原始配置链接或地址")
-    server: str = Field(default="", description="远端节点服务器地址/域名")
-    port: int = Field(default=0, description="远端服务端口")
-    security: str = Field(default="none", description="加密/安全协议 (reality, tls, none)")
-    network_type: str = Field(default="tcp", description="传输层协议 (tcp, ws, grpc)")
-    local_port: int = Field(default=10809, description="本地监听端口")
-    sni: str | None = Field(default="", description="SNI 伪装域名")
-    ping_ms: float | None = Field(default=None, description="上一次测速延迟 (ms)")
-    last_tested_at: str | None = Field(default=None, description="上一次测速时间")
-    created_at: str = Field(default="", description="添加时间")
-
-
-class ProxyNodeListPayload(BaseModel):
-    """代理节点池列表与采集器绑定关系。"""
-
-    nodes: list[ProxyNodeItem] = Field(default_factory=list, description="全部节点列表")
-    bindings: dict[str, str] = Field(default_factory=dict, description="采集器与节点绑定映射 {site_key: node_id}")
-
-
-class ProxyNodeCreateRequest(BaseModel):
-    """添加或解析代理节点请求。"""
-
-    raw_url: str = Field(min_length=5, description="vless:// 链接或 http/socks 代理地址")
-    name: str = Field(default="", description="自定义节点备注名称")
-    local_port: int = Field(default=10809, ge=1024, le=65535, description="本地代理映射端口")
-
-
-class ProxyTestRequest(BaseModel):
-    """连通性测速请求。"""
-
-    node_id: str | None = Field(default=None, description="指定测试的节点 ID")
-    proxy_url: str | None = Field(default=None, description="或直接指定代理地址")
-    target_url: str = Field(default="https://www.google.com", description="测速目标地址")
-
-
-class ProxyTestResult(BaseModel):
-    """连通性测速结果。"""
-
-    ok: bool = Field(description="是否测试通过")
-    duration_ms: float = Field(description="响应耗时毫秒数")
-    status_code: int = Field(description="HTTP 状态码")
-    proxy_used: str = Field(description="使用的代理地址")
-    message: str = Field(description="测试结果说明")
-
-
-class ProxyNodeBindRequest(BaseModel):
-    """将采集器绑定到节点。"""
-
-    site_key: str = Field(description="站点 key")
-    node_id: str = Field(description="节点 ID，'direct' 表示直连，'default' 表示跟随全局")
-
-
-# ------------------------------------------------------------------ Xray 代理引擎状态与控制
-
-class ProxyEngineStatusPayload(BaseModel):
-    """Xray 引擎当前运行状态。"""
-
-    installed: bool = Field(description="核心程序是否已安装")
-    running: bool = Field(description="内核守护进程是否正在运行")
-    pid: int | None = Field(default=None, description="守护进程 PID")
-    version: str | None = Field(default=None, description="内核版本号")
-    bin_path: str | None = Field(default=None, description="核心程序所在绝对路径")
-    managed_ports: list[int] = Field(default_factory=list, description="当前在监听的本地代理端口")
-    managed_nodes: list[str] = Field(default_factory=list, description="正在接管的 VLESS 节点列表")
-    error: str | None = Field(default=None, description="错误日志或异常提示")
-
-
-class ProxyEngineActionResponse(BaseModel):
-    """Xray 引擎控制操作结果。"""
-
-    success: bool = Field(description="操作是否成功")
-    message: str = Field(description="反馈提示信息")
-    status: ProxyEngineStatusPayload = Field(description="操作后的引擎状态")
 
 
 # ------------------------------------------------------------------ 站点分类与子分类控制
@@ -244,3 +132,29 @@ class SiteDetailPolicyUpdateRequest(BaseModel):
     default_poster: str | None = Field(default=None, description="兜底海报 URL")
     hide_fields: list[str] | None = Field(default=None, description="隐藏字段列表")
     auto_select_fastest_line: bool | None = Field(default=None, description="是否开启后端测速优选单线路")
+
+
+__all__ = [
+    "SiteAdvancedSettingPayload",
+    "SiteAdvancedSettingUpdateRequest",
+    "SubCategoryItem",
+    "CategoryRuleItem",
+    "SiteCategoryRulePayload",
+    "SiteCategoryRuleUpdateRequest",
+    "SiteDetailPolicyPayload",
+    "SiteDetailPolicyUpdateRequest",
+    # 重导出
+    "CrawlerValidateRequest",
+    "CrawlerValidateResult",
+    "CrawlerUploadRequest",
+    "CrawlerUploadResult",
+    "CrawlerCodePayload",
+    "ProxyNodeItem",
+    "ProxyNodeListPayload",
+    "ProxyNodeCreateRequest",
+    "ProxyTestRequest",
+    "ProxyTestResult",
+    "ProxyNodeBindRequest",
+    "ProxyEngineStatusPayload",
+    "ProxyEngineActionResponse",
+]

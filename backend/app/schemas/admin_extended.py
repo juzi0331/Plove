@@ -1,6 +1,6 @@
-"""后台扩展契约：缓存管理透视、在线探针/试播台、图片防盗链代理、全站公告与维护模式、跨源聚合搜索。
+"""后台扩展契约：在线探针/试播台、图片防盗链代理、全站公告与维护模式、跨源聚合搜索。
 
-所有字段带完整 description 与默认值，确保生成 TypeScript 契约精准严密。
+缓存中心契约与激活码清理契约已模块化抽取至 admin_cache 与 admin_code，在本模块保持完全兼容重导出。
 """
 
 from __future__ import annotations
@@ -9,140 +9,24 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-
-# ------------------------------------------------------------------ 缓存管理透视
-
-class CacheKeyEntry(BaseModel):
-    """当前内存缓存里的单个 Key 条目。"""
-
-    key: str = Field(description="完整的缓存 Key，如 alpha|home|-")
-    site: str = Field(description="所属站点 key")
-    namespace: str = Field(description="命名空间：home / category / detail")
-    ident: str = Field(description="标识符：- / tid:page / vod_id")
-    remaining_seconds: float = Field(description="剩余存活秒数（TTL 倒计时）")
-    is_disk: bool = Field(default=False, description="是否来自 L2 本地磁盘持久化镜像")
-
-
-class CacheStatsPayload(BaseModel):
-    """缓存全局命中率与容量看板数据。"""
-
-    size: int = Field(description="当前已缓存的条目总数")
-    maxsize: int = Field(description="缓存最大允许容量上限")
-    hits: int = Field(description="累计命中次数")
-    misses: int = Field(description="累计未命中（击穿查源）次数")
-    hit_ratio_percent: float = Field(description="实时缓存命中率百分比（0.0 ~ 100.0）")
-    inflight: int = Field(default=0, description="当前正在并发保护中的任务数")
-    ttl: dict[str, float] = Field(default_factory=dict, description="全局默认 TTL 配置秒数")
-    disk: dict[str, Any] | None = Field(default=None, description="L2 磁盘持久化统计（条数、占用体积等）")
-    enabled: bool = Field(default=False, description="全局内容缓存是否开启（默认关闭，需手动开启）")
-    warmup_enabled: bool = Field(default=False, description="自动定时预热是否开启（默认关闭，需手动开启）")
-
-
-class CacheGlobalConfig(BaseModel):
-    """全局内容缓存与预热总控配置。"""
-
-    cache_enabled: bool = Field(
-        default=False,
-        description="是否开启全局内容缓存（默认关闭，需手动开启；开启后首页与分类等享受极速缓存）",
-    )
-    warmup_enabled: bool = Field(
-        default=False,
-        description="是否开启自动定时预热（默认关闭，需手动开启；开启后后台自动定期抓取入口页）",
-    )
-    warmup_interval_seconds: float = Field(
-        default=86400.0,
-        description="预热周期（秒），默认 86400（24小时）",
-    )
-
-
-class CacheClearRequest(BaseModel):
-    """清除缓存请求。"""
-
-    site: str | None = Field(default=None, description="若提供则仅清空该站点的缓存；若为空则清空全站")
-    key: str | None = Field(default=None, description="若提供则精准删除指定 key")
-
-
-class CacheClearResult(BaseModel):
-    """清除缓存执行结果。"""
-
-    cleared_count: int = Field(description="清除掉的条目数量")
-    message: str = Field(description="执行结果提示")
-
-
-class CachePreheatRequest(BaseModel):
-    """主动预热缓存请求。"""
-
-    site: str | None = Field(default=None, description="若提供则预热指定站点首页，为空则预热所有启用站点")
-
-
-class SitePreheatDetail(BaseModel):
-    """单站首页预热成果明细报表。"""
-
-    site: str = Field(description="站点 key")
-    site_name: str = Field(description="站点名称")
-    categories_count: int = Field(description="成功装载的分类数")
-    categories: list[str] = Field(default_factory=list, description="装载的分类标签列表")
-    recommend_count: int = Field(description="推荐影视片单数量")
-    recommend_titles: list[str] = Field(default_factory=list, description="装载的推荐影片片名")
-    sample_posters: list[str] = Field(default_factory=list, description="抽样海报图片预览")
-    elapsed_ms: float = Field(description="该站预热耗时（毫秒）")
-
-
-class CachePreheatResult(BaseModel):
-    """缓存预热结果。"""
-
-    success: bool = Field(description="预热是否全部或部分成功")
-    preheated_sites: list[str] = Field(default_factory=list, description="成功预热并落入缓存的站点列表")
-    elapsed_ms: float = Field(description="预热整体耗时（毫秒）")
-    details: list[SitePreheatDetail] = Field(
-        default_factory=list,
-        description="各站点的具体预热成果明细（分类数、推荐影视列表、海报样片）",
-    )
-
-
-class CacheEntryDetail(BaseModel):
-    """单条缓存的具体数据透视。"""
-
-    key: str = Field(description="缓存 Key")
-    site: str = Field(description="所属站点")
-    namespace: str = Field(description="命名空间")
-    ident: str = Field(description="定位符")
-    remaining_seconds: float = Field(description="剩余存活秒数")
-    data: Any = Field(default=None, description="缓存中存储的具体 JSON 数据内容")
-
-
-class SiteCachePolicy(BaseModel):
-    """单站点独立定制的缓存 TTL 策略。"""
-
-    home_ttl: float | None = Field(default=None, description="首页缓存秒数（None 跟随全局，0 表示不缓存）")
-    category_ttl: float | None = Field(default=None, description="分类列表缓存秒数（None 跟随全局，0 表示不缓存）")
-    detail_ttl: float | None = Field(default=None, description="详情页缓存秒数（None 跟随全局，0 表示不缓存）")
-    long_term_static_ttl: float | None = Field(
-        default=86400.0,
-        description="海报与剧情简介等静态元信息长效缓存秒数（默认 24 小时）",
-    )
-
-
-class SamplePosterItem(BaseModel):
-    """抽样的真实源站海报。"""
-
-    title: str = Field(description="影视标题")
-    url: str = Field(description="海报原始 URL")
-    site: str = Field(description="所属站点")
-
-
-class SamplePostersPayload(BaseModel):
-    """自动从内容源提取的海报图库。"""
-
-    items: list[SamplePosterItem] = Field(default_factory=list, description="抽样海报清单")
-
-
-class CodeCleanupResult(BaseModel):
-    """批量清理失效激活码结果。"""
-
-    deleted_count: int = Field(description="删除的失效激活码数量")
-    message: str = Field(description="提示信息")
-
+# 保持向前兼容重导出
+from app.schemas.admin_cache import (
+    CacheClearRequest,
+    CacheClearResult,
+    CacheEntryDetail,
+    CacheGlobalConfig,
+    CacheKeyEntry,
+    CachePreheatRequest,
+    CachePreheatResult,
+    CacheStatsPayload,
+    SamplePosterItem,
+    SamplePostersPayload,
+    SiteCachePolicy,
+    SitePreheatDetail,
+)
+from app.schemas.admin_code import (
+    CodeCleanupResult,
+)
 
 
 # ------------------------------------------------------------------ 在线探针与试播台
@@ -321,3 +205,34 @@ class AggregateSearchPayload(BaseModel):
     total_sites: int = Field(description="参与并发搜索的站点总数")
     total_count: int = Field(description="全源累计命中的视频结果条数")
     results: list[AggregateSearchSiteResult] = Field(default_factory=list, description="各站点的独立比对结果")
+
+
+__all__ = [
+    "PlaygroundProbeRequest",
+    "PlaygroundProbeResult",
+    "ImageDecryptionRule",
+    "TestDecryptRequest",
+    "TestDecryptResult",
+    "ImageProxyConfig",
+    "ImageProxyStats",
+    "ImageProxyClearResult",
+    "SystemNoticePayload",
+    "SystemMaintenancePayload",
+    "SystemStatusPayload",
+    "AggregateSearchSiteResult",
+    "AggregateSearchPayload",
+    # 重导出
+    "CacheKeyEntry",
+    "CacheStatsPayload",
+    "CacheGlobalConfig",
+    "CacheClearRequest",
+    "CacheClearResult",
+    "CachePreheatRequest",
+    "SitePreheatDetail",
+    "CachePreheatResult",
+    "CacheEntryDetail",
+    "SiteCachePolicy",
+    "SamplePosterItem",
+    "SamplePostersPayload",
+    "CodeCleanupResult",
+]
