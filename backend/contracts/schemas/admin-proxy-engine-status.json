@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-proxy-engine-status.json",
+  "description": "Xray 引擎当前运行状态。",
+  "properties": {
+    "installed": {
+      "description": "核心程序是否已安装",
+      "title": "Installed",
+      "type": "boolean"
+    },
+    "running": {
+      "description": "内核守护进程是否正在运行",
+      "title": "Running",
+      "type": "boolean"
+    },
+    "pid": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "守护进程 PID",
+      "title": "Pid"
+    },
+    "version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "内核版本号",
+      "title": "Version"
+    },
+    "bin_path": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "核心程序所在绝对路径",
+      "title": "Bin Path"
+    },
+    "managed_ports": {
+      "description": "当前在监听的本地代理端口",
+      "items": {
+        "type": "integer"
+      },
+      "title": "Managed Ports",
+      "type": "array"
+    },
+    "managed_nodes": {
+      "description": "正在接管的 VLESS 节点列表",
+      "items": {
+        "type": "string"
+      },
+      "title": "Managed Nodes",
+      "type": "array"
+    },
+    "error": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "错误日志或异常提示",
+      "title": "Error"
+    }
+  },
+  "required": [
+    "installed",
+    "running"
+  ],
+  "title": "ProxyEngineStatusPayload",
+  "type": "object"
+}

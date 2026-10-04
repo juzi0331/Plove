@@ -130,6 +130,8 @@ def test_site_advanced_settings_api(authed_client: TestClient):
             "badge": "4K极速",
             "timeout_seconds": 15.0,
             "note": "测试单站高级控制",
+            "proxy_enabled": True,
+            "proxy_url": "http://192.168.31.5:10809",
         },
     )
     assert resp.status_code == 200, resp.text
@@ -137,6 +139,8 @@ def test_site_advanced_settings_api(authed_client: TestClient):
     assert data["custom_name"] == "VIP超清线路"
     assert data["badge"] == "4K极速"
     assert data["timeout_seconds"] == 15.0
+    assert data["proxy_enabled"] is True
+    assert data["proxy_url"] == "http://192.168.31.5:10809"
 
     # 验证获取接口
     resp = authed_client.get(
@@ -144,7 +148,18 @@ def test_site_advanced_settings_api(authed_client: TestClient):
         headers=ADMIN_HEADERS,
     )
     assert resp.status_code == 200
-    assert resp.json()["data"]["custom_name"] == "VIP超清线路"
+    adv_data = resp.json()["data"]
+    assert adv_data["custom_name"] == "VIP超清线路"
+    assert adv_data["proxy_enabled"] is True
+    assert adv_data["proxy_url"] == "http://192.168.31.5:10809"
+
+    # 验证后台站点列表接口携带了独立代理状态
+    resp = authed_client.get("/api/v1/admin/sites", headers=ADMIN_HEADERS)
+    assert resp.status_code == 200
+    admin_sites = resp.json()["data"]["sites"]
+    fake_admin_site = next(s for s in admin_sites if s["key"] == "fake")
+    assert fake_admin_site["proxy_enabled"] is True
+    assert fake_admin_site["proxy_url"] == "http://192.168.31.5:10809"
 
     # 验证用户端拉取站点列表时携带了自定义别名和角标
     resp = authed_client.get("/api/v1/sites")
@@ -246,3 +261,90 @@ def test_site_detail_policy(authed_client: TestClient):
     assert any(line["name"] == "极速专线1" for line in detail["lines"])
     # 验证集数命名被统一格式化为 "第 1 集"
     assert detail["episodes"][0]["ep_name"] == "第 1 集"
+
+
+def test_proxy_nodes_and_site_binding(authed_client: TestClient):
+    """测试独立代理节点池的添加、查询、采集器绑定与解绑全流程。"""
+    # 1. 添加一个 VLESS 代理节点
+    vless_url = (
+        "vless://2b0281ef-93e1-450f-a365-5c1cfb9b87b7@hk01.example.com:443"
+        "?encryption=none&flow=xtls-rprx-vision&security=reality&sni=hk01.example.com"
+        "&fp=chrome&pbk=fakekey&sid=fakesid&type=tcp#香港01-VLESS高速"
+    )
+    resp = authed_client.post(
+        "/api/v1/admin/proxy-nodes",
+        headers=ADMIN_HEADERS,
+        json={"raw_url": vless_url, "name": "香港01-VLESS高速", "local_port": 10819},
+    )
+    assert resp.status_code == 200, resp.text
+    node_data = resp.json()["data"]
+    node_id = node_data["id"]
+    assert node_data["protocol"] == "vless"
+    assert node_data["server"] == "hk01.example.com"
+    assert node_data["local_port"] == 10819
+    assert node_data["proxy_url"] == "http://127.0.0.1:10819"
+
+    # 2. 查询节点列表
+    resp = authed_client.get("/api/v1/admin/proxy-nodes", headers=ADMIN_HEADERS)
+    assert resp.status_code == 200
+    list_data = resp.json()["data"]
+    assert any(n["id"] == node_id for n in list_data["nodes"])
+
+    # 3. 导出 Xray 配置
+    resp = authed_client.get(f"/api/v1/admin/proxy-nodes/{node_id}/xray", headers=ADMIN_HEADERS)
+    assert resp.status_code == 200
+    xray_cfg = resp.json()["data"]
+    assert "inbounds" in xray_cfg
+    assert "outbounds" in xray_cfg
+
+    # 4. 在采集器高级配置中绑定该节点
+    resp = authed_client.put(
+        "/api/v1/admin/sites/fake/advanced",
+        headers=ADMIN_HEADERS,
+        json={
+            "proxy_enabled": True,
+            "proxy_node_id": node_id,
+            "proxy_url": node_data["proxy_url"],
+        },
+    )
+    assert resp.status_code == 200
+    adv = resp.json()["data"]
+    assert adv["proxy_enabled"] is True
+    assert adv["proxy_node_id"] == node_id
+
+    # 5. 验证在站点列表里也带出了 proxy_node_id
+    resp = authed_client.get("/api/v1/admin/sites", headers=ADMIN_HEADERS)
+    assert resp.status_code == 200
+    sites = resp.json()["data"]["sites"]
+    fake_site = next(s for s in sites if s["key"] == "fake")
+    assert fake_site["proxy_node_id"] == node_id
+    assert fake_site["proxy_enabled"] is True
+
+    # 6. 解绑验证：切换为直连后，proxy-nodes 的 bindings 列表中不得残留该站点
+    resp = authed_client.put(
+        "/api/v1/admin/sites/fake/advanced",
+        headers=ADMIN_HEADERS,
+        json={"proxy_enabled": False, "proxy_node_id": ""},
+    )
+    assert resp.status_code == 200
+    adv = resp.json()["data"]
+    assert adv["proxy_enabled"] is False
+    assert adv["proxy_node_id"] == ""
+
+    # 验证 proxy-nodes 里的 bindings 绝对不再包含 fake 站点！
+    resp = authed_client.get("/api/v1/admin/proxy-nodes", headers=ADMIN_HEADERS)
+    assert resp.status_code == 200
+    bindings = resp.json()["data"]["bindings"]
+    assert "fake" not in bindings
+
+    # 7. 测试内置 Xray 引擎状态查询端点
+    resp = authed_client.get("/api/v1/admin/proxy-engine/status", headers=ADMIN_HEADERS)
+    assert resp.status_code == 200
+    engine_st = resp.json()["data"]
+    assert "installed" in engine_st
+    assert "running" in engine_st
+
+    # 8. 清理：删除测试节点
+    resp = authed_client.delete(f"/api/v1/admin/proxy-nodes/{node_id}", headers=ADMIN_HEADERS)
+    assert resp.status_code == 200
+

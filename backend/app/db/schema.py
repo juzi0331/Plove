@@ -30,11 +30,17 @@ def _align_columns(engine: Engine) -> None:
             "category_rules_json": "TEXT",
             "detail_policy_json": "TEXT",
             "cache_policy_json": "TEXT",
+            "proxy_enabled": "BOOLEAN DEFAULT 0",
+            "proxy_url": "VARCHAR(255) DEFAULT ''",
+            "proxy_node_id": "VARCHAR(64) DEFAULT ''",
         }
         with engine.begin() as conn:
             for col_name, col_def in needed.items():
                 if col_name not in existing_cols:
-                    conn.execute(text(f"ALTER TABLE site_settings ADD COLUMN {col_name} {col_def}"))
+                    try:
+                        conn.execute(text(f"ALTER TABLE site_settings ADD COLUMN {col_name} {col_def}"))
+                    except Exception:
+                        pass
 
     if "activation_codes" in insp.get_table_names():
         existing_cols = {c["name"] for c in insp.get_columns("activation_codes")}

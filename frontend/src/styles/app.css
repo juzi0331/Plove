@@ -55,6 +55,8 @@
   /* ---------------------------------------------------------------- 其它 */
   --plove-safe-bottom: env(safe-area-inset-bottom, 0px);
   --plove-safe-top: env(safe-area-inset-top, 0px);
+  --plove-safe-left: env(safe-area-inset-left, 0px);
+  --plove-safe-right: env(safe-area-inset-right, 0px);
   /* 顶部条高度。首页要把它叠在头图上，所以必须是变量而不是写死的数字 */
   --plove-bar-height: 48px;
 }
@@ -63,6 +65,11 @@
 
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button, input, select, textarea, a {
+  touch-action: manipulation;
 }
 
 /* ====================================================================

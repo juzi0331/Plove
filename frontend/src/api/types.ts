@@ -6,7 +6,18 @@
 // 重新生成：cd frontend && npm run gen:types
 // 检查是否过期：npm run check:types（退出码非 0 = 契约改过但没重新生成）
 //
-// 契约指纹：fe3b18fcab73
+// 契约指纹：b512b46e8bbc
+/** 命名意图动作描述。由前端映射至受控处理函数，不执行动态代码。 */
+export interface ActionPayload {
+  type: string
+  content_id?: string | null
+  category_id?: string | null
+  site_key?: string | null
+  episode_id?: string | null
+  notice_id?: string | null
+  url?: string | null
+}
+
 /** 激活成功后的状态。 */
 export interface ActivationResult {
   device_token: string
@@ -34,6 +45,9 @@ export interface AdminSiteItem {
   capabilities?: string[]
   meta_error?: string | null
   health: SiteHealth
+  proxy_enabled?: boolean
+  proxy_url?: string
+  proxy_node_id?: string
 }
 
 /** 站点管理页的全部数据：**包括被停用的源**（运维要能看到自己关掉了什么）。 */
@@ -71,6 +85,12 @@ export interface AggregateSearchSiteResult {
   elapsed_ms: number
   error?: string | null
   items?: unknown[]
+}
+
+/** 品牌与标识配置。 */
+export interface BrandConfig {
+  name?: string
+  logo_url?: string
 }
 
 /** 清除缓存请求。 */
@@ -150,6 +170,13 @@ export interface CacheTtl {
   detail: number
 }
 
+/** 海报卡片设计 Token。 */
+export interface CardTokens {
+  aspect_ratio?: string
+  radius_px?: number
+  image_fit?: string
+}
+
 /** 单个分类的控制规则。 */
 export interface CategoryRuleItem {
   tid: string
@@ -159,6 +186,22 @@ export interface CategoryRuleItem {
   sort_order?: number
   show_on_home?: boolean
   subcategories?: SubCategoryItem[]
+}
+
+/** 客户端启动并展示所需的完整基础配置。匿名或已激活客户端均可获取。 */
+export interface ClientBootstrapPayload {
+  schema_version?: string
+  release_id: string
+  revision: number
+  min_runtime_version?: string
+  refresh_after_seconds?: number
+  offline_display_ttl_seconds?: number
+  brand?: BrandConfig
+  theme?: ThemeConfig
+  text?: Record<string, string>
+  navigation?: NavigationItem[]
+  page_references?: Record<string, string>
+  player_defaults?: PlayerDefaults
 }
 
 /** 停用 / 启用 / 延长之后的回执：说明 + 变更后的那一行。 回带整行而不是只回一个 ``ok``：界面可以直接用它刷新那一行， 不用再多发一次列表请求（也就不会出现"操作成功了但列表还是旧值"）。 */
@@ -197,6 +240,17 @@ export interface CodeListPayload {
   page_size?: number
 }
 
+/** 色彩设计 Token。 */
+export interface ColorTokens {
+  background?: string
+  surface?: string
+  primary?: string
+  text?: string
+  muted?: string
+  border?: string
+  danger?: string
+}
+
 /** 查看采集器脚本源码。 */
 export interface CrawlerCodePayload {
   key: string
@@ -210,6 +264,7 @@ export interface CrawlerUploadRequest {
   code: string
   overwrite?: boolean
   auto_bump_version?: boolean
+  custom_version?: string | null
 }
 
 /** 上传采集器结果。 */
@@ -257,6 +312,13 @@ export interface DeviceListPayload {
   active_device_id?: number | null
 }
 
+/** 草稿保存结果。 */
+export interface DraftSaveResult {
+  draft_id: string
+  revision: number
+  message: string
+}
+
 /** 统一响应信封。**每个**接口都是这个形状，包括错误。 */
 export interface ApiEnvelope<T = unknown> {
   ok: boolean
@@ -285,6 +347,41 @@ export interface ErrorInfo {
   detail?: unknown | null
 }
 
+/** 管理后台读取的当前草稿完整配置。 */
+export interface ExperienceDraftPayload {
+  draft_id?: string
+  revision: number
+  brand?: BrandConfig
+  theme?: ThemeConfig
+  text?: Record<string, string>
+  navigation?: NavigationItem[]
+  pages?: Record<string, PageDefinition>
+  player_defaults?: PlayerDefaults
+  updated_at: string
+  updated_by: string
+}
+
+/** 提交修改草稿请求（必须携带 revision 防止多人并发覆盖）。 */
+export interface ExperienceDraftUpdateRequest {
+  revision: number
+  brand?: BrandConfig | null
+  theme?: ThemeConfig | null
+  text?: Record<string, string> | null
+  navigation?: NavigationItem[] | null
+  pages?: Record<string, PageDefinition> | null
+  player_defaults?: PlayerDefaults | null
+}
+
+/** 单条发布历史记录概要。 */
+export interface ExperienceReleaseItem {
+  release_id: string
+  revision: number
+  published_at: string
+  published_by: string
+  note?: string
+  is_active?: boolean
+}
+
 /** 延长时长。**只能加时间，不能减** —— 减时间应该用停用。 */
 export interface ExtendRequest {
   hours: number
@@ -310,6 +407,20 @@ export interface HomeSection {
   videos?: VodItem[]
 }
 
+/** 站点图片解密规则配置。 */
+export interface ImageDecryptionRule {
+  id?: string
+  name?: string
+  site_key?: string
+  match_domains?: string[]
+  algorithm?: "AES-128-CBC" | "AES-128-ECB"
+  key?: string
+  iv?: string
+  is_hex?: boolean
+  enabled?: boolean
+  created_at?: string
+}
+
 /** 图片缓存清理结果。 */
 export interface ImageProxyClearResult {
   cleared_files: number
@@ -323,6 +434,7 @@ export interface ImageProxyConfig {
   auto_strip_referer?: boolean
   custom_referer?: string
   cache_max_mb?: number
+  decryption_rules?: ImageDecryptionRule[]
   updated_at?: string
 }
 
@@ -355,6 +467,13 @@ export interface KickResult {
   code: CodeListItem
 }
 
+/** 页面布局与间距 Token。 */
+export interface LayoutTokens {
+  max_width_px?: number
+  page_padding_px?: number
+  gap_px?: number
+}
+
 /** 一条播放线路。多线路源必须让上层知道有几条线、各有多少集。 */
 export interface LineInfo {
   line: number
@@ -369,11 +488,51 @@ export interface ListPayload {
   has_more?: boolean
 }
 
+/** 动态效果与过渡 Token。 */
+export interface MotionTokens {
+  preset?: string
+  duration_ms?: number
+}
+
+/** 前台导航条目。 */
+export interface NavigationItem {
+  id: string
+  label_key: string
+  label: string
+  action: ActionPayload
+}
+
+/** 页面结构配置（保存在草稿与发布快照中）。 */
+export interface PageDefinition {
+  id: string
+  title?: string
+  sections?: SectionDefinition[]
+}
+
+/** 面向客户端渲染的页面视图模型。 */
+export interface PageViewModel {
+  schema_version?: string
+  release_id: string
+  page_id: string
+  title: string
+  content_revision?: string
+  sections?: SectionDefinition[]
+}
+
 /** 一次调用的播放结果。 */
 export interface Playback {
   url: string
   format?: "m3u8" | "mp4"
   headers?: Record<string, string>
+}
+
+/** 播放器客户端全局默认偏好。 */
+export interface PlayerDefaults {
+  auto_next?: boolean
+  auto_next_delay_seconds?: number
+  default_rate?: number
+  allowed_rates?: number[]
+  hud_hide_after_ms?: number
 }
 
 /** 发起探针测试请求。 */
@@ -400,6 +559,78 @@ export interface PlaygroundProbeResult {
   error_detail?: string | null
 }
 
+/** Xray 引擎控制操作结果。 */
+export interface ProxyEngineActionResponse {
+  success: boolean
+  message: string
+  status: ProxyEngineStatusPayload
+}
+
+/** Xray 引擎当前运行状态。 */
+export interface ProxyEngineStatusPayload {
+  installed: boolean
+  running: boolean
+  pid?: number | null
+  version?: string | null
+  bin_path?: string | null
+  managed_ports?: number[]
+  managed_nodes?: string[]
+  error?: string | null
+}
+
+/** 将采集器绑定到节点。 */
+export interface ProxyNodeBindRequest {
+  site_key: string
+  node_id: string
+}
+
+/** 添加或解析代理节点请求。 */
+export interface ProxyNodeCreateRequest {
+  raw_url: string
+  name?: string
+  local_port?: number
+}
+
+/** 单个代理节点信息。 */
+export interface ProxyNodeItem {
+  id: string
+  name: string
+  protocol: string
+  proxy_url: string
+  raw_url?: string
+  server?: string
+  port?: number
+  security?: string
+  network_type?: string
+  local_port?: number
+  sni?: string | null
+  ping_ms?: number | null
+  last_tested_at?: string | null
+  created_at?: string
+}
+
+/** 代理节点池列表与采集器绑定关系。 */
+export interface ProxyNodeListPayload {
+  nodes?: ProxyNodeItem[]
+  bindings?: Record<string, string>
+}
+
+/** 连通性测速请求。 */
+export interface ProxyTestRequest {
+  node_id?: string | null
+  proxy_url?: string | null
+  target_url?: string
+}
+
+/** 连通性测速结果。 */
+export interface ProxyTestResult {
+  ok: boolean
+  duration_ms: number
+  status_code: number
+  proxy_used: string
+  message: string
+}
+
 /** 激活请求。两种用法： * **首次激活**：只给 ``code``； * **被踢后抢回**（"在此设备继续"）：给 ``device_token``，``code`` 可省。 为什么把这两件事合成一个动作？因为它们本质是同一件事： **"把活跃位指到这台上"**。分开做会多一套状态和一堆边界情况。 */
 export interface RedeemRequest {
   code?: string | null
@@ -414,6 +645,32 @@ export interface RefreshResult {
   warmup?: WarmupStatus | null
 }
 
+/** 客户端快速心跳轻量版本检测载荷。配合 ETag/304 节省流量。 */
+export interface ReleaseCurrentPayload {
+  release_id: string
+  revision: number
+  published_at: string
+}
+
+/** 从草稿创建不可变发布快照请求。 */
+export interface ReleasePublishRequest {
+  draft_id?: string
+  note?: string
+}
+
+/** 发布结果。 */
+export interface ReleasePublishResult {
+  release_id: string
+  revision: number
+  message: string
+}
+
+/** 回滚至指定历史快照请求。 */
+export interface ReleaseRollbackRequest {
+  target_release_id?: string | null
+  note?: string
+}
+
 /** 抽样的真实源站海报。 */
 export interface SamplePosterItem {
   title: string
@@ -424,6 +681,15 @@ export interface SamplePosterItem {
 /** 自动从内容源提取的海报图库。 */
 export interface SamplePostersPayload {
   items?: SamplePosterItem[]
+}
+
+/** 页面中单个组件区块。 */
+export interface SectionDefinition {
+  id: string
+  component: string
+  component_version?: number
+  style?: Record<string, unknown>
+  props?: Record<string, unknown>
 }
 
 /** 心跳返回的会话状态。 ``is_active`` 是**单会话模型的抓手**：为 false 就说明活跃位已经被别的设备拿走了， 客户端应当立即停止播放并提示用户，而不是自己抢回来。 */
@@ -442,6 +708,9 @@ export interface SiteAdvancedSettingPayload {
   badge?: string
   timeout_seconds?: number
   note?: string
+  proxy_enabled?: boolean
+  proxy_url?: string
+  proxy_node_id?: string
 }
 
 /** 修改单站高级设置请求。 */
@@ -450,6 +719,9 @@ export interface SiteAdvancedSettingUpdateRequest {
   badge?: string | null
   timeout_seconds?: number | null
   note?: string | null
+  proxy_enabled?: boolean | null
+  proxy_url?: string | null
+  proxy_node_id?: string | null
 }
 
 /** 单站点独立定制的缓存 TTL 策略。 */
@@ -568,7 +840,9 @@ export interface SystemNoticePayload {
   title?: string
   content?: string
   level?: "info" | "warning" | "danger"
-  display_type?: "banner" | "modal" | "both"
+  display_type?: "banner" | "modal" | "both" | "float" | "header_bar" | "all"
+  action_text?: string
+  action_url?: string
   dismissible?: boolean
   updated_at?: string
 }
@@ -579,6 +853,41 @@ export interface SystemStatusPayload {
   maintenance_message?: string
   notice?: SystemNoticePayload | null
   image_proxy_enabled?: boolean
+  image_decrypt_domains?: string[]
+}
+
+/** 测试解密请求。 */
+export interface TestDecryptRequest {
+  url: string
+  site_key?: string
+  rule?: ImageDecryptionRule | null
+}
+
+/** 测试解密响应。 */
+export interface TestDecryptResult {
+  success: boolean
+  message: string
+  matched_rule_id?: string | null
+  mime_type?: string
+  size_bytes?: number
+  elapsed_ms?: number
+  preview_data_url?: string | null
+}
+
+/** 完整主题配置。 */
+export interface ThemeConfig {
+  color?: ColorTokens
+  typography?: TypographyTokens
+  layout?: LayoutTokens
+  card?: CardTokens
+  motion?: MotionTokens
+}
+
+/** 排版设计 Token。 */
+export interface TypographyTokens {
+  family?: string
+  body_px?: number
+  title_px?: number
 }
 
 /** 站级动态分类，由爬虫的 ``home`` 返回，前端不写死。 */

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/client-release-current.json",
+  "description": "客户端快速心跳轻量版本检测载荷。配合 ETag/304 节省流量。",
+  "properties": {
+    "release_id": {
+      "description": "当前发布快照 ID",
+      "title": "Release Id",
+      "type": "string"
+    },
+    "revision": {
+      "description": "当前生效的修订号",
+      "title": "Revision",
+      "type": "integer"
+    },
+    "published_at": {
+      "description": "发布时间 ISO 8601",
+      "title": "Published At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "release_id",
+    "revision",
+    "published_at"
+  ],
+  "title": "ReleaseCurrentPayload",
+  "type": "object"
+}

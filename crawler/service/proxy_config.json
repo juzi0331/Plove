@@ -1,4 +1,43 @@
 {
-  "enabled": true,
-  "proxy_url": "http://127.0.0.1:10808"
+  "enabled": false,
+  "default_proxy_url": "http://127.0.0.1:10809",
+  "proxy_url": "http://127.0.0.1:10809",
+  "nodes": [
+    {
+      "id": "node_a9080869",
+      "name": "CGP美国俄勒冈-非己",
+      "protocol": "vless",
+      "raw_url": "vless://67481841-7f6e-4d5d-a6e4-09f535601996@35.212.180.89:443?encryption=none&flow=xtls-rprx-vision&security=reality&sni=oregonstate.edu&fp=chrome&pbk=-xs0NBk6bFTYh369NNGnr1CzKkSxe6ZHkd8FO5D54TU&sid=b2d04b25e995eb58&type=tcp&headerType=none#CGP%E7%BE%8E%E5%9B%BD%E4%BF%84%E5%8B%92%E5%86%88-%E9%9D%9E%E5%B7%B1",
+      "proxy_url": "http://127.0.0.1:10809",
+      "local_http_proxy": "http://127.0.0.1:10809",
+      "local_port": 10809,
+      "server": "35.212.180.89",
+      "port": 443,
+      "network_type": "tcp",
+      "security": "reality",
+      "sni": "oregonstate.edu",
+      "parsed_data": {
+        "raw_url": "vless://67481841-7f6e-4d5d-a6e4-09f535601996@35.212.180.89:443?encryption=none&flow=xtls-rprx-vision&security=reality&sni=oregonstate.edu&fp=chrome&pbk=-xs0NBk6bFTYh369NNGnr1CzKkSxe6ZHkd8FO5D54TU&sid=b2d04b25e995eb58&type=tcp&headerType=none#CGP%E7%BE%8E%E5%9B%BD%E4%BF%84%E5%8B%92%E5%86%88-%E9%9D%9E%E5%B7%B1",
+        "name": "CGP美国俄勒冈-非己",
+        "uuid": "67481841-7f6e-4d5d-a6e4-09f535601996",
+        "server": "35.212.180.89",
+        "port": 443,
+        "type": "tcp",
+        "security": "reality",
+        "flow": "xtls-rprx-vision",
+        "sni": "oregonstate.edu",
+        "fp": "chrome",
+        "pbk": "-xs0NBk6bFTYh369NNGnr1CzKkSxe6ZHkd8FO5D54TU",
+        "sid": "b2d04b25e995eb58",
+        "spx": "",
+        "path": "",
+        "host": "",
+        "service_name": ""
+      },
+      "created_at": "2026-10-04 13:03:23"
+    }
+  ],
+  "bindings": {
+    "huangguoai_com": "node_a9080869"
+  }
 }

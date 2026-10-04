@@ -121,7 +121,9 @@ class RuleManager:
 
     def get_script_code(self, key: str) -> str:
         """读取指定 key 的 Python 脚本源码。"""
-        clean_key = re.sub(r"[^a-zA-Z0-9_]", "", key).strip()
+        if not re.match(r"^[a-zA-Z0-9_]{1,64}$", key or ""):
+            raise CrawlerServiceError(ErrorCode.BAD_REQUEST, f"非法的站点 Key: {key}")
+        clean_key = key.strip()
         py_file = self.sites_dir / f"{clean_key}.py"
         if not py_file.is_file():
             raise CrawlerServiceError(ErrorCode.SITE_NOT_FOUND, f"未找到采集脚本: {clean_key}.py")
@@ -129,15 +131,21 @@ class RuleManager:
 
     def save_script(self, key: str, code: str) -> dict[str, Any]:
         """将测试通过的 Python 脚本保存落盘到 crawler/sites/<key>.py。"""
-        clean_key = re.sub(r"[^a-zA-Z0-9_]", "", key).strip()
-        if not clean_key:
-            raise CrawlerServiceError(ErrorCode.BAD_REQUEST, "无效的站点 Key")
+        if not re.match(r"^[a-zA-Z0-9_]{1,64}$", key or ""):
+            raise CrawlerServiceError(ErrorCode.BAD_REQUEST, f"非法的站点 Key: {key}")
+        clean_key = key.strip()
 
-        # 语法合规简单探测
+        # 语法合规与 AST 安全审计
         try:
-            ast.parse(code)
-        except SyntaxError as exc:
-            raise CrawlerServiceError(ErrorCode.RULE_SYNTAX_ERROR, f"Python 语法错误: {exc.msg}")
+            from crawler_kit.audit import audit_script_ast
+            passed, err_msg = audit_script_ast(code)
+            if not passed:
+                raise CrawlerServiceError(ErrorCode.RULE_SYNTAX_ERROR, f"脚本未通过安全审计: {err_msg}")
+        except ImportError:
+            try:
+                ast.parse(code)
+            except SyntaxError as exc:
+                raise CrawlerServiceError(ErrorCode.RULE_SYNTAX_ERROR, f"Python 语法错误: {exc.msg}")
 
         py_file = self.sites_dir / f"{clean_key}.py"
         py_file.write_text(code, encoding="utf-8")
@@ -151,15 +159,21 @@ class RuleManager:
 
     def delete_script(self, key: str) -> bool:
         """从站点库中删除指定 Python 脚本。"""
-        clean_key = re.sub(r"[^a-zA-Z0-9_]", "", key).strip()
+        if not re.match(r"^[a-zA-Z0-9_]{1,64}$", key or ""):
+            return False
+        clean_key = key.strip()
         py_file = self.sites_dir / f"{clean_key}.py"
         if py_file.is_file():
             py_file.unlink()
             logger.info("已删除站点库脚本: %s.py", clean_key)
             return True
+        return False
+
     def has_script(self, key: str) -> bool:
         """检查是否存在指定 Key 的 Python 独立采集脚本。"""
-        clean_key = re.sub(r"[^a-zA-Z0-9_]", "", key).strip()
+        if not re.match(r"^[a-zA-Z0-9_]{1,64}$", key or ""):
+            return False
+        clean_key = key.strip()
         return bool(clean_key and (self.sites_dir / f"{clean_key}.py").is_file())
 
     async def execute_script_action(self, key: str, action: str, **kwargs: Any) -> dict[str, Any]:
@@ -183,11 +197,11 @@ class RuleManager:
         env["PYTHONIOENCODING"] = "utf-8"
         env["PYTHONUTF8"] = "1"
 
-        # 注入本地网络代理（如 v2rayN / Clash 等）
+        # 注入针对该采集器独立指派的网络代理（如 VLESS / Clash 等）
         from .proxy_manager import proxy_manager
-        env.update(proxy_manager.get_env())
+        env.update(proxy_manager.get_site_env(clean_key))
 
-        crawler_dir = Path(__file__).resolve().parents[2] / "crawler"
+        crawler_dir = Path(__file__).resolve().parents[2]
         if crawler_dir.is_dir():
             crawler_root = str(crawler_dir)
             existing = env.get("PYTHONPATH", "")
@@ -206,8 +220,10 @@ class RuleManager:
 
         try:
             proc = await asyncio.to_thread(_run)
+        except subprocess.TimeoutExpired:
+            raise CrawlerServiceError(ErrorCode.TIMEOUT, "执行采集脚本超时")
         except Exception as exc:
-            raise CrawlerServiceError(ErrorCode.NETWORK_ERROR, f"执行采集脚本异常: {exc}")
+            raise CrawlerServiceError(ErrorCode.INTERNAL_ERROR, f"执行采集脚本异常: {exc}")
 
         if proc.returncode != 0:
             err_msg = proc.stderr.strip() or f"脚本非正常退出 (code {proc.returncode})"
@@ -250,6 +266,8 @@ class RuleManager:
 
     def save_rule(self, rule_data: dict) -> SiteRule:
         """校验并持久化新规则。"""
+        if not re.match(r"^[a-zA-Z0-9_]{1,64}$", str(rule_data.get("key", ""))):
+            raise CrawlerServiceError(ErrorCode.BAD_REQUEST, f"非法的规则 Key: {rule_data.get('key')}")
         try:
             rule = SiteRule.model_validate(rule_data)
         except Exception as exc:
@@ -266,12 +284,15 @@ class RuleManager:
 
     def delete_rule(self, key: str) -> bool:
         """删除指定规则。"""
-        file = self.rules_dir / f"{key}.json"
+        if not re.match(r"^[a-zA-Z0-9_]{1,64}$", key or ""):
+            return False
+        clean_key = key.strip()
+        file = self.rules_dir / f"{clean_key}.json"
         if file.is_file():
             file.unlink()
-        if key in self._rules_cache:
-            del self._rules_cache[key]
-            logger.info("已删除站点规则: %s", key)
+        if clean_key in self._rules_cache:
+            del self._rules_cache[clean_key]
+            logger.info("已删除站点规则: %s", clean_key)
             return True
         return False
 

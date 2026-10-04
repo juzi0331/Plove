@@ -62,10 +62,14 @@ const router = createRouter({
           meta: { admin: true, title: '内容源' },
         },
         {
+          path: 'webhooks',
+          name: 'admin-webhooks',
+          component: () => import('@/admin/views/WebhooksView.vue'),
+          meta: { admin: true, title: 'Telegram 机器人' },
+        },
+        {
           path: 'playground',
-          name: 'admin-playground',
-          component: () => import('@/admin/views/PlaygroundView.vue'),
-          meta: { admin: true, title: '探针与试播台' },
+          redirect: { name: 'admin-webhooks' },
         },
         {
           path: 'cache',
@@ -80,10 +84,22 @@ const router = createRouter({
           meta: { admin: true, title: '图片代理' },
         },
         {
+          path: 'proxy-nodes',
+          name: 'admin-proxy-nodes',
+          component: () => import('@/admin/views/ProxyNodesView.vue'),
+          meta: { admin: true, title: '代理节点池' },
+        },
+        {
           path: 'system',
           name: 'admin-system',
           component: () => import('@/admin/views/SystemNoticeView.vue'),
           meta: { admin: true, title: '公告与维护' },
+        },
+        {
+          path: 'experience',
+          name: 'admin-experience',
+          component: () => import('@/admin/views/ExperienceCenterView.vue'),
+          meta: { admin: true, title: '体验发布中心' },
         },
         {
           path: 'codes/:codeId/devices',

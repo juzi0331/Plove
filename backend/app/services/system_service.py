@@ -108,9 +108,20 @@ def get_public_system_status(db: Session) -> SystemStatusPayload:
     m = get_maintenance(db)
     n = get_notice(db)
     proxy_cfg = image_proxy_service.get_image_proxy_config(db)
+
+    # 动态汇聚所有已启用的解密规则中的图床域名特征
+    decrypt_domains: list[str] = []
+    for r in (proxy_cfg.decryption_rules or []):
+        if r.enabled and r.match_domains:
+            for d in r.match_domains:
+                if d and d.strip() and d.strip() not in decrypt_domains:
+                    decrypt_domains.append(d.strip())
+
     return SystemStatusPayload(
         maintenance=m.enabled,
         maintenance_message=m.message,
         notice=n if n.enabled else None,
         image_proxy_enabled=proxy_cfg.global_proxy_enabled,
+        image_decrypt_domains=decrypt_domains,
     )
+

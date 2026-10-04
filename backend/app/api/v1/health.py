@@ -22,5 +22,8 @@ def health(
     request_id: str = Depends(get_request_id),
     settings: Settings = Depends(get_settings),
 ) -> Envelope[HealthPayload]:
-    payload = HealthPayload(env=settings.env, version=__version__)
+    # 生产模式下避免泄露精确构建版本与内部环境名称
+    env = settings.env if settings.is_dev else "production"
+    version = __version__ if settings.is_dev else "*"
+    payload = HealthPayload(env=env, version=version)
     return ok(payload, request_id)

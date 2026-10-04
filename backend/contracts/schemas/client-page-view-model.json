@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/client-page-view-model.json",
+  "$defs": {
+    "SectionDefinition": {
+      "description": "页面中单个组件区块。",
+      "properties": {
+        "id": {
+          "description": "区块唯一 ID，如 'hero_main'、'hot_rail'",
+          "title": "Id",
+          "type": "string"
+        },
+        "component": {
+          "description": "组件名: hero / video_rail / video_grid / notice / empty_state",
+          "title": "Component",
+          "type": "string"
+        },
+        "component_version": {
+          "default": 1,
+          "description": "组件协议版本号",
+          "title": "Component Version",
+          "type": "integer"
+        },
+        "style": {
+          "additionalProperties": true,
+          "description": "受控呈现样式参数 (如 card_variant, density)",
+          "title": "Style",
+          "type": "object"
+        },
+        "props": {
+          "additionalProperties": true,
+          "description": "传递给组件的数据属性",
+          "title": "Props",
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "component"
+      ],
+      "title": "SectionDefinition",
+      "type": "object"
+    }
+  },
+  "description": "面向客户端渲染的页面视图模型。",
+  "properties": {
+    "schema_version": {
+      "default": "1.0",
+      "description": "协议架构版本",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "release_id": {
+      "description": "对应的体验发布快照 ID",
+      "title": "Release Id",
+      "type": "string"
+    },
+    "page_id": {
+      "description": "页面 ID",
+      "title": "Page Id",
+      "type": "string"
+    },
+    "title": {
+      "description": "页面标题",
+      "title": "Title",
+      "type": "string"
+    },
+    "content_revision": {
+      "default": "1",
+      "description": "内容数据修订版本",
+      "title": "Content Revision",
+      "type": "string"
+    },
+    "sections": {
+      "description": "已绑定真实数据的有序组件区块",
+      "items": {
+        "$ref": "#/$defs/SectionDefinition"
+      },
+      "title": "Sections",
+      "type": "array"
+    }
+  },
+  "required": [
+    "release_id",
+    "page_id",
+    "title"
+  ],
+  "title": "PageViewModel",
+  "type": "object"
+}

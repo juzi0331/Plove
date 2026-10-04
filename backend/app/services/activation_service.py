@@ -17,7 +17,7 @@ from __future__ import annotations
 import secrets
 from datetime import timedelta
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.clock import as_aware, utcnow
@@ -112,11 +112,12 @@ def redeem(
     if record is None:
         if not code:
             raise AppError(ErrorCode.ACTIVATION_INVALID, "请输入激活码")
-        record = session.scalar(
-            select(ActivationCode).where(ActivationCode.code == normalize_code(code))
-        )
+        stmt = select(ActivationCode).where(ActivationCode.code == normalize_code(code))
+        if session.bind and session.bind.dialect.name != "sqlite":
+            stmt = stmt.with_for_update()
+        record = session.scalar(stmt)
         if record is None:
-            raise AppError(ErrorCode.ACTIVATION_INVALID, "激活码无效")
+            raise AppError(ErrorCode.ACTIVATION_INVALID, "激活码无效或已到期")
         # 拿别的码来，且这码被停用/过期 → 拦掉
         _ensure_usable(record)
 
@@ -128,13 +129,17 @@ def redeem(
         record.expires_at = record.activated_at + timedelta(hours=record.duration_hours)
 
     if device is None:
-        # 设备上限检查（对前台普通用户保密具体策略数字）
+        # 设备上限检查（使用数据库聚合 count 保证跨进程事务一致性，并对前台普通用户保密具体策略数字）
         max_dev = getattr(record, "max_devices", None)
-        if max_dev is not None and max_dev > 0 and len(record.devices) >= max_dev:
-            raise AppError(
-                ErrorCode.ACTIVATION_INVALID,
-                "该激活码已达设备绑定上限，无法接入新设备。请联系管理员进行设备解绑。",
-            )
+        if max_dev is not None and max_dev > 0:
+            dev_count = session.scalar(
+                select(func.count(Device.id)).where(Device.activation_id == record.id)
+            ) or 0
+            if dev_count >= max_dev:
+                raise AppError(
+                    ErrorCode.ACTIVATION_INVALID,
+                    "该激活码已达设备绑定上限，无法接入新设备。请联系管理员进行设备解绑。",
+                )
 
         device = Device(
             activation_id=record.id,

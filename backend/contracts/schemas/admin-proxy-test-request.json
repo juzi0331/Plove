@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-proxy-test-request.json",
+  "description": "连通性测速请求。",
+  "properties": {
+    "node_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "指定测试的节点 ID",
+      "title": "Node Id"
+    },
+    "proxy_url": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "或直接指定代理地址",
+      "title": "Proxy Url"
+    },
+    "target_url": {
+      "default": "https://www.google.com",
+      "description": "测速目标地址",
+      "title": "Target Url",
+      "type": "string"
+    }
+  },
+  "title": "ProxyTestRequest",
+  "type": "object"
+}

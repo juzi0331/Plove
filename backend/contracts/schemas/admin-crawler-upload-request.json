@@ -26,6 +26,19 @@
       "description": "若覆盖已存在脚本且版本号未变动，是否自动自增修订号(如 1.0.0 -> 1.0.1)",
       "title": "Auto Bump Version",
       "type": "boolean"
+    },
+    "custom_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "自定义版本号（如 1.2.0），若指定则优先使用该版本号注入/更新 meta",
+      "title": "Custom Version"
     }
   },
   "required": [

@@ -34,6 +34,60 @@ SITE_KEY_PATTERN = re.compile(r"^[a-z_][a-z0-9_]{1,63}$")
 PLAY_COMMANDS = frozenset({"play"})
 
 
+def _get_proxy_for_site(crawler_dir: Path, key: str) -> str | None:
+    """查找站点专属代理配置。
+
+    优先级：
+    1. 站点管理后台（SiteSetting / SitesView.vue）配置的独立代理与开关
+    2. 环境变量 PROXY_{KEY}
+    3. crawler/service/proxy_config.json 独立绑定或全局配置
+    """
+    # 1. 站点后台配置（UI 独立开关与地址）
+    try:
+        from app.services.site_settings import store
+        cfg = store().config(key)
+        if cfg is not None:
+            if getattr(cfg, "proxy_enabled", False):
+                url = (getattr(cfg, "proxy_url", "") or "").strip()
+                if url:
+                    return url
+            elif getattr(cfg, "proxy_url", "").strip():
+                # 填写了代理地址但开关处于关闭状态，说明运维明确要求该站走直连
+                return None
+    except Exception:
+        pass
+
+    # 2. 站点专属环境变量: PROXY_HUANGGUOAI_COM
+    env_key = f"PROXY_{key.upper()}"
+    if env_val := os.environ.get(env_key, "").strip():
+        return env_val
+
+    # 3. 检查 crawler/service/proxy_config.json 独立绑定
+    cfg_path = crawler_dir / "service" / "proxy_config.json"
+    if cfg_path.is_file():
+        try:
+            data = json.loads(cfg_path.read_text(encoding="utf-8"))
+            bindings = data.get("bindings", {})
+            target = bindings.get(key.lower(), "default")
+            if target == "direct":
+                return None
+            if target and target != "default":
+                for node in data.get("nodes", []):
+                    if node.get("id") == target:
+                        return node.get("proxy_url") or node.get("local_http_proxy")
+            # 兼容老版 sites 结构
+            if "sites" in data and key.lower() in data["sites"]:
+                s_cfg = data["sites"][key.lower()]
+                if s_cfg.get("enabled") and s_cfg.get("proxy_url"):
+                    return s_cfg["proxy_url"]
+            # 跟随全局默认
+            if data.get("enabled"):
+                return data.get("default_proxy_url") or data.get("proxy_url")
+        except Exception:
+            pass
+    return None
+
+
 class CrawlerRunner:
     """按命令行协议执行一次爬虫命令。"""
 
@@ -90,6 +144,22 @@ class CrawlerRunner:
             if existing_pp:
                 pp_parts.append(existing_pp)
             env["PYTHONPATH"] = os.pathsep.join(pp_parts)
+
+        # 注入站点专属代理（支持单站独立代理绑定与开关）
+        site_proxy = _get_proxy_for_site(crawler_dir, key)
+        if site_proxy:
+            env["HTTP_PROXY"] = site_proxy
+            env["HTTPS_PROXY"] = site_proxy
+            env["ALL_PROXY"] = site_proxy
+            env["http_proxy"] = site_proxy
+            env["https_proxy"] = site_proxy
+            env["all_proxy"] = site_proxy
+            env[f"PROXY_{key.upper()}"] = site_proxy
+            logger.info("爬虫 key=%s 注入独立代理: %s", key, site_proxy)
+        else:
+            # 清理可能继承的宿主机全局代理环境变量，确保未开启代理的站点真正走直连！
+            for p_env in ["HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy", f"PROXY_{key.upper()}"]:
+                env.pop(p_env, None)
 
         logger.debug("跑爬虫 key=%s command=%s timeout=%ss", key, command, timeout)
 

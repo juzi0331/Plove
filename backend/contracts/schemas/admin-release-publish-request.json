@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-release-publish-request.json",
+  "description": "从草稿创建不可变发布快照请求。",
+  "properties": {
+    "draft_id": {
+      "default": "default",
+      "description": "草稿 ID",
+      "title": "Draft Id",
+      "type": "string"
+    },
+    "note": {
+      "default": "",
+      "description": "本次发布说明，如 '调整首页横幅与主题红色'",
+      "title": "Note",
+      "type": "string"
+    }
+  },
+  "title": "ReleasePublishRequest",
+  "type": "object"
+}

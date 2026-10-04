@@ -64,10 +64,10 @@ class SiteConfig:
     timeout_seconds: float = 0.0
     category_rules_json: str = "{}"
     detail_policy_json: str = "{}"
-
-
-#: 没记录时的默认值 —— **启用、排在最前（0）之后按 key 排**
-DEFAULT_CONFIG = SiteConfig(key="")
+    cache_policy_json: str = "{}"
+    proxy_enabled: bool = False
+    proxy_url: str = ""
+    proxy_node_id: str = ""
 
 
 class SiteSettingsStore:
@@ -100,6 +100,10 @@ class SiteSettingsStore:
                 timeout_seconds=float(getattr(row, "timeout_seconds", 0.0) or 0.0),
                 category_rules_json=getattr(row, "category_rules_json", "{}") or "{}",
                 detail_policy_json=getattr(row, "detail_policy_json", "{}") or "{}",
+                cache_policy_json=getattr(row, "cache_policy_json", "{}") or "{}",
+                proxy_enabled=bool(getattr(row, "proxy_enabled", False)),
+                proxy_url=getattr(row, "proxy_url", "") or "",
+                proxy_node_id=getattr(row, "proxy_node_id", "") or "",
             )
             for row in rows
         }
@@ -224,6 +228,9 @@ def update_advanced(
     badge: str | None = None,
     timeout_seconds: float | None = None,
     note: str | None = None,
+    proxy_enabled: bool | None = None,
+    proxy_url: str | None = None,
+    proxy_node_id: str | None = None,
 ) -> SiteConfig:
     """更新单站高级配置。"""
     record = get_or_create(session, key)
@@ -235,6 +242,12 @@ def update_advanced(
         record.timeout_seconds = max(0.0, float(timeout_seconds))
     if note is not None:
         record.note = note.strip()[:255]
+    if proxy_enabled is not None:
+        record.proxy_enabled = bool(proxy_enabled)
+    if proxy_url is not None:
+        record.proxy_url = proxy_url.strip()[:255]
+    if proxy_node_id is not None:
+        record.proxy_node_id = proxy_node_id.strip()[:64]
     session.flush()
     return _to_config(record)
 
@@ -266,4 +279,8 @@ def _to_config(record: SiteSetting) -> SiteConfig:
         timeout_seconds=float(getattr(record, "timeout_seconds", 0.0) or 0.0),
         category_rules_json=getattr(record, "category_rules_json", "{}") or "{}",
         detail_policy_json=getattr(record, "detail_policy_json", "{}") or "{}",
+        cache_policy_json=getattr(record, "cache_policy_json", "{}") or "{}",
+        proxy_enabled=bool(getattr(record, "proxy_enabled", False)),
+        proxy_url=getattr(record, "proxy_url", "") or "",
+        proxy_node_id=getattr(record, "proxy_node_id", "") or "",
     )

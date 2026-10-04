@@ -61,7 +61,7 @@ def site_item(
         meta_error = f"{exc.code.value}: {exc.message}"
 
     if config.custom_name:
-        name = f"{config.custom_name} ({name})" if name != key else config.custom_name
+        name = config.custom_name
 
     snapshot = health if health is not None else registry.guard(key).snapshot()
     return AdminSiteItem(
@@ -75,6 +75,9 @@ def site_item(
         capabilities=capabilities,
         meta_error=meta_error,
         health=SiteHealth(**snapshot),
+        proxy_enabled=getattr(config, "proxy_enabled", False),
+        proxy_url=getattr(config, "proxy_url", "") or "",
+        proxy_node_id=getattr(config, "proxy_node_id", "") or "",
     )
 
 

@@ -74,8 +74,9 @@ class ContentCache:
 
     # ------------------------------------------------------------------ 取数
 
-    def home(self, site: str, compute: Callable[[], T], *, force: bool = False) -> T:
-        return self._fetch("home", site, "-", self.ttl_home, compute, force)
+    def home(self, site: str, compute: Callable[[], T], *, force: bool = False, ttl: float | None = None) -> T:
+        actual_ttl = self.ttl_home if ttl is None else ttl
+        return self._fetch("home", site, "-", actual_ttl, compute, force)
 
     def category(
         self,
@@ -85,11 +86,22 @@ class ContentCache:
         compute: Callable[[], T],
         *,
         force: bool = False,
+        ttl: float | None = None,
     ) -> T:
-        return self._fetch("category", site, f"{tid or '-'}:{page}", self.ttl_category, compute, force)
+        actual_ttl = self.ttl_category if ttl is None else ttl
+        return self._fetch("category", site, f"{tid or '-'}:{page}", actual_ttl, compute, force)
 
-    def detail(self, site: str, vod_id: str, compute: Callable[[], T], *, force: bool = False) -> T:
-        return self._fetch("detail", site, vod_id, self.ttl_detail, compute, force)
+    def detail(
+        self,
+        site: str,
+        vod_id: str,
+        compute: Callable[[], T],
+        *,
+        force: bool = False,
+        ttl: float | None = None,
+    ) -> T:
+        actual_ttl = self.ttl_detail if ttl is None else ttl
+        return self._fetch("detail", site, vod_id, actual_ttl, compute, force)
 
     # ------------------------------------------------------------------ 维护
 

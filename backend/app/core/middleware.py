@@ -39,14 +39,12 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
         request_id = request.headers.get(REQUEST_ID_HEADER) or new_request_id()
         request.state.request_id = request_id
 
-        # 维护模式拦截：非管理员、非状态与非文档请求在开启维护时直接 503
+        # 维护模式拦截：仅允许管理端、全站运行状态与图标在开启维护时访问
         path = request.url.path
         if is_maintenance_active():
             is_exempt = (
                 path.startswith("/api/v1/admin")
                 or path.startswith("/api/v1/system/status")
-                or path.startswith("/docs")
-                or path.startswith("/openapi.json")
                 or path == "/favicon.ico"
             )
             if not is_exempt:
@@ -68,6 +66,12 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
         elapsed_ms = round((time.perf_counter() - t0) * 1000, 2)
         response.headers[REQUEST_ID_HEADER] = request_id
         response.headers["X-Response-Time-Ms"] = str(elapsed_ms)
+
+        # 注入安全响应头 (防嗅探、防点击劫持、跨域安全)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
 
         # 注入缓存状态（若服务层有记录）
         cache_status = getattr(request.state, "cache_status", None)

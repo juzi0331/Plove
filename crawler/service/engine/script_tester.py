@@ -64,9 +64,9 @@ class ScriptTester:
 
         env = get_crawler_runner_env()
 
-        # 注入代理配置（如启用）
+        # 注入针对该采集器独立指派的代理配置（如启用）
         from .proxy_manager import proxy_manager
-        env.update(proxy_manager.get_env())
+        env.update(proxy_manager.get_site_env(script_path.stem))
 
         sites_dir = script_path.parent
         try:

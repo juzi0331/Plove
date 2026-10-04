@@ -44,12 +44,15 @@ const searchInputRef = ref<HTMLInputElement | null>(null)
 const activeNav = ref('all')
 const siteSelectorRef = ref<InstanceType<typeof SiteSelector> | null>(null)
 
-// 视频横幅楼层：优先使用后端下发的后台指定分类楼层（每类严格10部）
+// 视频横幅楼层：优先展示后台勾选的真实分类；若未勾选任何分类，才以“熱播推薦”兜底展示
 const displayedSections = computed<HomeSection[]>(() => {
   if (sections.value && sections.value.length > 0) {
-    return sections.value
+    const validSections = sections.value.filter((sec) => sec.videos && sec.videos.length > 0)
+    if (validSections.length > 0) {
+      return validSections
+    }
   }
-  // 兜底：若暂无分类楼层且有原始推荐，展示前10部
+  // 兜底策略：当后台未勾选任何真实分类板块时，若有推荐数据则展示“熱播推薦”
   if (recommend.value && recommend.value.length > 0) {
     return [{
       title: '熱播推薦',
@@ -224,6 +227,28 @@ function scrollRow(rowId: string, direction: 'left' | 'right'): void {
       </div>
     </header>
 
+    <!-- 移动端专属横向分类导航滑轨 (Mobile Category Bar) -->
+    <div v-if="categories.length > 0" class="nf-mobile-cat-bar">
+      <button
+        class="nf-mobile-cat-pill"
+        :class="{ 'is-active': activeNav === 'all' }"
+        type="button"
+        @click="activeNav = 'all'"
+      >
+        全部
+      </button>
+      <button
+        v-for="cat in categories"
+        :key="cat.tid"
+        class="nf-mobile-cat-pill"
+        :class="{ 'is-active': activeNav === cat.tid }"
+        type="button"
+        @click="onSelectCategory(cat.tid)"
+      >
+        {{ formatCatDisplay(cat.name, cat.custom_name) || cat.tid }}
+      </button>
+    </div>
+
     <!-- ==================================================== 核心影视多行滑轨 (直接展开列表，不要大屏展示) -->
     <main class="nf-main-content">
       <!-- 骨架屏：16:9 横版 Netflix 宽屏多行滑轨骨架 (无缝契合真机布局，位于导航栏正下方) -->
@@ -254,7 +279,7 @@ function scrollRow(rowId: string, direction: 'left' | 'right'): void {
         </div>
       </div>
 
-      <!-- 真实内容：展示后台配置的分类横幅行（每类严格横向展示 10 部） -->
+      <!-- 真实内容：全量展示奈飞经典影视多行滑轨 -->
       <template v-else>
         <section
           v-for="(section, sIdx) in displayedSections"
@@ -632,9 +657,102 @@ function scrollRow(rowId: string, direction: 'left' | 'right'): void {
   background: rgba(20, 20, 20, 0.9);
 }
 
+.nf-mobile-cat-bar {
+  display: none;
+}
+
 @media (max-width: 900px) {
-  .nf-nav-menu { display: none; }
-  .nf-billboard { height: 60vh; min-height: 420px; }
-  .nf-row-arrow { display: none; }
+  .nf-navbar {
+    height: 56px;
+    padding: 0 16px;
+    padding-top: var(--plove-safe-top);
+  }
+
+  .nf-navbar__left {
+    gap: 12px;
+  }
+
+  .nf-nav-menu {
+    display: none;
+  }
+
+  .nf-navbar__right {
+    gap: 10px;
+  }
+
+  .nf-search-input {
+    width: 120px;
+    font-size: 12px;
+  }
+
+  /* 移动端横向分类滑轨 (置顶吸顶) */
+  .nf-mobile-cat-bar {
+    display: flex;
+    position: sticky;
+    top: calc(56px + var(--plove-safe-top));
+    margin-top: calc(56px + var(--plove-safe-top));
+    left: 0;
+    right: 0;
+    z-index: 45;
+    background: rgba(20, 20, 20, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 8px 16px;
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .nf-mobile-cat-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nf-mobile-cat-pill {
+    flex-shrink: 0;
+    padding: 5px 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.75);
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+  }
+
+  .nf-mobile-cat-pill.is-active {
+    color: #ffffff;
+    font-weight: 700;
+    background: #e50914;
+    border-color: #e50914;
+    box-shadow: 0 2px 8px rgba(229, 9, 20, 0.4);
+  }
+
+  .nf-main-content {
+    padding-top: 16px;
+    padding-bottom: calc(48px + var(--plove-safe-bottom));
+  }
+
+  .nf-row {
+    margin-bottom: 24px;
+  }
+
+  .nf-row__title {
+    font-size: 17px;
+    padding: 0 16px;
+    margin-bottom: 8px;
+  }
+
+  .nf-row__track {
+    padding: 6px 16px 14px;
+    gap: 8px;
+  }
+
+  .nf-row-arrow {
+    display: none;
+  }
 }
 </style>

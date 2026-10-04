@@ -24,28 +24,37 @@ export function formatExpiry(time: number | string | null | undefined): string {
   }
 }
 
+import { getDeviceToken } from '@/api/session'
+
 let _globalImageProxy = false
+let _decryptDomains: string[] = []
 
 export function setGlobalImageProxy(enabled: boolean): void {
   _globalImageProxy = enabled
 }
 
-export function isGlobalImageProxy(): boolean {
-  return _globalImageProxy
+export function setDecryptDomains(domains: string[]): void {
+  _decryptDomains = (domains || []).filter(Boolean)
 }
 
 /**
  * 智能包装影视海报封面地址：
- * 开启全局代理后，第三方 http/https 图片自动转由 /api/v1/proxy/image 中继
+ * 1. 开启全局代理后，第三方 http/https 图片自动转由 /api/v1/proxy/image 中继
+ * 2. 属于后台配置启用的解密图床域名特征时，自动通过中继代理流式解密（纯动态感知，无需修改代码）
  */
 export function formatPosterUrl(rawUrl: string | undefined | null, siteKey?: string | null): string {
   if (!rawUrl) return ''
   const trimmed = rawUrl.trim()
   if (!trimmed) return ''
   if (trimmed.startsWith('/api/v1/proxy/image')) return trimmed
-  if (_globalImageProxy && (trimmed.startsWith('http://') || trimmed.startsWith('https://'))) {
+
+  const isEncryptedHost = _decryptDomains.some(d => d && trimmed.toLowerCase().includes(d.toLowerCase()))
+
+  if ((_globalImageProxy || isEncryptedHost) && (trimmed.startsWith('http://') || trimmed.startsWith('https://'))) {
     const siteParam = siteKey ? `&site=${encodeURIComponent(siteKey)}` : ''
-    return `/api/v1/proxy/image?url=${encodeURIComponent(trimmed)}${siteParam}`
+    const devToken = getDeviceToken() || (typeof localStorage !== 'undefined' ? (localStorage.getItem('plove_admin_token') || '') : '')
+    const tokenParam = devToken ? `&token=${encodeURIComponent(devToken)}` : ''
+    return `/api/v1/proxy/image?url=${encodeURIComponent(trimmed)}${siteParam}${tokenParam}`
   }
   return trimmed
 }

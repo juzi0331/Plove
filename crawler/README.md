@@ -18,14 +18,13 @@ crawler/
     clean.py            URL/文本/数字/变体字清洗 + 广告域名过滤
     cli.py              参数解析 + 统一信封 + 异常兜底 + UTF-8 强制
   sites/
-    ai2048.py           2048ai.vip（纯 JSON API，无反爬）
-    ncat21.py           网飞猫（SSR + cdndefend 闸门 + 多线路）
-  tests/
-    fixtures/<key>/     页面/接口快照（离线测试用）
-    test_kit.py         工具箱单测
-    test_ai2048.py      站点单测
-    test_ncat21.py      站点单测（含闸门全流程）
-    smoke_live.py       联网冒烟测试（不在离线套件里）
+    <site_key>.py       各站独立爬虫脚本（CLI/JSON信封协议）
+  tools/
+    smoke_live.py       动态站点冒烟测试工具
+  service/
+    api/                Crawler 微服务 API
+    engine/             智能嗅探与规则引擎
+    tests/              微服务与工具箱单元测试
 ```
 
 **硬约束：站点文件只允许 `import crawler_kit` + Python 标准库。** 用不了
@@ -63,28 +62,19 @@ python sites/<key>.py selftest                                # 结构指纹（�
 * stdout 写死 **UTF-8**。Windows 上 `sys.stdout.encoding` 默认是 GBK，
   不强制转换的话后端按 UTF-8 解析中文必然炸。
 
-## 运行
+## 运行与测试
 
 ```bash
-cd crawler
+# 单元测试（工具箱、API、引擎套件）
+pytest -o pythonpath=. crawler/service/tests
 
-# 离线单元测试（不联网）
-python -m unittest discover -s tests -t .
-
-# 联网冒烟测试：真的去抓，并验证 play 的地址能拉回合法 m3u8
-python tests/smoke_live.py ai2048
-python tests/smoke_live.py ncat21
+# 动态联网冒烟测试：自动发现 sites/ 目录下的可用站点或指定 site_key
+python crawler/tools/smoke_live.py [site_key]
 ```
 
-## 已接入站点
+## 站点规范
 
-| key | 站点 | 形态 | mode | 反爬 | 备注 |
-| --- | --- | --- | --- | --- | --- |
-| `ai2048` | 2048ai.vip | 纯 JSON API | `direct` | 无 | 播放走站点自带 `/api/v1/m3u8/proxy`；清单/分片/密钥 CORS 全开 |
-| `ncat21` | ncat21.com | SSR HTML | `direct` | **cdndefend 闸门** | 多线路；播放页 HTML 里直接有带签名的 m3u8 |
-
-站点文件名即 key，须匹配 `[a-z0-9_]{2,64}` 且不能以数字开头
-（所以 `2048ai.vip` 用 `ai2048`）。
+站点文件名即 key，须匹配 `[a-z0-9_]{2,64}` 且不能以数字开头。
 
 ## 这三条经验是踩出来的，不要重复踩
 

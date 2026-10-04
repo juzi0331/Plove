@@ -10,8 +10,7 @@
 
 from __future__ import annotations
 
-import json
-import re
+import pprint
 
 
 def generate_crawler_python_code(
@@ -29,11 +28,17 @@ def generate_crawler_python_code(
     if not class_name:
         class_name = "CustomSite"
 
-    cats_repr = json.dumps(categories or [
+    cats_data = categories or [
         {"tid": "1", "name": "电影", "subcategories": [{"tid": "1", "name": "全部电影"}]},
         {"tid": "2", "name": "电视剧", "subcategories": [{"tid": "2", "name": "全部剧集"}]},
         {"tid": "3", "name": "动漫", "subcategories": [{"tid": "3", "name": "全部动漫"}]},
-    ], ensure_ascii=False, indent=4)
+    ]
+    cats_repr = pprint.pformat(cats_data, indent=4, width=100)
+
+    raw_detail_path = (detail_path or "/detail/{id}.html").strip()
+    if "{id}" not in raw_detail_path:
+        raw_detail_path = raw_detail_path.rstrip("/") + "/{id}"
+    formatted_detail_path = raw_detail_path.replace("{id}", "{{id}}")
 
     code_template = f'''#!/usr/bin/env python
 # -*- coding: utf-8 -*-
@@ -120,7 +125,7 @@ class {class_name}:
         return {{"videos": items, "page": page_num, "has_more": len(items) >= 12}}
 
     def detail(self, id):
-        path = f"/detail/{{id}}.html"
+        path = f"{formatted_detail_path}"
         resp = self.http.get(path)
         if not resp.ok:
             raise CrawlerError("NOT_FOUND", f"未找到影片详情 id={{id}}")
@@ -132,8 +137,10 @@ class {class_name}:
         pic_node = root.select_first("img[src*='upload'], img[data-original], .cover img")
         pic = ""
         if pic_node:
-            pic = pic_node.attr("data-original") or pic_node.attr("src")
-            pic = clean.safe_relative_path(self.base_url, pic) if pic.startswith("/") else pic
+            pic = pic_node.attr("data-original") or pic_node.attr("src") or ""
+            if pic.startswith("/"):
+                rel = clean.safe_relative_path(pic)
+                pic = f"{{self.base_url}}{{rel}}" if rel else pic
 
         desc_node = root.select_first(".video-info-content, .desc, p.content")
         desc = clean.clean_text(desc_node.text) if desc_node else ""
@@ -206,7 +213,8 @@ class {class_name}:
             if img_node:
                 pic = img_node.attr("data-original") or img_node.attr("src") or ""
                 if pic.startswith("/"):
-                    pic = clean.safe_relative_path(self.base_url, pic)
+                    rel = clean.safe_relative_path(pic)
+                    pic = f"{{self.base_url}}{{rel}}" if rel else pic
 
             items.append({{
                 "vod_id": str(vod_id),

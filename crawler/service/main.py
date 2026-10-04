@@ -69,10 +69,10 @@ app = FastAPI(
 )
 
 
-# 跨域配置
+# 跨域配置：仅限本地开发与管理工作台访问
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -108,7 +108,6 @@ async def handle_unexpected_error(request: Request, exc: Exception):
     )
 
 
-from pathlib import Path
 from fastapi.responses import HTMLResponse
 
 STATIC_INDEX = Path(__file__).resolve().parent / "static" / "index.html"

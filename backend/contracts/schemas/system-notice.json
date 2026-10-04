@@ -34,13 +34,28 @@
     },
     "display_type": {
       "default": "banner",
-      "description": "展示形式：banner 顶部条幅, modal 首次强弹窗, both 两者兼具",
+      "description": "展示形式：banner 顶部跑马灯, modal 大厅强弹窗, header_bar 顶部常驻横幅, float 右下角悬浮卡片, both 弹窗+跑马灯, all 全渠道广播",
       "enum": [
         "banner",
         "modal",
-        "both"
+        "both",
+        "float",
+        "header_bar",
+        "all"
       ],
       "title": "Display Type",
+      "type": "string"
+    },
+    "action_text": {
+      "default": "",
+      "description": "操作按钮文案（如：查看详情/立即加群，选填）",
+      "title": "Action Text",
+      "type": "string"
+    },
+    "action_url": {
+      "default": "",
+      "description": "操作跳转链接（如：官网/群链接，选填）",
+      "title": "Action Url",
       "type": "string"
     },
     "dismissible": {

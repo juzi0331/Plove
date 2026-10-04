@@ -135,7 +135,7 @@ class SearchRule(BaseModel):
 class SiteRule(BaseModel):
     """完整站点通用采集规则定义。"""
 
-    key: str = Field(..., description="站点唯一标识，如 ai2048, ncat21")
+    key: str = Field(..., pattern=r"^[a-zA-Z0-9_]{1,64}$", description="站点唯一标识，如 ai2048, ncat21")
     name: str = Field(..., description="站点展示名称")
     version: str = Field("1.0.0", description="规则版本号")
     base_url: str = Field(..., description="目标站点基础 URL，如 https://example.com")

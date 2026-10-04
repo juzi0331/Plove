@@ -1,0 +1,544 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-experience-draft-update.json",
+  "$defs": {
+    "ActionPayload": {
+      "description": "命名意图动作描述。由前端映射至受控处理函数，不执行动态代码。",
+      "properties": {
+        "type": {
+          "description": "动作类型: open_home, open_category, open_detail, start_playback, select_episode, request_source_switch, redeem, acknowledge_notice",
+          "title": "Type",
+          "type": "string"
+        },
+        "content_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "影片或条目规范标识",
+          "title": "Content Id"
+        },
+        "category_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "分类标识",
+          "title": "Category Id"
+        },
+        "site_key": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "源站标识",
+          "title": "Site Key"
+        },
+        "episode_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "剧集标识",
+          "title": "Episode Id"
+        },
+        "notice_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "公告标识",
+          "title": "Notice Id"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "安全目标路径",
+          "title": "Url"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "ActionPayload",
+      "type": "object"
+    },
+    "BrandConfig": {
+      "description": "品牌与标识配置。",
+      "properties": {
+        "name": {
+          "default": "Plove",
+          "description": "站点或品牌展示名称",
+          "title": "Name",
+          "type": "string"
+        },
+        "logo_url": {
+          "default": "",
+          "description": "品牌 Logo 图标地址（空则显示文字）",
+          "title": "Logo Url",
+          "type": "string"
+        }
+      },
+      "title": "BrandConfig",
+      "type": "object"
+    },
+    "CardTokens": {
+      "description": "海报卡片设计 Token。",
+      "properties": {
+        "aspect_ratio": {
+          "default": "16:9",
+          "description": "卡片海报比例 (16:9, 2:3, 3:4, 1:1)",
+          "title": "Aspect Ratio",
+          "type": "string"
+        },
+        "radius_px": {
+          "default": 6,
+          "description": "卡片圆角半径像素 (0-32)",
+          "maximum": 32,
+          "minimum": 0,
+          "title": "Radius Px",
+          "type": "integer"
+        },
+        "image_fit": {
+          "default": "cover",
+          "description": "图片填充模式: cover / contain",
+          "title": "Image Fit",
+          "type": "string"
+        }
+      },
+      "title": "CardTokens",
+      "type": "object"
+    },
+    "ColorTokens": {
+      "description": "色彩设计 Token。",
+      "properties": {
+        "background": {
+          "default": "#141414",
+          "description": "页面主背景色",
+          "title": "Background",
+          "type": "string"
+        },
+        "surface": {
+          "default": "#202020",
+          "description": "卡片与容器表面背景色",
+          "title": "Surface",
+          "type": "string"
+        },
+        "primary": {
+          "default": "#E50914",
+          "description": "品牌主色调（按钮/高亮/进度条）",
+          "title": "Primary",
+          "type": "string"
+        },
+        "text": {
+          "default": "#FFFFFF",
+          "description": "主要文字颜色",
+          "title": "Text",
+          "type": "string"
+        },
+        "muted": {
+          "default": "#B8B8B8",
+          "description": "次要弱化文字颜色",
+          "title": "Muted",
+          "type": "string"
+        },
+        "border": {
+          "default": "#2A2A2A",
+          "description": "边框与分割线颜色",
+          "title": "Border",
+          "type": "string"
+        },
+        "danger": {
+          "default": "#E50914",
+          "description": "警告或危险颜色",
+          "title": "Danger",
+          "type": "string"
+        }
+      },
+      "title": "ColorTokens",
+      "type": "object"
+    },
+    "LayoutTokens": {
+      "description": "页面布局与间距 Token。",
+      "properties": {
+        "max_width_px": {
+          "default": 1440,
+          "description": "页面最大宽度像素",
+          "maximum": 2560,
+          "minimum": 960,
+          "title": "Max Width Px",
+          "type": "integer"
+        },
+        "page_padding_px": {
+          "default": 16,
+          "description": "页面边缘内边距像素",
+          "maximum": 64,
+          "minimum": 0,
+          "title": "Page Padding Px",
+          "type": "integer"
+        },
+        "gap_px": {
+          "default": 14,
+          "description": "栅格与板块间距像素",
+          "maximum": 48,
+          "minimum": 0,
+          "title": "Gap Px",
+          "type": "integer"
+        }
+      },
+      "title": "LayoutTokens",
+      "type": "object"
+    },
+    "MotionTokens": {
+      "description": "动态效果与过渡 Token。",
+      "properties": {
+        "preset": {
+          "default": "subtle",
+          "description": "动效预设: none / subtle / smooth",
+          "title": "Preset",
+          "type": "string"
+        },
+        "duration_ms": {
+          "default": 200,
+          "description": "交互过渡基础毫秒数",
+          "maximum": 1000,
+          "minimum": 0,
+          "title": "Duration Ms",
+          "type": "integer"
+        }
+      },
+      "title": "MotionTokens",
+      "type": "object"
+    },
+    "NavigationItem": {
+      "description": "前台导航条目。",
+      "properties": {
+        "id": {
+          "description": "导航项 ID，如 'home', 'category'",
+          "title": "Id",
+          "type": "string"
+        },
+        "label_key": {
+          "description": "多语言或文案配置键",
+          "title": "Label Key",
+          "type": "string"
+        },
+        "label": {
+          "description": "默认显示文案",
+          "title": "Label",
+          "type": "string"
+        },
+        "action": {
+          "$ref": "#/$defs/ActionPayload",
+          "description": "点击跳转意图"
+        }
+      },
+      "required": [
+        "id",
+        "label_key",
+        "label",
+        "action"
+      ],
+      "title": "NavigationItem",
+      "type": "object"
+    },
+    "PageDefinition": {
+      "description": "页面结构配置（保存在草稿与发布快照中）。",
+      "properties": {
+        "id": {
+          "description": "页面 ID，如 'home_default'、'category_default'",
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "default": "首页",
+          "description": "页面标题",
+          "title": "Title",
+          "type": "string"
+        },
+        "sections": {
+          "description": "包含的组件区块清单",
+          "items": {
+            "$ref": "#/$defs/SectionDefinition"
+          },
+          "title": "Sections",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "PageDefinition",
+      "type": "object"
+    },
+    "PlayerDefaults": {
+      "description": "播放器客户端全局默认偏好。",
+      "properties": {
+        "auto_next": {
+          "default": true,
+          "description": "播放完毕后是否自动播放下一集",
+          "title": "Auto Next",
+          "type": "boolean"
+        },
+        "auto_next_delay_seconds": {
+          "default": 5,
+          "description": "连播倒计时秒数",
+          "maximum": 30,
+          "minimum": 1,
+          "title": "Auto Next Delay Seconds",
+          "type": "integer"
+        },
+        "default_rate": {
+          "default": 1.0,
+          "description": "默认播放倍速",
+          "maximum": 3.0,
+          "minimum": 0.5,
+          "title": "Default Rate",
+          "type": "number"
+        },
+        "allowed_rates": {
+          "description": "可选播放倍速列表",
+          "items": {
+            "type": "number"
+          },
+          "title": "Allowed Rates",
+          "type": "array"
+        },
+        "hud_hide_after_ms": {
+          "default": 3500,
+          "description": "播放控制栏自动淡出隐藏毫秒数",
+          "maximum": 10000,
+          "minimum": 1000,
+          "title": "Hud Hide After Ms",
+          "type": "integer"
+        }
+      },
+      "title": "PlayerDefaults",
+      "type": "object"
+    },
+    "SectionDefinition": {
+      "description": "页面中单个组件区块。",
+      "properties": {
+        "id": {
+          "description": "区块唯一 ID，如 'hero_main'、'hot_rail'",
+          "title": "Id",
+          "type": "string"
+        },
+        "component": {
+          "description": "组件名: hero / video_rail / video_grid / notice / empty_state",
+          "title": "Component",
+          "type": "string"
+        },
+        "component_version": {
+          "default": 1,
+          "description": "组件协议版本号",
+          "title": "Component Version",
+          "type": "integer"
+        },
+        "style": {
+          "additionalProperties": true,
+          "description": "受控呈现样式参数 (如 card_variant, density)",
+          "title": "Style",
+          "type": "object"
+        },
+        "props": {
+          "additionalProperties": true,
+          "description": "传递给组件的数据属性",
+          "title": "Props",
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "component"
+      ],
+      "title": "SectionDefinition",
+      "type": "object"
+    },
+    "ThemeConfig": {
+      "description": "完整主题配置。",
+      "properties": {
+        "color": {
+          "$ref": "#/$defs/ColorTokens",
+          "description": "色彩方案"
+        },
+        "typography": {
+          "$ref": "#/$defs/TypographyTokens",
+          "description": "字体排版"
+        },
+        "layout": {
+          "$ref": "#/$defs/LayoutTokens",
+          "description": "布局间距"
+        },
+        "card": {
+          "$ref": "#/$defs/CardTokens",
+          "description": "卡片形态"
+        },
+        "motion": {
+          "$ref": "#/$defs/MotionTokens",
+          "description": "动效与交互"
+        }
+      },
+      "title": "ThemeConfig",
+      "type": "object"
+    },
+    "TypographyTokens": {
+      "description": "排版设计 Token。",
+      "properties": {
+        "family": {
+          "default": "system",
+          "description": "字体族预设: system / inter / roboto",
+          "title": "Family",
+          "type": "string"
+        },
+        "body_px": {
+          "default": 15,
+          "description": "正文字号像素 (12-24)",
+          "maximum": 24,
+          "minimum": 12,
+          "title": "Body Px",
+          "type": "integer"
+        },
+        "title_px": {
+          "default": 26,
+          "description": "标题字号像素 (18-48)",
+          "maximum": 48,
+          "minimum": 18,
+          "title": "Title Px",
+          "type": "integer"
+        }
+      },
+      "title": "TypographyTokens",
+      "type": "object"
+    }
+  },
+  "description": "提交修改草稿请求（必须携带 revision 防止多人并发覆盖）。",
+  "properties": {
+    "revision": {
+      "description": "基于的当前版本号（乐观并发锁）",
+      "title": "Revision",
+      "type": "integer"
+    },
+    "brand": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/BrandConfig"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "品牌配置变更"
+    },
+    "theme": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ThemeConfig"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "主题视觉变更"
+    },
+    "text": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "全局文案字典变更",
+      "title": "Text"
+    },
+    "navigation": {
+      "anyOf": [
+        {
+          "items": {
+            "$ref": "#/$defs/NavigationItem"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "导航项列表变更",
+      "title": "Navigation"
+    },
+    "pages": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/PageDefinition"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "页面配置映射变更",
+      "title": "Pages"
+    },
+    "player_defaults": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PlayerDefaults"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "播放器默认偏好变更"
+    }
+  },
+  "required": [
+    "revision"
+  ],
+  "title": "ExperienceDraftUpdateRequest",
+  "type": "object"
+}

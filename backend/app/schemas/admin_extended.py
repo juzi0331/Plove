@@ -177,6 +177,41 @@ class PlaygroundProbeResult(BaseModel):
 
 # ------------------------------------------------------------------ 图片防盗链代理与缓存
 
+class ImageDecryptionRule(BaseModel):
+    """站点图片解密规则配置。"""
+
+    id: str = Field(default="", description="规则唯一标识（如 UUID 或简短 ID）")
+    name: str = Field(default="", description="规则名称或备注（如 黄果艾加密封面）")
+    site_key: str = Field(default="", description="对应站点标识（如 huangguoai_com，留空表示全站通用匹配）")
+    match_domains: list[str] = Field(default_factory=list, description="匹配的加密图床域名特征列表（如 pic.wirqed.cn）")
+    algorithm: Literal["AES-128-CBC", "AES-128-ECB"] = Field(default="AES-128-CBC", description="解密算法")
+    key: str = Field(default="", description="解密密钥 Key（16/24/32字符Hex或UTF-8字符串）")
+    iv: str = Field(default="", description="偏移量 IV（CBC模式需16字符）")
+    is_hex: bool = Field(default=False, description="Key/IV 是否为 Hex 编码十六进制字符串")
+    enabled: bool = Field(default=True, description="是否启用该解密规则")
+    created_at: str = Field(default="", description="规则创建时间")
+
+
+class TestDecryptRequest(BaseModel):
+    """测试解密请求。"""
+
+    url: str = Field(description="待测试的图片链接")
+    site_key: str = Field(default="", description="可选的站点标识")
+    rule: ImageDecryptionRule | None = Field(default=None, description="临时测试的解密规则（若不提供则套用已保存的规则）")
+
+
+class TestDecryptResult(BaseModel):
+    """测试解密响应。"""
+
+    success: bool = Field(description="是否成功解密或验证为合法图片")
+    message: str = Field(description="结果或诊断信息")
+    matched_rule_id: str | None = Field(default=None, description="命中的解密规则 ID")
+    mime_type: str = Field(default="", description="图片 MIME 类型，如 image/jpeg")
+    size_bytes: int = Field(default=0, description="图片字节大小")
+    elapsed_ms: float = Field(default=0.0, description="解密与请求耗时（毫秒）")
+    preview_data_url: str | None = Field(default=None, description="解密成功后的 Base64 Data URL 预览图片")
+
+
 class ImageProxyConfig(BaseModel):
     """全局图片防盗链代理总控配置。"""
 
@@ -199,6 +234,10 @@ class ImageProxyConfig(BaseModel):
     cache_max_mb: int = Field(
         default=1024,
         description="磁盘缓存最大容量限制（MB）",
+    )
+    decryption_rules: list[ImageDecryptionRule] = Field(
+        default_factory=list,
+        description="各站点自定义图片解密密钥规则库（支持动态配置 AES-128-CBC 等算法，解密各源站加密海报）",
     )
     updated_at: str = Field(
         default="",
@@ -232,9 +271,12 @@ class SystemNoticePayload(BaseModel):
     level: Literal["info", "warning", "danger"] = Field(
         default="info", description="展示等级：info 提示, warning 警告, danger 紧急"
     )
-    display_type: Literal["banner", "modal", "both"] = Field(
-        default="banner", description="展示形式：banner 顶部条幅, modal 首次强弹窗, both 两者兼具"
+    display_type: Literal["banner", "modal", "both", "float", "header_bar", "all"] = Field(
+        default="banner",
+        description="展示形式：banner 顶部跑马灯, modal 大厅强弹窗, header_bar 顶部常驻横幅, float 右下角悬浮卡片, both 弹窗+跑马灯, all 全渠道广播",
     )
+    action_text: str = Field(default="", description="操作按钮文案（如：查看详情/立即加群，选填）")
+    action_url: str = Field(default="", description="操作跳转链接（如：官网/群链接，选填）")
     dismissible: bool = Field(default=True, description="用户是否可手动点击关闭")
     updated_at: str = Field(default="", description="最后更新时间")
 
@@ -255,6 +297,7 @@ class SystemStatusPayload(BaseModel):
     maintenance_message: str = Field(default="", description="维护文案")
     notice: SystemNoticePayload | None = Field(default=None, description="当前生效的公告信息")
     image_proxy_enabled: bool = Field(default=False, description="是否全局开启图片防盗链代理")
+    image_decrypt_domains: list[str] = Field(default_factory=list, description="需要中继解密的图床域名特征列表")
 
 
 # ------------------------------------------------------------------ 跨源聚合搜索增强

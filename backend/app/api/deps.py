@@ -12,7 +12,7 @@ from collections.abc import Iterator
 from functools import lru_cache
 from pathlib import Path
 
-from fastapi import Depends, Security
+from fastapi import Depends, Query, Security
 from fastapi.security import APIKeyHeader
 from sqlalchemy.orm import Session
 
@@ -197,10 +197,10 @@ def get_warmup_runner(settings: Settings = Depends(get_settings)) -> WarmupRunne
         if _warmup is None:
             enabled = settings.warmup_enabled
             try:
-                from app.db.session import SessionLocal
+                from app.db.session import session_scope
                 from app.models.system_setting import SystemSetting
                 import json
-                with SessionLocal() as session:
+                with session_scope() as session:
                     row = session.query(SystemSetting).filter_by(key="warmup_config").first()
                     if row and row.value_json:
                         data = json.loads(row.value_json)
@@ -312,5 +312,43 @@ def require_admin(
             ErrorCode.FORBIDDEN,
             "后台接口未启用：请先在 .env 里设置 PLOVE_ADMIN_TOKEN",
         )
+    _WEAK_ADMIN_TOKENS = {"admin", "password", "123456", "root", "test", "admin123", "12345678", "qwerty"}
+    if expected.strip().lower() in _WEAK_ADMIN_TOKENS:
+        raise AppError(
+            ErrorCode.FORBIDDEN,
+            "管理令牌过于简单，存在严重安全隐患，请在 .env 中更换为高强度安全令牌",
+        )
     if not token or not secrets.compare_digest(token, expected):
         raise AppError(ErrorCode.UNAUTHORIZED, "后台令牌不正确")
+
+
+def require_proxy_access(
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+    device_token: str | None = Security(device_token_header),
+    admin_token: str | None = Security(admin_token_header),
+    token: str | None = Query(None, description="设备令牌或管理员凭证"),
+) -> None:
+    """代理接口守卫（图片防盗链代理、HLS 流媒体代理）。
+
+    防白嫖与防非法代理：必须是「当前活跃设备」或「管理员凭据」方可中继媒体流与图片。
+    支持通过 X-Device-Token 标头或 URL 查询参数 token 传入（兼容 HLS 切片与 img 标签）。
+    """
+    candidate_dev_token = device_token or token
+    if candidate_dev_token:
+        try:
+            activation_service.require_active(db, candidate_dev_token)
+            site_settings.store().refresh(db)
+            return
+        except AppError:
+            pass
+
+    candidate_admin_token = admin_token or token
+    expected_admin = settings.admin_token
+    if candidate_admin_token and expected_admin:
+        _WEAK_ADMIN_TOKENS = {"admin", "password", "123456", "root", "test", "admin123", "12345678", "qwerty"}
+        if expected_admin.strip().lower() not in _WEAK_ADMIN_TOKENS:
+            if secrets.compare_digest(candidate_admin_token, expected_admin):
+                return
+
+    raise AppError(ErrorCode.UNAUTHORIZED, "未授权访问代理资源，请先激活设备或提供有效凭据")

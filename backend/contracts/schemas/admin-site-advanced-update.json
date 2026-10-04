@@ -56,6 +56,45 @@
       "default": null,
       "description": "运维备注",
       "title": "Note"
+    },
+    "proxy_enabled": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "是否为该站点开启独立代理",
+      "title": "Proxy Enabled"
+    },
+    "proxy_url": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "该站点使用的代理地址",
+      "title": "Proxy Url"
+    },
+    "proxy_node_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "绑定的代理节点 ID",
+      "title": "Proxy Node Id"
     }
   },
   "title": "SiteAdvancedSettingUpdateRequest",

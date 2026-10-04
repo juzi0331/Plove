@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-proxy-node-list.json",
+  "$defs": {
+    "ProxyNodeItem": {
+      "description": "单个代理节点信息。",
+      "properties": {
+        "id": {
+          "description": "节点唯一 ID",
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "description": "节点名称备注",
+          "title": "Name",
+          "type": "string"
+        },
+        "protocol": {
+          "description": "协议类型: vless / http / socks5",
+          "title": "Protocol",
+          "type": "string"
+        },
+        "proxy_url": {
+          "description": "供爬虫访问的本地或目标 HTTP 代理地址",
+          "title": "Proxy Url",
+          "type": "string"
+        },
+        "raw_url": {
+          "default": "",
+          "description": "原始配置链接或地址",
+          "title": "Raw Url",
+          "type": "string"
+        },
+        "server": {
+          "default": "",
+          "description": "远端节点服务器地址/域名",
+          "title": "Server",
+          "type": "string"
+        },
+        "port": {
+          "default": 0,
+          "description": "远端服务端口",
+          "title": "Port",
+          "type": "integer"
+        },
+        "security": {
+          "default": "none",
+          "description": "加密/安全协议 (reality, tls, none)",
+          "title": "Security",
+          "type": "string"
+        },
+        "network_type": {
+          "default": "tcp",
+          "description": "传输层协议 (tcp, ws, grpc)",
+          "title": "Network Type",
+          "type": "string"
+        },
+        "local_port": {
+          "default": 10809,
+          "description": "本地监听端口",
+          "title": "Local Port",
+          "type": "integer"
+        },
+        "sni": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "",
+          "description": "SNI 伪装域名",
+          "title": "Sni"
+        },
+        "ping_ms": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "上一次测速延迟 (ms)",
+          "title": "Ping Ms"
+        },
+        "last_tested_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "上一次测速时间",
+          "title": "Last Tested At"
+        },
+        "created_at": {
+          "default": "",
+          "description": "添加时间",
+          "title": "Created At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "protocol",
+        "proxy_url"
+      ],
+      "title": "ProxyNodeItem",
+      "type": "object"
+    }
+  },
+  "description": "代理节点池列表与采集器绑定关系。",
+  "properties": {
+    "nodes": {
+      "description": "全部节点列表",
+      "items": {
+        "$ref": "#/$defs/ProxyNodeItem"
+      },
+      "title": "Nodes",
+      "type": "array"
+    },
+    "bindings": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "采集器与节点绑定映射 {site_key: node_id}",
+      "title": "Bindings",
+      "type": "object"
+    }
+  },
+  "title": "ProxyNodeListPayload",
+  "type": "object"
+}

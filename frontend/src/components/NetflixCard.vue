@@ -29,6 +29,7 @@ const emit = defineEmits<{
   (event: 'select', item: any): void
 }>()
 
+import { getDeviceToken } from '@/api/session'
 import { formatPosterUrl } from '@/utils/format'
 
 // 容错与防盗链代理图片
@@ -45,7 +46,9 @@ function handleImgError(e: Event): void {
   if (target.src && !target.src.includes('/api/v1/proxy/image') && target.src.startsWith('http')) {
     const siteKey = (props.item as any)?.site || (props.item as any)?.site_key
     const siteParam = siteKey ? `&site=${encodeURIComponent(siteKey)}` : ''
-    target.src = `/api/v1/proxy/image?url=${encodeURIComponent(target.src)}${siteParam}`
+    const devToken = getDeviceToken()
+    const tokenParam = devToken ? `&token=${encodeURIComponent(devToken)}` : ''
+    target.src = `/api/v1/proxy/image?url=${encodeURIComponent(target.src)}${siteParam}${tokenParam}`
     return
   }
   target.style.display = 'none'
@@ -126,13 +129,25 @@ function handleImgError(e: Event): void {
 
 @media (max-width: 768px) {
   .nf-card {
-    width: 180px;
+    width: 165px;
   }
 }
 
-.nf-card:hover {
-  transform: scale(1.18);
-  z-index: 10;
+@media (max-width: 480px) {
+  .nf-card {
+    width: 142px;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .nf-card:hover {
+    transform: scale(1.18);
+    z-index: 10;
+  }
+}
+
+.nf-card:active {
+  transform: scale(0.97);
 }
 
 .nf-card__inner {

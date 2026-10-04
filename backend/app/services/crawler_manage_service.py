@@ -207,18 +207,23 @@ def save_crawler(
     code: str,
     overwrite: bool = False,
     auto_bump_version: bool = True,
+    custom_version: str | None = None,
     python_exe: str | None = None,
 ) -> SiteMeta:
-    """保存并热部署采集器脚本，支持覆盖更新时自动自增修订号。"""
+    """保存并热部署采集器脚本，支持覆盖更新时自动自增修订号或指定自定义版本号。"""
     if not SITE_KEY_PATTERN.match(key):
         raise AppError(ErrorCode.BAD_REQUEST, f"非法的站点 key: {key}")
 
     target_file = sites_dir / f"{key}.py"
     if target_file.exists() and not overwrite:
-        raise AppError(ErrorCode.CONFLICT, f"采集器 {key} 已经存在，若需替换请开启覆盖选项")
+        raise AppError(ErrorCode.BAD_REQUEST, f"采集器 {key} 已经存在，若需替换请开启覆盖选项")
 
-    # 若为覆盖更新且开启自动升级，对比老代码版本号，如果未改动则自动 patch + 1
-    if target_file.is_file() and overwrite and auto_bump_version:
+    # 若指定了自定义版本号，优先将自定义版本号注入到代码中
+    if custom_version and custom_version.strip():
+        code = _replace_code_version(code, custom_version.strip())
+        logger.info("采集器 %s 使用自定义指定版本号: %s", key, custom_version.strip())
+    # 否则若为覆盖更新且开启自动升级，对比老代码版本号，如果未改动则自动 patch + 1
+    elif target_file.is_file() and overwrite and auto_bump_version:
         try:
             old_code = target_file.read_text(encoding="utf-8", errors="replace")
             old_ver = _extract_version_from_code(old_code)
@@ -271,3 +276,61 @@ def delete_crawler(sites_dir: Path, key: str) -> None:
 
     target_file.unlink()
     logger.info("已删除采集器脚本: %s", target_file)
+
+
+def extract_and_sync_image_cipher(code: str, site_key: str, db: Any = None) -> bool:
+    """自动嗅探并提取采集器脚本中的图片解密密钥，同步至后台图片代理配置。"""
+    if not code or "decode_image" not in code:
+        return False
+
+    key_match = None
+    iv_match = None
+
+    # 正则嗅探常见的 AES Cipher 表达式
+    # 1. algorithms.AES(b"...") 和 modes.CBC(b"...")
+    m_aes = re.search(r'algorithms\.AES\(\s*(?:b)?["\']([a-zA-Z0-9_\-+=/]{16,64})["\']\s*\)', code)
+    m_cbc = re.search(r'modes\.CBC\(\s*(?:b)?["\']([a-zA-Z0-9_\-+=/]{16,64})["\']\s*\)', code)
+    if m_aes:
+        key_match = m_aes.group(1)
+    if m_cbc:
+        iv_match = m_cbc.group(1)
+
+    # 2. 局部变量/常量定义
+    if not key_match:
+        m_var_key = re.search(r'(?:KEY|key|AES_KEY)\s*=\s*(?:b)?["\']([a-zA-Z0-9_\-+=/]{16,64})["\']', code)
+        if m_var_key:
+            key_match = m_var_key.group(1)
+    if not iv_match:
+        m_var_iv = re.search(r'(?:IV|iv|AES_IV)\s*=\s*(?:b)?["\']([a-zA-Z0-9_\-+=/]{16,64})["\']', code)
+        if m_var_iv:
+            iv_match = m_var_iv.group(1)
+
+    if not key_match:
+        return False
+
+    # 尝试提取图床域名
+    domain_matches = list(set(re.findall(r'https?://([a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})', code)))
+    match_domains = [d for d in domain_matches if "127.0.0.1" not in d and "localhost" not in d]
+
+    try:
+        from app.schemas.admin_extended import ImageDecryptionRule
+        from app.services import image_proxy_service
+
+        rule = ImageDecryptionRule(
+            id=f"rule_auto_{site_key}",
+            name=f"{site_key} 自动同步规则",
+            site_key=site_key,
+            match_domains=match_domains[:3],
+            algorithm="AES-128-CBC",
+            key=key_match,
+            iv=iv_match or "",
+            is_hex=False,
+            enabled=True,
+            created_at=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
+        )
+        image_proxy_service.register_or_update_decryption_rule(db, rule)
+        logger.info("已自动为站点 %s 同步图片解密密钥到后台配置: key=%s", site_key, key_match)
+        return True
+    except Exception as exc:
+        logger.warning("自动同步图片解密规则失败: %s", exc)
+        return False

@@ -7,7 +7,6 @@
 
 from __future__ import annotations
 
-import json
 from typing import Any
 
 
@@ -71,7 +70,11 @@ def build_ai_crawler_prompt(
     fields_section = f"""### 用户明确指定的详情页信息采集清单（detail 方法提取标准）：
 在 `detail(self, id)` 返回的字典中，必须根据源站实际提取以下已确认字段：
 {chr(10).join(fields_lines)}
-- 注意：站点没有提供的字段（如某些站无演员/导演）切勿编造虚假数据，留空或不返回对应键即可。
+- **字段提取原则**：源站未提供的字段（如某些站无演员/导演/评分）切勿编造虚假数据，留空或不返回该键即可。
+- **播放线路 (lines) 特别约定**：
+  * 若用户未指定多线路选择器，或源站本身只有单一播放源/未提供线路切换选项卡，**切勿编造多条线路**，直接将提取出的所有剧集挂载到单个默认线路中返回：
+    `"lines": [{{"id": "1", "name": "默认线路", "episodes": [...]}}]`；
+  * 仅当源站页面有明显的线路切换 Tab 栏（如“蓝光专线”、“极速播放”、“量子专线”）时，才遍历提取多线路。
 """ if fields_lines else ""
 
     prompt = f"""你是一名精通 Python 网络逆向与高并发爬虫架构的专家。请为我们的影视聚合流媒体系统编写一个针对目标源站【{name}】（目标主页：{target_url}）的单文件采集器脚本（适配器）。
@@ -97,6 +100,10 @@ def build_ai_crawler_prompt(
 脚本必须定义一个类，并在末尾调用 `cli.main(SiteClass())`。类必须包含以下成员：
 
 ```python
+#: 单站专属代理配置（若留空则跟随全局环境变量或直连；支持填入 http://127.0.0.1:10809 或通过环境变量覆盖）
+import os
+SITE_PROXY = os.environ.get("PROXY_{key.upper()}", "").strip()
+
 class {name.title().replace(' ', '')}Crawler:
     key = "{key}"
     name = "{name}"
@@ -106,7 +113,7 @@ class {name.title().replace(' ', '')}Crawler:
     capabilities = ("meta", "home", "category", "detail", "play")
 
     def __init__(self, client=None):
-        # 使用内置高性能 Client（支持自动重试、连接池与限速）
+        # 使用内置高性能 Client（支持自动重试、连接池、限速与单站独立代理）
         self.http = client or Client(
             base_url="{target_url}",
             timeout=15.0,
@@ -115,6 +122,7 @@ class {name.title().replace(' ', '')}Crawler:
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
                 "Referer": "{target_url}/",
             }},
+            proxy=getattr(self, "proxy", None) or SITE_PROXY or None,
             min_interval=0.3,
         )
 ```
@@ -178,13 +186,16 @@ class {name.title().replace(' ', '')}Crawler:
        "vod_actor": "主演名单",
        "vod_director": "导演",
        "vod_area": "中国大陆",
-       "vod_year": 2026
+       "vod_year": 2026,
+       "vod_score": "9.2",
+       "vod_hits": 18200,
+       "vod_tag": "剧情,悬疑"
      }},
      "desc": "剧情简介简介...",
      "lines": [
        {{
          "id": "1",
-         "name": "蓝光极速线",
+         "name": "默认线路",
          "episodes": [
            {{ "ep_index": 1, "ep_name": "第01集", "play_id": "12345|line1|1" }},
            {{ "ep_index": 2, "ep_name": "第02集", "play_id": "12345|line1|2" }}
@@ -204,12 +215,14 @@ class {name.title().replace(' ', '')}Crawler:
    }}
    ```
 
-6. **【可选扩展】`decode_image(content: bytes) -> tuple[bytes, str] | None`**：
-   若该源站对封面/海报图片进行了前端加密（如 AES-128-CBC、异或或自定义混淆）：
+6. **【重点扩展：封面/海报图片解密专项】`decode_image(content: bytes) -> tuple[bytes, str] | None`**：
+   若该源站对封面/海报图片进行了前端加密（如通过 CryptoJS 执行 AES-128-CBC、异或或自定义字节混淆）：
+   - 请深入分析目标站前端引用的 JS 脚本，逆向出其解密 Key、IV 和填充算法；
    - 在爬虫类上增加静态方法 `@staticmethod def decode_image(content: bytes) -> tuple[bytes, str] | None:`（也可作为模块级函数）；
-   - 若传入的字节已是正常图片（头部为 JPEG `\\xff\\xd8\\xff`、PNG `\\x89PNG`、WEBP `RIFF`、GIF `GIF8`）必须直接返回 `None`；
+   - 若传入的字节已是正常图片（头部为 JPEG `\xff\xd8\xff`、PNG `\x89PNG`、WEBP `RIFF`、GIF `GIF8`）必须直接返回 `None`；
    - 若为密文，解密成功后返回 `(decrypted_bytes, "image/jpeg" 或 "image/png")`，解密失败返回 `None`；
-   - 系统图片中继代理会自动感知该钩子并自动流式解密，爬虫的 `home`/`category`/`detail` 依然正常输出图片原 URL 即可，无需在抓取时阻塞下载。
+   - 务必使用标准库或 `cryptography` 实现解密；
+   - 系统图片中继代理会自动感知该钩子并流式解密，爬虫抓取的 `vod_pic` 依然输出原图 URL 即可。
 
 7. **【可选扩展】`mode = "proxy"` 与 `decode_media(content: bytes) -> bytes | None`**：
    若该源站对视频串流进行了伪装容器封装（如把 m3u8 清单与 TS 分片伪装包装进 PNG 图片容器，如 rou 等）或存在严格防盗链/白名单：
@@ -218,10 +231,39 @@ class {name.title().replace(' ', '')}Crawler:
    - 传入的字节若是伪装/加密数据，解封装后返回真实字节（m3u8 返回 `b"#EXTM3U..."` 文本字节，TS 分片返回以 `0x47` 同步字开头的 MPEG-TS 字节）；若无需解封装或非目标数据返回 `None`；
    - 系统流媒体中继代理（Stream Proxy）会自动把清单和分片递归改写并接管，自动调用该钩子解封装，吐出纯正的 m3u8 和 TS 流，前台播放器直接无缝播放。
 
-### 四、内置 `crawler_kit` 核心工具链使用指南：
+### 四、影视海报与封面提取专项规范（关键防坑，重中之重）：
+1. **绝不单纯提取 `node.attr('src')`**：现代影视站点与 CMS 绝大多数开启了图片懒加载，其 HTML 初始的 `src` 往往只是 1x1 像素的透明空白 base64 占位图（如 `data:image/gif...`）或 `loading.gif`。
+2. **多重备选属性回退链**：在提取影片海报封面 `vod_pic` 时，必须按以下优先级顺序回退提取真实图床地址：
+   ```python
+   pic = (
+       node.attr("data-src")
+       or node.attr("data-original")
+       or node.attr("data-lazy-src")
+       or node.attr("data-echo")
+       or node.attr("data-url")
+       or node.attr("src")
+       or ""
+   )
+   if pic.startswith("data:image"):
+       pic = ""  # 滤除透明 base64 占位图
+   pic = clean.absolute(pic, self.base_url)
+   ```
+3. **CSS 背景图兼容**：若目标站使用 `<div class="cover" style="background-image:url(...)">` 或 `data-bg` 渲染海报：
+   ```python
+   bg_url = node.attr("data-bg") or node.attr("data-background") or ""
+   if not bg_url:
+       style_text = node.attr("style") or ""
+       bg_m = re.search(r'url\([\'"]?(.*?)[\'"]?\)', style_text)
+       if bg_m:
+           bg_url = bg_m.group(1)
+   if bg_url:
+       pic = clean.absolute(bg_url, self.base_url)
+   ```
+
+### 五、内置 `crawler_kit` 核心工具链使用指南：
 - **HTML 解析**：`root = parse.parse_html(html_text)`
   - 查找元素：`node = root.select_first("div.item")`，`items = root.select(".card-list .item")`
-  - 获取文本与属性：`text = node.text`，`href = node.attr("href")`，`img = node.attr("data-src") or node.attr("src")`
+  - 获取文本与属性：`text = node.text`，`href = node.attr("href")`，`img = node.attr("data-src") or node.attr("data-original") or node.attr("src")`
 - **数据清洗**：
   - `clean.strip_promo(text)`：自动滤除常见赌博广告、推广水印；
   - `clean.collapse(text)`：收缩多余空格换行；
@@ -238,7 +280,21 @@ class {name.title().replace(' ', '')}Crawler:
 {api_section}
 {note_section}
 
-### 输出要求：
-请直接给出**完整、可运行、无省略、符合上述全部契约**的单文件 Python 脚本源码（用 markdown ````python ... ```` 代码块包含），不要写虚构伪代码，确保选择器或正则切实符合上述样例！
+### 输出要求（请严格遵守以下输出格式）：
+1. **若逆向发现存在海报/封面加密**：
+   请**必须在回答最上方单独输出一个标准 JSON 代码块**，标明逆向提取出的图片解密参数（供用户一键复制填入 Plove 管理后台，或系统部署时自动提取注册）：
+   ```json
+   {{
+     "site_key": "{key}",
+     "name": "{name}加密海报",
+     "match_domains": ["目标图床域名，例如 pic.wirqed.cn"],
+     "algorithm": "AES-128-CBC",
+     "key": "十六进制或UTF-8密钥字符串",
+     "iv": "偏移向量（CBC模式）",
+     "is_hex": false
+   }}
+   ```
+2. **单文件采集器脚本源码**：
+   紧接着直接给出**完整、可运行、无省略、符合上述全部契约**的单文件 Python 脚本源码（用 ````python ... ```` 代码块包含），不要写虚构伪代码，确保选择器或正则切实符合上述样例！
 """
     return prompt

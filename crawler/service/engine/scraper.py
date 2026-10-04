@@ -318,7 +318,6 @@ class UniversalScraper:
         path = conf.path.format(kw=urllib.parse.quote(str(kw)), page=page)
         url = safe_resolve_url(self.rule.base_url, path)
         videos = []
-        has_more = False
 
         async with HttpClient(
             base_url=self.rule.base_url,

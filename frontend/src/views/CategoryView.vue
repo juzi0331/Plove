@@ -383,6 +383,27 @@ function goBack(): void {
       </div>
     </header>
 
+    <!-- 移动端专属横向分类导航滑轨 (Mobile Category Bar) -->
+    <div v-if="allCategories.length > 0" class="nf-mobile-cat-bar">
+      <button
+        class="nf-mobile-cat-pill"
+        type="button"
+        @click="router.push({ name: 'home' })"
+      >
+        全部
+      </button>
+      <button
+        v-for="cat in allCategories"
+        :key="cat.tid"
+        class="nf-mobile-cat-pill"
+        :class="{ 'is-active': currentParentCategory ? String(currentParentCategory.tid) === String(cat.tid) : String(cat.tid) === String(props.tid) }"
+        type="button"
+        @click="switchCategory(cat.tid)"
+      >
+        {{ formatCatDisplay(cat.name, cat.custom_name) || cat.tid }}
+      </button>
+    </div>
+
     <!-- ==================================================== 主体无限瀑布流 -->
     <main class="nf-category-main">
       <!-- 页面顶部标题与分类信息栏 -->
@@ -837,11 +858,101 @@ function goBack(): void {
   box-shadow: 0 4px 12px rgba(229, 9, 20, 0.4);
 }
 
+.nf-mobile-cat-bar {
+  display: none;
+}
+
 @media (max-width: 900px) {
-  .nf-cat-menu { display: none; }
+  .nf-navbar {
+    height: 56px;
+    padding: 0 16px;
+    padding-top: var(--plove-safe-top);
+  }
+
+  .nf-navbar__left {
+    gap: 10px;
+  }
+
+  .nf-back-btn {
+    padding: 4px 10px;
+    font-size: 12px;
+  }
+
+  .nf-cat-menu {
+    display: none;
+  }
+
+  /* 移动端横向分类滑轨 (置顶吸顶) */
+  .nf-mobile-cat-bar {
+    display: flex;
+    position: sticky;
+    top: calc(56px + var(--plove-safe-top));
+    margin-top: calc(56px + var(--plove-safe-top));
+    left: 0;
+    right: 0;
+    z-index: 45;
+    background: rgba(20, 20, 20, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 8px 16px;
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .nf-mobile-cat-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nf-mobile-cat-pill {
+    flex-shrink: 0;
+    padding: 5px 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.75);
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+  }
+
+  .nf-mobile-cat-pill.is-active {
+    color: #ffffff;
+    font-weight: 700;
+    background: #e50914;
+    border-color: #e50914;
+    box-shadow: 0 2px 8px rgba(229, 9, 20, 0.4);
+  }
+
+  .nf-category-main {
+    padding: 16px 16px calc(48px + var(--plove-safe-bottom));
+  }
+
+  .nf-cat-header {
+    margin-bottom: 18px;
+  }
+
+  .nf-cat-header__title {
+    font-size: 22px;
+  }
+
   .category__waterfall {
     grid-template-columns: repeat(2, 1fr);
     gap: 12px 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .nf-back-text {
+    display: none;
+  }
+
+  .category__waterfall {
+    gap: 10px 6px;
   }
 }
 </style>

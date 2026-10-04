@@ -31,6 +31,24 @@
       "description": "运维备注",
       "title": "Note",
       "type": "string"
+    },
+    "proxy_enabled": {
+      "default": false,
+      "description": "是否为该站点开启独立代理",
+      "title": "Proxy Enabled",
+      "type": "boolean"
+    },
+    "proxy_url": {
+      "default": "",
+      "description": "该站点使用的代理地址，如 http://192.168.31.5:10809",
+      "title": "Proxy Url",
+      "type": "string"
+    },
+    "proxy_node_id": {
+      "default": "",
+      "description": "绑定的代理节点 ID（留空为自定地址）",
+      "title": "Proxy Node Id",
+      "type": "string"
     }
   },
   "required": [

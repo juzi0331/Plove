@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-proxy-node-bind-request.json",
+  "description": "将采集器绑定到节点。",
+  "properties": {
+    "site_key": {
+      "description": "站点 key",
+      "title": "Site Key",
+      "type": "string"
+    },
+    "node_id": {
+      "description": "节点 ID，'direct' 表示直连，'default' 表示跟随全局",
+      "title": "Node Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "site_key",
+    "node_id"
+  ],
+  "title": "ProxyNodeBindRequest",
+  "type": "object"
+}

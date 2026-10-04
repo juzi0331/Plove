@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-draft-save-result.json",
+  "description": "草稿保存结果。",
+  "properties": {
+    "draft_id": {
+      "description": "草稿 ID",
+      "title": "Draft Id",
+      "type": "string"
+    },
+    "revision": {
+      "description": "保存后的新版本号",
+      "title": "Revision",
+      "type": "integer"
+    },
+    "message": {
+      "description": "反馈信息",
+      "title": "Message",
+      "type": "string"
+    }
+  },
+  "required": [
+    "draft_id",
+    "revision",
+    "message"
+  ],
+  "title": "DraftSaveResult",
+  "type": "object"
+}

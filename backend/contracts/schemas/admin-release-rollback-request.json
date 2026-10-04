@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-release-rollback-request.json",
+  "description": "回滚至指定历史快照请求。",
+  "properties": {
+    "target_release_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "要回退到的历史发布快照 ID（默认使用 URL 路径中的 release_id）",
+      "title": "Target Release Id"
+    },
+    "note": {
+      "default": "",
+      "description": "回滚原因说明",
+      "title": "Note",
+      "type": "string"
+    }
+  },
+  "title": "ReleaseRollbackRequest",
+  "type": "object"
+}

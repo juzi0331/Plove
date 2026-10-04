@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-proxy-node-create-request.json",
+  "description": "添加或解析代理节点请求。",
+  "properties": {
+    "raw_url": {
+      "description": "vless:// 链接或 http/socks 代理地址",
+      "minLength": 5,
+      "title": "Raw Url",
+      "type": "string"
+    },
+    "name": {
+      "default": "",
+      "description": "自定义节点备注名称",
+      "title": "Name",
+      "type": "string"
+    },
+    "local_port": {
+      "default": 10809,
+      "description": "本地代理映射端口",
+      "maximum": 65535,
+      "minimum": 1024,
+      "title": "Local Port",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "raw_url"
+  ],
+  "title": "ProxyNodeCreateRequest",
+  "type": "object"
+}

@@ -163,7 +163,7 @@ def test_playground_probe(authed_client: TestClient, fake_app, two_sites):
     assert "elapsed_ms" in data
 
 
-def test_system_notice_and_maintenance(authed_client: TestClient, client: TestClient, fake_app):
+def test_system_notice_and_maintenance(authed_client: TestClient, anon_client: TestClient, fake_app):
     # 1. 读公告
     res_n = authed_client.get("/api/v1/admin/system/notice", headers=ADMIN_HEADERS)
     assert res_n.status_code == 200
@@ -184,7 +184,7 @@ def test_system_notice_and_maintenance(authed_client: TestClient, client: TestCl
     assert up_n.json()["data"]["enabled"] is True
 
     # 3. 公开接口检查公告生效
-    pub_res = client.get("/api/v1/system/status")
+    pub_res = anon_client.get("/api/v1/system/status")
     assert pub_res.status_code == 200
     pub_data = pub_res.json()["data"]
     assert pub_data["notice"] is not None
@@ -199,7 +199,7 @@ def test_system_notice_and_maintenance(authed_client: TestClient, client: TestCl
     assert m_res.status_code == 200
 
     # 5. 验证普通接口被 503 拦截，而后台放行
-    normal_res = client.get("/api/v1/sites")
+    normal_res = anon_client.get("/api/v1/sites")
     assert normal_res.status_code == 503
     assert normal_res.json()["error"]["code"] == "SERVER_MAINTENANCE"
 
@@ -212,7 +212,7 @@ def test_system_notice_and_maintenance(authed_client: TestClient, client: TestCl
         json={"enabled": False, "message": ""},
         headers=ADMIN_HEADERS,
     )
-    normal_res2 = client.get("/api/v1/sites")
+    normal_res2 = anon_client.get("/api/v1/sites")
     assert normal_res2.status_code != 503
 
 
@@ -224,4 +224,40 @@ def test_image_proxy_admin(authed_client: TestClient, fake_app):
     clr = authed_client.post("/api/v1/admin/proxy/clear", headers=ADMIN_HEADERS)
     assert clr.status_code == 200
     assert "freed_mb" in clr.json()["data"]
+
+
+def test_image_decryption_rules_and_test_api(authed_client: TestClient, fake_app):
+    # 1. 获取配置，确认解密规则结构
+    res = authed_client.get("/api/v1/admin/proxy/config", headers=ADMIN_HEADERS)
+    assert res.status_code == 200
+    data = res.json()["data"]
+    assert "decryption_rules" in data
+
+    # 2. 动态新增解密规则并保存
+    data["decryption_rules"].append({
+        "id": "rule_new_test",
+        "name": "新测试源站规则",
+        "site_key": "new_site",
+        "match_domains": ["pic.testnew.com"],
+        "algorithm": "AES-128-CBC",
+        "key": "1234567812345678",
+        "iv": "abcdefghabcdefgh",
+        "is_hex": False,
+        "enabled": True,
+        "created_at": "2026-10-04",
+    })
+    put_res = authed_client.put("/api/v1/admin/proxy/config", headers=ADMIN_HEADERS, json=data)
+    assert put_res.status_code == 200
+    assert len(put_res.json()["data"]["decryption_rules"]) >= 1
+    assert put_res.json()["data"]["decryption_rules"][-1]["key"] == "1234567812345678"
+
+    # 3. 在线测试解密接口（传入非法/内网地址应安全拦截）
+    test_res = authed_client.post(
+        "/api/v1/admin/proxy/test-decrypt",
+        headers=ADMIN_HEADERS,
+        json={"url": "http://127.0.0.1/test.jpg"},
+    )
+    assert test_res.status_code == 200
+    assert test_res.json()["data"]["success"] is False
+    assert "受限" in test_res.json()["data"]["message"] or "不合规" in test_res.json()["data"]["message"]
 

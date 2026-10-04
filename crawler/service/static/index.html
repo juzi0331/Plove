@@ -690,13 +690,15 @@
     .modal-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(15, 23, 42, 0.5);
-      backdrop-filter: blur(6px);
-      z-index: 100;
+      background: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 100000;
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 20px;
+      animation: vpFadeIn 0.15s ease-out;
     }
 
     .modal-body {
@@ -713,14 +715,15 @@
 
     .prompt-dialog {
       background: #ffffff;
-      border: 1px solid #e2e8f0;
+      border: 1px solid rgba(255, 255, 255, 0.2);
       border-radius: var(--radius-lg);
       width: 100%;
-      max-width: 880px;
-      box-shadow: 0 20px 40px -8px rgba(15, 23, 42, 0.18);
+      max-width: 900px;
+      box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(0, 0, 0, 0.08);
       overflow: hidden;
       display: flex;
       flex-direction: column;
+      animation: vpFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     .prompt-header {
@@ -997,6 +1000,437 @@
       margin-top: 1.5rem;
     }
 
+    /* =========================================================================
+       可视化网页勘探与特征拾取工作台 (Visual Picker Studio 2.0) 旗舰界面样式
+       ========================================================================= */
+    .vp-fullscreen-modal {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(15, 23, 42, 0.76);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      z-index: 10000;
+      display: flex;
+      padding: 8px;
+      box-sizing: border-box;
+      animation: vpFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes vpFadeIn {
+      from { opacity: 0; transform: scale(0.99); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .vp-window {
+      width: 100%;
+      height: 100%;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.2);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* 顶部拟真浏览器控制栏 */
+    .vp-topbar {
+      height: 58px;
+      background: #ffffff;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-shrink: 0;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+    }
+
+    .vp-brand-tag {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .vp-brand-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+      color: #ffffff;
+      padding: 5px 12px;
+      border-radius: 8px;
+      font-size: 0.84rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      box-shadow: 0 2px 8px rgba(79, 70, 229, 0.28);
+    }
+
+    .vp-sandbox-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: #f1f5f9;
+      color: #475569;
+      font-size: 0.72rem;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-weight: 600;
+      border: 1px solid #e2e8f0;
+    }
+
+    /* 拟真浏览器地址栏 */
+    .vp-address-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 1;
+      max-width: 580px;
+      background: #f8fafc;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 9px;
+      padding: 3px 8px;
+      transition: all 0.2s ease;
+    }
+
+    .vp-address-bar:focus-within {
+      border-color: #4f46e5;
+      background: #ffffff;
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+    }
+
+    .vp-nav-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: #64748b;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.82rem;
+      font-weight: 700;
+      transition: all 0.15s;
+    }
+
+    .vp-nav-btn:hover {
+      background: #e2e8f0;
+      color: #0f172a;
+    }
+
+    .vp-url-input {
+      flex: 1;
+      border: none;
+      background: transparent;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      color: #0f172a;
+      padding: 4px 6px;
+      outline: none;
+      min-width: 140px;
+    }
+
+    .vp-url-lock {
+      font-size: 0.8rem;
+      color: #10b981;
+      display: flex;
+      align-items: center;
+      padding-left: 2px;
+    }
+
+    /* 模式切换分段控制器 */
+    .vp-mode-switcher {
+      display: flex;
+      background: #f1f5f9;
+      padding: 3px;
+      border-radius: 9px;
+      border: 1px solid #e2e8f0;
+      flex-shrink: 0;
+    }
+
+    .vp-mode-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 7px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      background: transparent;
+      color: #64748b;
+      transition: all 0.2s ease;
+      user-select: none;
+    }
+
+    .vp-mode-btn:hover {
+      color: #0f172a;
+    }
+
+    .vp-mode-btn.active-pick {
+      background: #4f46e5;
+      color: #ffffff;
+      font-weight: 700;
+      box-shadow: 0 2px 6px rgba(79, 70, 229, 0.35);
+    }
+
+    .vp-mode-btn.active-browse {
+      background: #0284c7;
+      color: #ffffff;
+      font-weight: 700;
+      box-shadow: 0 2px 6px rgba(2, 132, 199, 0.35);
+    }
+
+    .vp-pulse-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #ffffff;
+      box-shadow: 0 0 6px #ffffff;
+      animation: vpPulse 1.5s infinite;
+    }
+
+    @keyframes vpPulse {
+      0% { opacity: 0.6; transform: scale(0.9); }
+      50% { opacity: 1; transform: scale(1.25); }
+      100% { opacity: 0.6; transform: scale(0.9); }
+    }
+
+    /* 工作台主分屏 */
+    .vp-main-body {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+      background: #f8fafc;
+    }
+
+    /* 侧边控制抽屉 (430px) */
+    .vp-sidebar-drawer {
+      width: 440px;
+      min-width: 400px;
+      max-width: 480px;
+      background: #ffffff;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid #e2e8f0;
+      box-shadow: 2px 0 12px rgba(15, 23, 42, 0.04);
+      z-index: 10;
+      position: relative;
+    }
+
+    .vp-sidebar-drawer.position-right {
+      border-right: none;
+      border-left: 1px solid #e2e8f0;
+      box-shadow: -2px 0 12px rgba(15, 23, 42, 0.04);
+    }
+
+    /* 4-Tab 导航头 */
+    .vp-tab-nav {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      background: #f8fafc;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 5px;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
+    .vp-tab-btn {
+      padding: 8px 4px;
+      border: 1px solid transparent;
+      background: transparent;
+      border-radius: 7px;
+      font-size: 0.76rem;
+      font-weight: 600;
+      color: #64748b;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      transition: all 0.15s ease;
+    }
+
+    .vp-tab-btn:hover {
+      background: #ffffff;
+      color: #0f172a;
+    }
+
+    .vp-tab-btn.is-active {
+      background: #ffffff;
+      color: #4f46e5;
+      border-color: #cbd5e1;
+      font-weight: 700;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    }
+
+    .vp-tab-badge {
+      font-size: 0.64rem;
+      padding: 1px 5px;
+      border-radius: 999px;
+      background: #e0e7ff;
+      color: #3730a3;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .vp-tab-badge.badge-success {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    /* 侧边栏内容滚动区 */
+    .vp-tab-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* 现代化卡片 */
+    .vp-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 12px;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .vp-card-title {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* 元素特征展示条目 */
+    .vp-feature-row {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .vp-feature-label {
+      font-size: 0.72rem;
+      color: #64748b;
+      font-weight: 600;
+    }
+
+    .vp-feature-val {
+      font-size: 0.8rem;
+      color: #0f172a;
+      background: #f8fafc;
+      padding: 6px 9px;
+      border-radius: 6px;
+      border: 1px solid #e2e8f0;
+      word-break: break-all;
+    }
+
+    /* 智能推荐光环卡片 */
+    .vp-smart-glow {
+      background: linear-gradient(135deg, rgba(79, 70, 229, 0.07) 0%, rgba(2, 132, 199, 0.07) 100%);
+      border: 1.5px solid rgba(79, 70, 229, 0.4);
+      border-radius: 10px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    /* 快速指派网格按钮 */
+    .vp-field-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .vp-field-chip {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 7px;
+      padding: 7px 9px;
+      font-size: 0.76rem;
+      font-weight: 600;
+      color: #0f172a;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 4px;
+      transition: all 0.15s ease;
+      text-align: left;
+    }
+
+    .vp-field-chip:hover {
+      border-color: #4f46e5;
+      background: #eef2ff;
+      color: #3730a3;
+      transform: translateY(-1px);
+    }
+
+    .vp-field-chip.is-bound {
+      background: #ecfdf5;
+      border-color: #a7f3d0;
+      color: #065f46;
+    }
+
+    .vp-field-chip.is-bound:hover {
+      background: #fef2f2;
+      border-color: #fca5a5;
+      color: #b91c1c;
+    }
+
+    /* 底部固定操作条 */
+    .vp-bottom-bar {
+      padding: 10px 14px;
+      background: #ffffff;
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex-shrink: 0;
+      box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.03);
+    }
+
+    /* 引导提示图文面板 */
+    .vp-guide-step {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 8px 10px;
+      background: #f8fafc;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+    }
+
+    .vp-guide-step-num {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #4f46e5;
+      color: #ffffff;
+      font-size: 0.72rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
     [v-cloak] {
       display: none !important;
     }
@@ -1016,31 +1450,28 @@
 
       <nav class="nav-tabs">
         <button class="nav-tab" :class="{ active: tab === 'smart' }" @click="tab = 'smart'">
-          智能探测
+          🎯 步骤 1: 网页点选
         </button>
         <button class="nav-tab" :class="{ active: tab === 'test_studio' }" @click="tab = 'test_studio'">
-          脚本导入与测试
+          🧪 步骤 2: 脚本测试与试播
         </button>
         <button class="nav-tab" :class="{ active: tab === 'sites' }" @click="tab = 'sites'">
-          站点与规则库
-        </button>
-        <button class="nav-tab" :class="{ active: tab === 'sandbox' }" @click="tab = 'sandbox'">
-          单字段嗅探沙盒
+          🚀 步骤 3: 站点库与上线
         </button>
         <button class="nav-tab" :class="{ active: tab === 'live' }" @click="tab = 'live'">
-          实测与试播台
+          📺 独立播放台
         </button>
       </nav>
 
       <div class="header-actions">
         <button 
-          class="btn" 
-          :class="proxyConfig.enabled ? 'btn-primary' : 'btn-secondary'" 
-          style="padding:6px 12px;font-size:0.82rem;display:flex;align-items:center;gap:6px" 
+          class="btn btn-secondary" 
+          style="padding:6px 14px;font-size:0.84rem;display:flex;align-items:center;gap:6px;border-color:var(--accent-primary);color:var(--text-main)" 
           @click="openProxyModal"
         >
-          <span style="display:inline-block;width:8px;height:8px;border-radius:50%" :style="{ background: proxyConfig.enabled ? '#10b981' : '#94a3b8' }"></span>
-          <span>代理: {{ proxyConfig.enabled ? (proxyConfig.proxy_url.replace(/https?:\/\//, '') || '已开启') : '直连 (关闭)' }}</span>
+          <span style="display:inline-block;width:8px;height:8px;border-radius:50%" :style="{ background: (proxyNodes.length > 0 || proxyConfig.enabled) ? '#10b981' : '#94a3b8' }"></span>
+          <span style="font-weight:700">🌐 节点与采集器指派中心</span>
+          <span v-if="proxyNodes.length > 0" style="background:var(--accent-primary);color:#fff;font-size:0.7rem;padding:1px 6px;border-radius:999px">{{ proxyNodes.length }} 节点</span>
         </button>
 
         <div class="status-badge">
@@ -1052,13 +1483,16 @@
     </header>
 
     <main>
-      <!-- TAB 1: 智能探测 -->
+      <!-- TAB 1: 智能探测 / 网页点选 -->
       <section v-if="tab === 'smart'">
         <div class="smart-hero-card">
           <div class="hero-header">
-            <h2 class="hero-title">智能自适应探测 · 输入主页 URL 自动化分析</h2>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+              <span style="background:var(--accent-primary);color:#fff;font-size:0.78rem;font-weight:700;padding:2px 10px;border-radius:999px">第 1 步</span>
+              <h2 class="hero-title" style="margin:0">目标源可视化网页点选提取</h2>
+            </div>
             <p class="hero-subtitle">
-              无需编写代码，输入任意目标站点主页 URL，采集引擎将自动探测网络状态、分析导航分类、聚类提取首页视频，并直接生成后端标准单文件采集脚本。
+              输入任意目标影视/短剧站主页网址，控制台将实时载入目标网页。在网页上鼠标点选标题、封面、选集，即可一键生成高精度 AI 提示词（Prompt）！
             </p>
           </div>
 
@@ -1066,29 +1500,25 @@
             <input 
               class="smart-input" 
               v-model="smartUrl" 
-              placeholder="输入目标影视/短剧站主页 URL，如 https://xiaoyakankan.com 或 https://rou.video..."
+              placeholder="输入目标影视/短剧站主页 URL，例如 https://huangguoai.com 或 https://rou.video..."
               @keyup.enter="openVisualPickerModal" 
             />
-            <button class="btn btn-hero" style="padding:10px 22px;font-size:0.92rem;font-weight:700" :disabled="smartLoading" @click="openVisualPickerModal">
-              进入网页可视化点选 (推荐)
-            </button>
-            <button class="btn btn-secondary" :disabled="smartLoading" @click="startSmartExplore" title="纯后台分析并直接生成脚本">
-              <span v-if="!smartLoading">后台全自动分析</span>
-              <span v-else>正在分析生成中...</span>
+            <button class="btn btn-hero" style="padding:10px 24px;font-size:0.95rem;font-weight:700;gap:8px" @click="openVisualPickerModal">
+              <span>🎯 立即载入并进入网页点选</span>
             </button>
           </div>
 
           <div class="smart-quick-tags">
-            <span>快速填充样例：</span>
+            <span style="font-weight:600">一键填入测试站点：</span>
+            <span class="quick-tag" style="background:#e0e7ff;color:#3730a3;font-weight:700" @click="smartUrl = 'https://huangguoai.com'">⭐ 黄果短剧 (huangguoai.com)</span>
             <span class="quick-tag" @click="smartUrl = 'https://rou.video'">肉视频 (rou.video)</span>
             <span class="quick-tag" @click="smartUrl = 'https://xiaoyakankan.com'">小鸭看看 (小鸭影视)</span>
             <span class="quick-tag" @click="smartUrl = 'https://2048ai.vip'">2048短剧 (JSON API)</span>
-            <span class="quick-tag" @click="smartUrl = 'https://example-maccms.org'">标准 MacCMS 站</span>
             <button v-if="structureResult && isStudioCollapsed" class="btn btn-secondary" style="margin-left:8px;padding:3px 10px;font-size:0.8rem;border-color:var(--accent-primary);color:var(--accent-primary)" @click="isStudioCollapsed = false">
               展开工作台 ({{ structureResult.site_name }})
             </button>
             <button class="btn btn-secondary" style="margin-left:auto;padding:5px 12px;font-size:0.8rem" @click="openPromptModal">
-              难搞站点？生成 AI 专用提示词 (Prompt)
+              直接生成标准 AI 提示词 (Prompt)
             </button>
           </div>
 
@@ -1287,7 +1717,7 @@
           <div class="video-card-grid">
             <div class="vod-poster-card" v-for="vod in smartResult.recommend" :key="vod.vod_id">
               <div class="poster-img-wrap">
-                <img v-if="vod.vod_pic" :src="vod.vod_pic" :alt="vod.vod_name" onerror="this.style.display='none'">
+                <img v-if="vod.vod_pic" :src="formatImgProxyUrl(vod.vod_pic, '')" :alt="vod.vod_name" referrerpolicy="no-referrer" onerror="this.style.opacity='0.4'">
                 <span v-else style="font-size:0.85rem;color:var(--text-dim)">[海报暂缺]</span>
               </div>
               <div class="vod-info">
@@ -1414,11 +1844,62 @@
                 <span class="tag" :class="step.passed ? 'tag-direct' : 'tag-html'">{{ step.passed ? 'PASS' : 'FAIL' }}</span>
               </div>
 
-              <!-- 体检通过提示 -->
-              <div v-if="testReport.can_deploy" style="margin-top:1rem;background:#f0fdf4;border:1px solid #86efac;padding:1rem 1.25rem;border-radius:var(--radius-sm);color:#15803d">
-                <div style="font-weight:700;font-size:0.92rem">全流程体检通过</div>
-                <div style="font-size:0.84rem;margin-top:4px;line-height:1.5">
-                  该脚本已完全符合后端契约，且真实影片与播放嗅探全部成功。您可以点击右上角【收录至本地站点库】或【上传部署至后端】！
+              <!-- 失败辅助诊断卡片 -->
+              <div v-if="!testReport.all_passed" style="margin-top:1rem;background:#fef2f2;border:1px solid #fecdd3;padding:1rem 1.25rem;border-radius:var(--radius-sm);color:#991b1b;display:flex;align-items:center;justify-content:space-between">
+                <div>
+                  <div style="font-weight:700;font-size:0.92rem;color:#b91c1c">⚠️ 冒烟测试遇到异常</div>
+                  <div style="font-size:0.84rem;margin-top:4px;color:#7f1d1d">
+                    发现未通过环节。点击右侧按钮复制诊断报告，直接贴回给 AI 即可快速自愈修复代码。
+                  </div>
+                </div>
+                <button class="btn btn-danger" style="padding:6px 14px;font-size:0.82rem;font-weight:700;white-space:nowrap" @click="copyTestErrorReportToAI">
+                  📋 复制错误报告给 AI 修复
+                </button>
+              </div>
+
+              <!-- 全流程体检通过卡片 -->
+              <div v-if="testReport.all_passed" style="margin-top:1rem;background:#f0fdf4;border:1px solid #86efac;padding:1rem 1.25rem;border-radius:var(--radius-sm);color:#15803d;display:flex;align-items:center;justify-content:space-between">
+                <div>
+                  <div style="font-weight:700;font-size:0.95rem;color:#166534">🎉 全链路冒烟测试通过！已嗅探到真实播放流</div>
+                  <div style="font-size:0.84rem;margin-top:4px;color:#15803d">
+                    AST 审计合规，分类与详情解析正确，第 1 集播放直链已在下方窗口实时试播。确认无误后可一键发布！
+                  </div>
+                </div>
+                <button class="btn btn-emerald" style="padding:8px 18px;font-weight:700;white-space:nowrap;font-size:0.88rem" @click="openDeployFromTester">
+                  🚀 步骤 3: 一键部署至后端
+                </button>
+              </div>
+
+              <!-- 实时 HLS 视频试播窗口 -->
+              <div v-if="testPlayStreamUrl" class="panel" style="margin-top:1rem;margin-bottom:0">
+                <div class="panel-head">
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <span class="panel-title" style="font-size:0.9rem">📺 第 1 集真实试播预览</span>
+                    <span class="tag tag-direct">实时嗅探成功</span>
+                  </div>
+                  <span style="font-size:0.75rem;font-family:var(--font-mono);color:var(--text-dim);max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" :title="testPlayStreamUrl">
+                    {{ testPlayStreamUrl }}
+                  </span>
+                </div>
+                <div style="padding:0.75rem;background:#0f172a;display:flex;justify-content:center;border-radius:0 0 var(--radius-sm) var(--radius-sm)">
+                  <video id="testSuiteVideoPlayer" controls style="width:100%;max-height:280px;background:#000;border-radius:4px" playsinline></video>
+                </div>
+              </div>
+
+              <!-- 首页抓取的影片海报样例 -->
+              <div v-if="testHomeRecommendList && testHomeRecommendList.length > 0" class="panel" style="margin-top:1rem;margin-bottom:0">
+                <div class="panel-head">
+                  <span class="panel-title" style="font-size:0.9rem">🎬 首页推荐解析样本 ({{ testHomeRecommendList.length }} 部影片)</span>
+                  <span class="tag tag-python">数据抓取成功</span>
+                </div>
+                <div style="padding:10px;display:grid;grid-template-columns:repeat(auto-fill, minmax(95px, 1fr));gap:8px;max-height:220px;overflow-y:auto">
+                  <div v-for="vod in testHomeRecommendList.slice(0, 10)" :key="vod.vod_id" style="border:1px solid var(--border-subtle);border-radius:6px;overflow:hidden;background:var(--bg-surface)">
+                    <img :src="vod.vod_pic" referrerpolicy="no-referrer" style="width:100%;height:110px;object-fit:cover" onerror="this.src='https://placehold.co/95x110?text=No+Pic'" />
+                    <div style="padding:4px">
+                      <div style="font-size:0.72rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" :title="vod.vod_name">{{ vod.vod_name }}</div>
+                      <div style="font-size:0.65rem;color:var(--text-dim)">{{ vod.vod_remarks || '已提取' }}</div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1596,15 +2077,24 @@
 
         <!-- 播放器区域 -->
         <div class="player-section" v-if="live.detail">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start">
-            <div>
-              <h2 style="font-size:1.35rem;font-weight:800">{{ live.detail.video.vod_name }}</h2>
-              <div style="color:var(--accent-primary);font-size:0.85rem;margin-top:4px;font-weight:600">
-                {{ live.detail.video.vod_remarks || '就绪' }} · ID: {{ live.detail.video.vod_id }}
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1.5rem">
+            <div style="display:flex;gap:1.25rem;align-items:flex-start">
+              <img 
+                v-if="live.detail.video && live.detail.video.vod_pic" 
+                :src="formatImgProxyUrl(live.detail.video.vod_pic, live.siteKey)" 
+                style="width:90px;height:128px;object-fit:cover;border-radius:6px;border:1px solid var(--border-subtle);flex-shrink:0;box-shadow:0 4px 12px rgba(0,0,0,0.15)"
+                referrerpolicy="no-referrer"
+                :alt="live.detail.video.vod_name"
+              />
+              <div>
+                <h2 style="font-size:1.35rem;font-weight:800">{{ live.detail.video.vod_name }}</h2>
+                <div style="color:var(--accent-primary);font-size:0.85rem;margin-top:4px;font-weight:600">
+                  {{ live.detail.video.vod_remarks || '就绪' }} · ID: {{ live.detail.video.vod_id }}
+                </div>
+                <p style="color:var(--text-muted);font-size:0.88rem;margin-top:8px;max-width:800px">
+                  {{ live.detail.desc || '暂无简介' }}
+                </p>
               </div>
-              <p style="color:var(--text-muted);font-size:0.88rem;margin-top:8px;max-width:800px">
-                {{ live.detail.desc || '暂无简介' }}
-              </p>
             </div>
             <button class="btn btn-secondary" @click="live.detail = null">关闭详情</button>
           </div>
@@ -1644,7 +2134,13 @@
               @click="fetchLiveDetail(vod.vod_id)"
             >
               <div class="poster-img-wrap">
-                <img v-if="vod.vod_pic" :src="vod.vod_pic" :alt="vod.vod_name" onerror="this.style.display='none'">
+                <img 
+                  v-if="vod.vod_pic" 
+                  :src="formatImgProxyUrl(vod.vod_pic, live.siteKey)" 
+                  :alt="vod.vod_name" 
+                  referrerpolicy="no-referrer"
+                  onerror="this.style.opacity='0.4'"
+                >
                 <span v-else style="font-size:0.85rem;color:var(--text-dim)">[海报暂缺]</span>
               </div>
               <div class="vod-info">
@@ -1696,10 +2192,15 @@
         </div>
 
         <div class="prompt-footer">
-          <span style="font-size:0.82rem;color:var(--text-dim)">复制后发送给大模型，即可直接获得合规单文件 Python 脚本</span>
-          <button class="btn btn-emerald" style="padding:8px 18px" @click="copyPromptContent">
-            {{ copyPromptBtnText }}
-          </button>
+          <span style="font-size:0.82rem;color:var(--text-dim)">💡 复制提示词发给大模型 -> 获得单文件 .py 脚本 -> 点击右侧前往测试</span>
+          <div style="display:flex;gap:10px">
+            <button class="btn btn-secondary" style="padding:8px 16px" @click="copyPromptContent">
+              {{ copyPromptBtnText }}
+            </button>
+            <button class="btn btn-primary" style="padding:8px 18px;font-weight:700" @click="goToTestStudioAfterPrompt">
+              🧪 前往第 2 步测试脚本 ➔
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1795,421 +2296,798 @@
       </div>
     </div>
 
-    <!-- 本地网络代理配置弹窗 (v2rayN / Clash 等) -->
+    <!-- 节点池管理与采集器独立指派中心弹窗 -->
     <div class="modal-overlay" v-if="showProxyModal" @click.self="showProxyModal = false">
-      <div class="modal-body" style="max-width:580px">
-        <div class="panel-head">
-          <span class="panel-title">本地网络代理配置 (v2rayN / Clash / SOCKS)</span>
+      <div class="modal-body" style="max-width:840px;width:95%;max-height:90vh;display:flex;flex-direction:column">
+        <div class="panel-head" style="margin-bottom:0.75rem">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="panel-title" style="font-size:1.2rem;font-weight:800">🌐 代理节点池与采集器独立指派中心</span>
+              <span class="tag tag-python">单站独立网络隔离</span>
+            </div>
+            <p style="color:var(--text-muted);font-size:0.85rem;margin-top:4px">
+              添加您的 VLESS 节点或 HTTP 代理，并自由指派每一个采集器独立使用对应节点或直连。
+            </p>
+          </div>
           <button class="btn btn-secondary" @click="showProxyModal = false">关闭</button>
         </div>
 
-        <p style="color:var(--text-muted);font-size:0.86rem;margin:1rem 0">
-          爬虫运行于纯本地环境。若目标影视站位于境外或海外 CDN 访问受阻，可开启本地代理一键加速！
-        </p>
-
-        <div class="form-group">
-          <label class="form-label" style="display:flex;align-items:center;gap:8px;cursor:pointer">
-            <input type="checkbox" v-model="proxyForm.enabled" style="width:16px;height:16px;cursor:pointer" />
-            <span style="font-size:0.95rem;font-weight:700;color:var(--text-main)">启用本地网络代理 (Proxy)</span>
-          </label>
+        <!-- 弹窗内部 Tab 切换 -->
+        <div style="display:flex;gap:8px;border-bottom:1px solid var(--border-subtle);padding-bottom:10px;margin-bottom:1rem">
+          <button 
+            class="btn" 
+            :class="proxyModalTab === 'assignments' ? 'btn-primary' : 'btn-secondary'" 
+            style="padding:6px 14px;font-size:0.85rem"
+            @click="proxyModalTab = 'assignments'"
+          >
+            🎯 采集器指派控制 ({{ sites.length }} 个源)
+          </button>
+          <button 
+            class="btn" 
+            :class="proxyModalTab === 'nodes' ? 'btn-primary' : 'btn-secondary'" 
+            style="padding:6px 14px;font-size:0.85rem"
+            @click="proxyModalTab = 'nodes'"
+          >
+            ➕ 节点池管理 ({{ proxyNodes.length }} 个节点)
+          </button>
+          <button 
+            class="btn" 
+            :class="proxyModalTab === 'global' ? 'btn-primary' : 'btn-secondary'" 
+            style="padding:6px 14px;font-size:0.85rem"
+            @click="proxyModalTab = 'global'"
+          >
+            ⚙️ 全局直连与默认设置
+          </button>
         </div>
 
-        <div class="form-group" style="margin-top:1rem">
-          <label class="form-label">代理服务器地址 (HTTP / SOCKS5)</label>
-          <input class="form-input" v-model="proxyForm.proxy_url" placeholder="如 http://127.0.0.1:10809" />
-          <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
-            <button class="btn btn-secondary" style="padding:3px 8px;font-size:0.75rem" @click="proxyForm.proxy_url = 'http://127.0.0.1:10809'">填入 v2rayN 默认 (10809)</button>
-            <button class="btn btn-secondary" style="padding:3px 8px;font-size:0.75rem" @click="proxyForm.proxy_url = 'http://127.0.0.1:7890'">填入 Clash 默认 (7890)</button>
+        <div style="flex:1;overflow-y:auto;padding-right:4px">
+          <!-- TAB 1: 采集器指派控制 -->
+          <div v-if="proxyModalTab === 'assignments'">
+            <div style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:1rem;margin-bottom:1rem">
+              <div style="font-weight:700;font-size:0.92rem;color:var(--text-main);margin-bottom:4px">
+                💡 什么是采集器独立指派？
+              </div>
+              <div style="font-size:0.84rem;color:var(--text-muted);line-height:1.5">
+                某些境外短剧与影视站点（如 huangguoai.com）需要特定节点才能拉取分类与视频，而国内直连站点则不需要代理。在此处为每个站点独立指定节点，系统将在抓取时自动隔离并注入对应的代理网络。
+              </div>
+            </div>
+
+            <div style="border:1px solid var(--border-subtle);border-radius:var(--radius-md);overflow:hidden">
+              <table style="width:100%;border-collapse:collapse;font-size:0.86rem;text-align:left">
+                <thead style="background:var(--bg-surface);border-bottom:1px solid var(--border-subtle)">
+                  <tr>
+                    <th style="padding:10px 14px;font-weight:700">采集器标识 (Key)</th>
+                    <th style="padding:10px 14px;font-weight:700">站点名称</th>
+                    <th style="padding:10px 14px;font-weight:700">绑定的网络节点</th>
+                    <th style="padding:10px 14px;font-weight:700;text-align:right">连通性测试</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="s in sites" :key="s.key" style="border-bottom:1px solid var(--border-subtle)">
+                    <td style="padding:12px 14px;font-family:var(--font-mono);font-weight:700;color:var(--accent-primary)">
+                      {{ s.key }}
+                    </td>
+                    <td style="padding:12px 14px;color:var(--text-main);font-weight:600">
+                      {{ s.name || s.key }}
+                    </td>
+                    <td style="padding:12px 14px">
+                      <select 
+                        class="form-select" 
+                        style="width:230px;padding:4px 8px;font-size:0.84rem"
+                        :value="proxyBindings[s.key] || 'default'"
+                        @change="handleBindingChange(s.key, $event.target.value)"
+                      >
+                        <option value="default">🌐 跟随全局默认代理</option>
+                        <option value="direct">🚫 强制直连 (国内无代理)</option>
+                        <option v-for="node in proxyNodes" :key="node.id" :value="node.id">
+                          ⚡ [{{ (node.protocol || 'HTTP').toUpperCase() }}] {{ node.name }}
+                        </option>
+                      </select>
+                    </td>
+                    <td style="padding:12px 14px;text-align:right">
+                      <button 
+                        class="btn btn-secondary" 
+                        style="padding:4px 10px;font-size:0.78rem"
+                        :disabled="siteTestingMap[s.key]"
+                        @click="testSiteBinding(s.key)"
+                      >
+                        <span v-if="siteTestingMap[s.key]">测速中...</span>
+                        <span v-else>🧪 测试连通</span>
+                      </button>
+                      <div v-if="siteTestResultMap[s.key]" style="font-size:0.75rem;margin-top:4px" :style="{ color: siteTestResultMap[s.key].ok ? '#10b981' : '#ef4444' }">
+                        {{ siteTestResultMap[s.key].message }}
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- TAB 2: 节点池管理 (添加与管理 VLESS / HTTP 节点) -->
+          <div v-if="proxyModalTab === 'nodes'">
+            <div style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:1.2rem;margin-bottom:1.2rem">
+              <div style="font-weight:800;font-size:0.96rem;margin-bottom:6px">➕ 添加新代理节点 (支持直接粘贴 VLESS 节点 / HTTP 地址)</div>
+              <div style="font-size:0.84rem;color:var(--text-muted);margin-bottom:1rem">
+                直接粘贴以 <code>vless://</code> 开头的完整节点连接串，或输入本地 <code>http://127.0.0.1:10809</code> 代理地址。
+              </div>
+
+              <div class="form-group" style="margin-bottom:0.75rem">
+                <label class="form-label">节点连接信息 (vless:// 或 http://)</label>
+                <textarea 
+                  class="form-input" 
+                  v-model="newNodeRawUrl" 
+                  rows="2" 
+                  placeholder="在此直接粘贴 vless://uuid@server:port?type=tcp&security=reality... 节点链接，或输入 http://127.0.0.1:10809"
+                  style="font-family:var(--font-mono);font-size:0.82rem;resize:vertical"
+                ></textarea>
+              </div>
+
+              <div style="display:grid;grid-template-columns:1fr 140px;gap:12px;margin-bottom:1rem">
+                <div>
+                  <label class="form-label">自定义节点备注名称（选填，默认自动从链接提取）</label>
+                  <input class="form-input" v-model="newNodeName" placeholder="例如：我的香港高速专线" />
+                </div>
+                <div>
+                  <label class="form-label">本地 Xray 映射端口</label>
+                  <input class="form-input" v-model.number="newNodePort" type="number" placeholder="10809" />
+                </div>
+              </div>
+
+              <button class="btn btn-primary" :disabled="!newNodeRawUrl.trim() || addingNode" @click="submitAddNode">
+                <span>{{ addingNode ? '正在解析中...' : '➕ 立即解析并加入节点池' }}</span>
+              </button>
+            </div>
+
+            <!-- 已有节点列表 -->
+            <div style="font-weight:700;font-size:0.95rem;margin-bottom:0.75rem;display:flex;align-items:center;justify-content:space-between">
+              <span>已收录节点池 (共 {{ proxyNodes.length }} 个节点)</span>
+              <button class="btn btn-secondary" style="padding:2px 8px;font-size:0.78rem" @click="fetchProxyNodes">刷新列表</button>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div 
+                v-for="node in proxyNodes" 
+                :key="node.id"
+                style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:1rem;display:flex;align-items:center;justify-content:space-between;gap:12px"
+              >
+                <div style="flex:1;min-width:0">
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                    <span 
+                      class="tag" 
+                      :style="{ 
+                        background: node.protocol === 'vless' ? '#3b82f6' : '#10b981', 
+                        color: '#fff', 
+                        fontWeight: '700',
+                        fontSize: '0.72rem',
+                        padding: '1px 6px'
+                      }"
+                    >
+                      {{ (node.protocol || 'http').toUpperCase() }}
+                    </span>
+                    <span style="font-weight:700;font-size:0.92rem;color:var(--text-main)">{{ node.name }}</span>
+                    <span v-if="node.server" style="font-family:var(--font-mono);font-size:0.78rem;color:var(--text-muted)">
+                      ({{ node.server }}:{{ node.port }})
+                    </span>
+                  </div>
+                  <div style="font-family:var(--font-mono);font-size:0.78rem;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                    本地映射代理: <span style="color:var(--accent-emerald);font-weight:600">{{ node.proxy_url || node.local_http_proxy }}</span>
+                    <span v-if="node.network_type"> · 协议: {{ node.network_type }}</span>
+                    <span v-if="node.security"> · 安全: {{ node.security }}</span>
+                  </div>
+                </div>
+
+                <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+                  <button 
+                    v-if="node.protocol === 'vless'"
+                    class="btn btn-secondary" 
+                    style="padding:4px 10px;font-size:0.78rem;border-color:var(--accent-primary);color:var(--accent-primary)"
+                    @click="openXrayExport(node)"
+                    title="导出用于在本地 NAS 宝塔面板运行的 Xray 配置文件"
+                  >
+                    📋 宝塔Xray配置
+                  </button>
+                  <button 
+                    class="btn btn-secondary" 
+                    style="padding:4px 10px;font-size:0.78rem"
+                    :disabled="testingNodeId === node.id"
+                    @click="testNodeConnectivity(node)"
+                  >
+                    <span>{{ testingNodeId === node.id ? '测速中...' : '🧪 测试' }}</span>
+                  </button>
+                  <button 
+                    class="btn btn-secondary" 
+                    style="padding:4px 8px;font-size:0.78rem;color:#ef4444"
+                    @click="deleteNode(node.id)"
+                    title="删除该节点"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 3: 全局直连与默认设置 -->
+          <div v-if="proxyModalTab === 'global'">
+            <div class="form-group" style="margin-bottom:1.2rem">
+              <label class="form-label" style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                <input type="checkbox" v-model="proxyForm.enabled" style="width:16px;height:16px;cursor:pointer" />
+                <span style="font-size:0.95rem;font-weight:700;color:var(--text-main)">开启全局网络代理 (未单独指派的采集器将跟随此设置)</span>
+              </label>
+            </div>
+
+            <div class="form-group" style="margin-bottom:1rem">
+              <label class="form-label">全局默认代理地址 (HTTP / SOCKS5)</label>
+              <input class="form-input" v-model="proxyForm.proxy_url" placeholder="如 http://127.0.0.1:10809" />
+              <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+                <button class="btn btn-secondary" style="padding:3px 8px;font-size:0.75rem" @click="proxyForm.proxy_url = 'http://127.0.0.1:10809'">填入 10809</button>
+                <button class="btn btn-secondary" style="padding:3px 8px;font-size:0.75rem" @click="proxyForm.proxy_url = 'http://127.0.0.1:7890'">填入 7890 (Clash)</button>
+              </div>
+            </div>
+
+            <button class="btn btn-primary" style="margin-top:1rem" @click="saveGlobalProxySettings">
+              保存全局代理配置
+            </button>
           </div>
         </div>
 
-        <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:1.5rem">
-          <button class="btn btn-secondary" @click="showProxyModal = false">取消</button>
-          <button class="btn btn-primary" @click="saveProxySettings">保存代理配置</button>
+        <div style="display:flex;justify-content:flex-end;margin-top:1rem;padding-top:0.75rem;border-top:1px solid var(--border-subtle)">
+          <button class="btn btn-secondary" @click="showProxyModal = false">完成并关闭</button>
         </div>
       </div>
     </div>
 
-    <!-- 实时网页交互式可视化勘探与特征拾取弹窗 (全屏拟态工作台) -->
-    <div class="modal-overlay" v-if="showVisualPickerModal" style="align-items:stretch;padding:12px;z-index:9999">
-      <div class="modal-body" style="max-width:100%;width:100%;height:100%;display:flex;flex-direction:column;padding:12px;gap:10px">
-        <!-- 弹窗顶栏控制 -->
-        <div class="panel-head" style="margin-bottom:0;padding-bottom:10px;border-bottom:1px solid var(--border-subtle);flex-wrap:wrap;gap:8px">
-          <div style="display:flex;align-items:center;gap:10px">
-            <span class="panel-title" style="font-size:1.05rem">真实网页交互式可视化勘探与特征拾取工作台</span>
-            <span class="tag tag-python">纯本地沙箱代理</span>
+    <!-- Xray 配置导出专用弹窗 -->
+    <div class="modal-overlay" v-if="showXrayExportModal" @click.self="showXrayExportModal = false">
+      <div class="modal-body" style="max-width:700px;width:95%">
+        <div class="panel-head" style="margin-bottom:1rem">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="panel-title" style="font-size:1.15rem;font-weight:800">📋 宝塔面板 / 本地 NAS Xray 部署配置</span>
+              <span class="tag tag-python">一键导出</span>
+            </div>
+            <p style="color:var(--text-muted);font-size:0.84rem;margin-top:4px">
+              已将您添加的 VLESS 节点自动转译为开箱即用的标准 Xray 客户端 <code>config.json</code>
+            </p>
+          </div>
+          <button class="btn btn-secondary" @click="showXrayExportModal = false">关闭</button>
+        </div>
+
+        <div style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:6px;padding:12px;margin-bottom:1rem;font-size:0.85rem;color:var(--text-muted);line-height:1.5">
+          <strong>💡 宝塔面板极速部署 2 步法：</strong><br>
+          1. 复制下方 JSON 保存为宝塔机器上的 <code>/etc/xray/config.json</code><br>
+          2. 执行命令即可在宝塔常驻启动：<code>docker run -d --name xray -p 127.0.0.1:10809:10809 -v /etc/xray/config.json:/etc/xray/config.json teddysun/xray</code>
+        </div>
+
+        <div class="code-preview-wrap">
+          <div class="code-meta-bar">
+            <span>xray_config.json</span>
+            <button class="btn btn-secondary" style="padding:2px 8px;font-size:0.75rem" @click="copyXrayConfig">
+              {{ copyXrayBtnText }}
+            </button>
+          </div>
+          <textarea 
+            class="form-input" 
+            readonly 
+            rows="14" 
+            style="font-family:var(--font-mono);font-size:0.8rem;background:var(--bg-base);color:var(--text-main)"
+          >{{ xrayConfigStr }}</textarea>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;margin-top:1rem;gap:10px">
+          <button class="btn btn-secondary" @click="showXrayExportModal = false">关闭</button>
+          <button class="btn btn-primary" @click="copyXrayConfig">{{ copyXrayBtnText }}</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 实时网页交互式可视化勘探与特征拾取工作台 (Visual Picker Studio 2.0 旗舰工作台) -->
+    <div class="vp-fullscreen-modal" v-if="showVisualPickerModal">
+      <div class="vp-window">
+        <!-- 弹窗顶栏：拟真现代化浏览器地址与模式控制系统 -->
+        <div class="vp-topbar">
+          <!-- 左侧品牌与沙箱标签 -->
+          <div class="vp-brand-tag">
+            <div class="vp-brand-badge">
+              <span>🎯</span>
+              <span>可视化拾取工作台</span>
+            </div>
+            <div class="vp-sandbox-badge" :title="'目标站点: ' + visualHostname">
+              <span>🔒 隔离沙箱</span>
+              <span style="font-family:var(--font-mono);font-weight:700;color:var(--accent-primary)">{{ visualHostname }}</span>
+            </div>
           </div>
 
-          <!-- 地址栏与网页穿透跳转控制器 -->
-          <div style="display:flex;align-items:center;gap:6px;flex:1;max-width:550px">
-            <button class="btn btn-secondary" style="padding:5px 8px;font-size:0.78rem" @click="historyBackProxy" title="返回上一页">&lt;</button>
-            <button class="btn btn-secondary" style="padding:5px 8px;font-size:0.78rem" @click="historyForwardProxy" title="前进">&gt;</button>
-            <button class="btn btn-secondary" style="padding:5px 8px;font-size:0.78rem" @click="refreshVisualProxy" title="刷新页面">刷新</button>
+          <!-- 中间：现代化智能浏览器地址栏 -->
+          <div class="vp-address-bar">
+            <button class="vp-nav-btn" @click="historyBackProxy" title="返回上一页">‹</button>
+            <button class="vp-nav-btn" @click="historyForwardProxy" title="前进下一页">›</button>
+            <button class="vp-nav-btn" @click="refreshVisualProxy" title="强制刷新页面">↻</button>
+            <span class="vp-url-lock">🔒</span>
             <input 
-              class="smart-input" 
-              style="padding:5px 8px;font-size:0.8rem;flex:1" 
+              class="vp-url-input" 
               v-model="visualPickerUrl" 
-              placeholder="输入目标网址..."
+              placeholder="输入目标网址，回车穿透访问..."
               @keyup.enter="refreshVisualProxy" 
             />
+            <button 
+              class="btn btn-secondary" 
+              style="padding:2px 8px;font-size:0.7rem;border-radius:5px" 
+              @click="refreshVisualProxy"
+            >
+              前往
+            </button>
           </div>
 
-          <!-- 模式切换与操作按钮 -->
-          <div style="display:flex;align-items:center;gap:6px">
-            <div style="display:flex;border:1px solid var(--border-subtle);border-radius:6px;overflow:hidden">
+          <!-- 右侧：模式切换器与全站控制 -->
+          <div style="display:flex;align-items:center;gap:8px">
+            <!-- 模式切换核心分段控制器 -->
+            <div class="vp-mode-switcher">
               <button 
-                class="btn" 
-                style="padding:5px 10px;font-size:0.78rem;border:none;border-radius:0" 
-                :class="visualPickingMode === 'pick' ? 'btn-primary' : 'btn-secondary'"
+                class="vp-mode-btn" 
+                :class="{ 'active-pick': visualPickingMode === 'pick' }"
                 @click="setVisualPickingMode('pick')"
+                title="移动鼠标高亮页面元素，点击即可在侧边面板指派规则"
               >
-                点选捕获模式
+                <span class="vp-pulse-dot" v-if="visualPickingMode === 'pick'"></span>
+                <span>🎯 点选捕获模式</span>
               </button>
               <button 
-                class="btn" 
-                style="padding:5px 10px;font-size:0.78rem;border:none;border-radius:0" 
-                :class="visualPickingMode === 'browse' ? 'btn-primary' : 'btn-secondary'"
+                class="vp-mode-btn" 
+                :class="{ 'active-browse': visualPickingMode === 'browse' }"
                 @click="setVisualPickingMode('browse')"
+                title="正常点击网页链接，支持翻页与跳转进入详情页"
               >
-                自由浏览模式
+                <span>🌐 自由浏览模式</span>
               </button>
             </div>
 
-            <button 
-              class="btn btn-secondary" 
-              style="padding:5px 10px;font-size:0.78rem" 
-              @click="visualPanelPosition = visualPanelPosition === 'left' ? 'right' : 'left'"
-              :title="visualPanelPosition === 'left' ? '点击切换控制面板至右侧' : '点击切换控制面板至左侧'"
-            >
-              {{ visualPanelPosition === 'left' ? '面板居左 (可切右)' : '面板居右 (可切左)' }}
+            <!-- 完成与关闭 -->
+            <button class="btn btn-emerald" style="padding:6px 14px;font-size:0.8rem;font-weight:700" @click="showVisualPickerModal = false">
+              ✓ 完成并返回
             </button>
-            <button class="btn btn-emerald" style="padding:5px 14px;font-size:0.82rem" @click="showVisualPickerModal = false">
-              完成并返回工作台
-            </button>
-            <button class="btn btn-secondary" style="padding:5px 10px;font-size:0.82rem" @click="showVisualPickerModal = false">
-              关闭
+            <button class="btn btn-secondary" style="padding:6px 10px;font-size:0.8rem" @click="showVisualPickerModal = false" title="关闭工作台">
+              ✕
             </button>
           </div>
         </div>
 
-        <!-- 弹窗分屏主体: 默认控制面板在左 (width: 420px), 网页在右 (flex: 1) -->
-        <div style="display:flex;gap:12px;flex:1;min-height:0;overflow:hidden" :style="{ flexDirection: visualPanelPosition === 'left' ? 'row' : 'row-reverse' }">
+        <!-- 工作台分屏主体：侧边抽屉固定居右 + 左侧网页实时中继视图 -->
+        <div class="vp-main-body" style="flex-direction: row-reverse">
           
-          <!-- 左侧控制抽屉 (420px 固定宽) -->
-          <div style="width:420px;min-width:380px;max-width:460px;display:flex;flex-direction:column;border:1px solid var(--border-subtle);border-radius:8px;background:var(--bg-surface);overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.06)">
-            <!-- 顶栏双 Tab 切换 -->
-            <div style="display:flex;border-bottom:1px solid var(--border-subtle);background:var(--bg-surface-subtle)">
+          <!-- 侧边操作控制面板 (440px 固定右侧) -->
+          <div class="vp-sidebar-drawer position-right">
+            <!-- 4-Tab 导航头 -->
+            <div class="vp-tab-nav">
               <button 
-                class="btn" 
-                style="flex:1;border:none;border-radius:0;padding:10px 8px;font-size:0.82rem;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px"
-                :style="{ background: visualActiveTab === 'pick' ? 'var(--bg-surface)' : 'transparent', color: visualActiveTab === 'pick' ? 'var(--accent-primary)' : 'var(--text-muted)', borderBottom: visualActiveTab === 'pick' ? '2px solid var(--accent-primary)' : '2px solid transparent' }"
+                class="vp-tab-btn" 
+                :class="{ 'is-active': visualActiveTab === 'pick' }"
                 @click="visualActiveTab = 'pick'"
               >
-                <span>拾取与指派</span>
-                <span class="tag tag-python" v-if="currentPickedElement" style="font-size:0.68rem;padding:1px 5px">已捕获</span>
+                <span style="font-size:1rem">🎯</span>
+                <span>特征拾取</span>
+                <span class="vp-tab-badge" v-if="currentPickedElement">已捕获</span>
               </button>
 
               <button 
-                class="btn" 
-                style="flex:1;border:none;border-radius:0;padding:10px 8px;font-size:0.82rem;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px"
-                :style="{ background: visualActiveTab === 'tree' ? 'var(--bg-surface)' : 'transparent', color: visualActiveTab === 'tree' ? 'var(--accent-primary)' : 'var(--text-muted)', borderBottom: visualActiveTab === 'tree' ? '2px solid var(--accent-primary)' : '2px solid transparent' }"
-                @click="visualActiveTab = 'tree'"
+                class="vp-tab-btn" 
+                :class="{ 'is-active': visualActiveTab === 'categories' || visualActiveTab === 'tree' }"
+                @click="visualActiveTab = 'categories'"
               >
-                <span>已选结构清单</span>
-                <span class="tag tag-direct" style="font-size:0.68rem;padding:1px 6px">{{ selectedCategoriesCount }} 类 · {{ totalSubcategoriesCount }} 标</span>
+                <span style="font-size:1rem">🏷️</span>
+                <span>分类导航</span>
+                <span class="vp-tab-badge" :class="{ 'badge-success': selectedCategoriesCount > 0 }">{{ selectedCategoriesCount }}类</span>
+              </button>
+
+              <button 
+                class="vp-tab-btn" 
+                :class="{ 'is-active': visualActiveTab === 'fields' }"
+                @click="visualActiveTab = 'fields'"
+              >
+                <span style="font-size:1rem">📋</span>
+                <span>采集字段</span>
+                <span class="vp-tab-badge" :class="{ 'badge-success': boundFieldsCount > 0 }">{{ boundFieldsCount }}/{{ (structureResult && structureResult.detail_fields) ? structureResult.detail_fields.length : 13 }}</span>
+              </button>
+
+              <button 
+                class="vp-tab-btn" 
+                :class="{ 'is-active': visualActiveTab === 'export' }"
+                @click="visualActiveTab = 'export'"
+              >
+                <span style="font-size:1rem">🚀</span>
+                <span>成果导出</span>
+                <span class="vp-tab-badge" style="background:#fef3c7;color:#92400e">代码</span>
               </button>
             </div>
 
-            <!-- TAB 1: 元素捕获与指派工作台 -->
-            <div v-show="visualActiveTab === 'pick'" style="flex:1;display:flex;flex-direction:column;overflow-y:auto;padding:10px 12px;gap:10px">
-              <!-- 目标归属指示条 -->
-              <div style="background:rgba(37,99,235,0.06);border:1px solid rgba(37,99,235,0.2);padding:7px 10px;border-radius:6px;display:flex;align-items:center;justify-content:space-between;font-size:0.78rem">
-                <div>
-                  <span style="color:var(--text-muted)">当前归属分类: </span>
-                  <strong style="color:var(--accent-primary)">{{ currentPrimaryCategory ? (currentPrimaryCategory.type_name || currentPrimaryCategory.name) : '（暂无，请先创建分类）' }}</strong>
+            <!-- ================= TAB 1: 元素特征拾取与智能指派 ================= -->
+            <div class="vp-tab-body" v-show="visualActiveTab === 'pick'">
+              
+              <!-- 归属分类提示条 -->
+              <div style="background:#eef2ff;border:1px solid #c7d2fe;padding:8px 10px;border-radius:8px;display:flex;align-items:center;justify-content:space-between;font-size:0.78rem">
+                <div style="display:flex;align-items:center;gap:6px">
+                  <span style="color:#64748b">当前子标签归属:</span>
+                  <strong style="color:#4338ca">{{ currentPrimaryCategory ? (currentPrimaryCategory.type_name || currentPrimaryCategory.name) : '（暂无分类，请先创建）' }}</strong>
                 </div>
-                <button class="btn btn-secondary" style="padding:2px 8px;font-size:0.72rem" @click="visualActiveTab = 'tree'">
-                  管理清单 -&gt;
+                <button class="btn btn-secondary" style="padding:2px 7px;font-size:0.7rem" @click="visualActiveTab = 'categories'">
+                  切换分类 ›
                 </button>
               </div>
 
-              <!-- 当前捕获元素卡片 -->
-              <div class="panel" style="margin-bottom:0">
-                <div class="panel-head" style="padding:8px 12px">
-                  <span class="panel-title" style="font-size:0.85rem">当前点选元素特征</span>
-                  <span class="tag tag-python" v-if="currentPickedElement">{{ currentPickedElement.tagName }}</span>
-                </div>
-                <div style="padding:10px 12px">
-                  <div v-if="currentPickedElement">
-                    <div style="margin-bottom:8px">
-                      <span style="font-size:0.74rem;color:var(--text-muted)">抓取文字：</span>
-                      <div style="font-weight:700;font-size:0.88rem;color:var(--text-main);word-break:break-all;background:var(--bg-surface-subtle);padding:4px 8px;border-radius:4px;margin-top:2px">
-                        {{ currentPickedElement.text || '（无可见文本）' }}
-                      </div>
+              <!-- 状态 A: 当在网页中点击并捕获到了元素 -->
+              <div v-if="currentPickedElement" style="display:flex;flex-direction:column;gap:10px">
+                
+                <!-- 1. 当前拾取元素特征卡片 -->
+                <div class="vp-card">
+                  <div class="vp-card-title">
+                    <div style="display:flex;align-items:center;gap:6px">
+                      <span>已捕获元素</span>
+                      <span class="tag tag-python" style="font-size:0.7rem;font-weight:700">&lt;{{ currentPickedElement.tagName }}&gt;</span>
                     </div>
+                    <button class="btn btn-secondary" style="padding:1px 6px;font-size:0.68rem;color:#ef4444" @click="currentPickedElement = null">
+                      清除点选 ×
+                    </button>
+                  </div>
 
-                    <div style="margin-bottom:8px" v-if="currentPickedElement.href">
-                      <span style="font-size:0.74rem;color:var(--text-muted)">超链接 (href/路由)：</span>
-                      <div style="font-family:var(--font-mono);font-size:0.74rem;color:var(--text-dim);word-break:break-all;background:var(--bg-surface-subtle);padding:4px 8px;border-radius:4px;margin-top:2px">
-                        {{ currentPickedElement.href }}
-                      </div>
-                      <button class="btn btn-primary" style="margin-top:5px;padding:4px 8px;font-size:0.75rem;width:100%;justify-content:center" @click="navigateVisualProxyTo(currentPickedElement.href)">
-                        在页面中访问此链接 (保持浏览模式) -&gt;
-                      </button>
+                  <!-- 可见文本 -->
+                  <div class="vp-feature-row">
+                    <span class="vp-feature-label">可见文本：</span>
+                    <div class="vp-feature-val" style="font-weight:700;color:#0f172a">
+                      {{ currentPickedElement.text || '（无纯文本节点）' }}
                     </div>
+                  </div>
 
-                    <div style="margin-bottom:8px" v-if="currentPickedElement.src">
-                      <span style="font-size:0.74rem;color:var(--text-muted)">图片地址 (src)：</span>
-                      <div style="font-family:var(--font-mono);font-size:0.74rem;color:var(--text-dim);word-break:break-all;background:var(--bg-surface-subtle);padding:4px 8px;border-radius:4px;margin-top:2px">
+                  <!-- 图片地址 (如有) -->
+                  <div class="vp-feature-row" v-if="currentPickedElement.src">
+                    <span class="vp-feature-label">图片资源 (src / data-src)：</span>
+                    <div style="display:flex;gap:8px;align-items:center">
+                      <img :src="currentPickedElement.src" referrerpolicy="no-referrer" style="width:48px;height:60px;object-fit:cover;border-radius:4px;border:1px solid #cbd5e1" onerror="this.style.opacity='0.4';this.title='若受外链防盗链限制浏览器暂未渲染，不影响后台爬虫和AI提取真实地址'" />
+                      <div class="vp-feature-val" style="flex:1;font-family:var(--font-mono);font-size:0.72rem;word-break:break-all">
                         {{ currentPickedElement.src }}
                       </div>
                     </div>
-
-                    <div style="margin-bottom:10px">
-                      <span style="font-size:0.74rem;color:var(--text-muted)">推荐 CSS 选择器：</span>
-                      <div style="font-family:var(--font-mono);font-size:0.74rem;color:var(--accent-primary);word-break:break-all;background:var(--bg-surface-subtle);padding:4px 8px;border-radius:4px;margin-top:2px">
-                        {{ currentPickedElement.selector || 'body' }}
-                      </div>
+                    <div style="font-size:0.68rem;color:#b45309;margin-top:3px;line-height:1.4">
+                      💡 提示：若目标图床开启严格防盗链，浏览器视窗可能显示为破损图，但真实图片 URL 已成功捕获，后台 Python 爬虫和生成的 AI 提示词不受任何影响。
                     </div>
+                  </div>
 
-                    <!-- 快捷指派操作 -->
-                    <div style="font-size:0.76rem;font-weight:700;color:var(--text-main);margin-bottom:6px">一键指派为体系分类：</div>
-                    <div style="display:flex;flex-direction:column;gap:6px">
-                      <button class="btn btn-secondary" style="justify-content:flex-start;padding:6px 10px;font-size:0.8rem;border-color:var(--border-subtle)" @click="addPickedAsPrimaryCategory">
-                        + 设为独立一级分类 ({{ currentPickedElement.text || '新分类' }})
+                  <!-- 超链接地址 (如有) -->
+                  <div class="vp-feature-row" v-if="currentPickedElement.href">
+                    <span class="vp-feature-label">超链接 (href)：</span>
+                    <div class="vp-feature-val" style="font-family:var(--font-mono);font-size:0.72rem;color:#0284c7">
+                      {{ currentPickedElement.href }}
+                    </div>
+                    <button 
+                      class="btn btn-primary" 
+                      style="margin-top:4px;padding:4px 8px;font-size:0.74rem;justify-content:center" 
+                      @click="navigateVisualProxyTo(currentPickedElement.href)"
+                      title="点击直接穿透加载此 URL"
+                    >
+                      🚀 穿透进入此链接 (详情页/翻页) →
+                    </button>
+                  </div>
+
+                  <!-- 推荐 CSS 选择器 -->
+                  <div class="vp-feature-row">
+                    <span class="vp-feature-label">推荐 CSS 提取规则：</span>
+                    <div class="vp-feature-val" style="font-family:var(--font-mono);font-size:0.72rem;color:#4f46e5;font-weight:600">
+                      {{ currentPickedElement.selector || 'body' }}
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 2. 智能同类兄弟批量识别面板 (置顶展示，重点突出批量建类) -->
+                <div class="vp-card" v-if="currentPickedElement.siblings && currentPickedElement.siblings.length > 1" style="border-color:#6366f1;background:#f5f3ff;box-shadow:0 2px 10px rgba(99,102,241,0.12)">
+                  <div class="vp-card-title">
+                    <span style="color:#4338ca;font-weight:700">✨ 探测到 {{ currentPickedElement.siblings.length }} 个同组同类标签</span>
+                    <div style="display:flex;gap:4px">
+                      <button class="btn btn-secondary" style="padding:1px 6px;font-size:0.68rem" @click="toggleSelectAllSiblings(true)">全选</button>
+                      <button class="btn btn-secondary" style="padding:1px 6px;font-size:0.68rem" @click="toggleSelectAllSiblings(false)">清空</button>
+                    </div>
+                  </div>
+
+                  <!-- 标签选择流 -->
+                  <div style="display:flex;flex-wrap:wrap;gap:4px;max-height:88px;overflow-y:auto;padding:6px;background:#ffffff;border-radius:6px;border:1px solid #c7d2fe">
+                    <label 
+                      v-for="(sib, idx) in currentPickedElement.siblings" 
+                      :key="idx" 
+                      style="display:inline-flex;align-items:center;gap:4px;font-size:0.72rem;background:#f1f5f9;padding:2px 7px;border-radius:4px;cursor:pointer;user-select:none"
+                    >
+                      <input type="checkbox" :value="sib.text" v-model="pickedSiblingsSelected" style="cursor:pointer" />
+                      <span style="font-weight:600;color:#0f172a">{{ sib.text }}</span>
+                    </label>
+                  </div>
+
+                  <!-- 批量指派按钮组 -->
+                  <div style="display:flex;flex-direction:column;gap:5px;margin-top:2px">
+                    <button 
+                      class="btn btn-primary" 
+                      style="padding:8px 10px;font-size:0.82rem;justify-content:center;font-weight:800;box-shadow:0 2px 8px rgba(79,70,229,0.25)" 
+                      @click="addPickedSiblingsAsPrimaries"
+                    >
+                      ✨ 批量创建为一级分类 ({{ pickedSiblingsSelected.length }})
+                    </button>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+                      <button 
+                        class="btn btn-secondary" 
+                        style="padding:5px 6px;font-size:0.72rem;justify-content:center" 
+                        :disabled="!currentPrimaryCategory"
+                        @click="addPickedSiblingsAsSubcategories"
+                        :title="currentPrimaryCategory ? ('收录至【' + (currentPrimaryCategory.type_name || currentPrimaryCategory.name) + '】') : '请先选定一个一级分类'"
+                      >
+                        + 设为当前二级标签
                       </button>
                       <button 
                         class="btn btn-secondary" 
-                        style="justify-content:flex-start;padding:6px 10px;font-size:0.8rem" 
-                        :disabled="!currentPrimaryCategory"
-                        @click="addPickedAsSubcategory"
+                        style="padding:5px 6px;font-size:0.72rem;justify-content:center" 
+                        @click="addPickedSiblingsAsTagField"
                       >
-                        + 设为「{{ currentPrimaryCategory ? (currentPrimaryCategory.type_name || currentPrimaryCategory.name) : '当前一级分类' }}」的二级标签
+                        设为题材样本 (vod_tag)
                       </button>
                     </div>
+                  </div>
+                </div>
 
-                    <!-- 绑定为详情页采集字段快捷网格 -->
-                    <div style="margin-top:12px;border-top:1px dashed var(--border-subtle);padding-top:8px">
-                      <div style="font-size:0.76rem;font-weight:700;color:var(--text-main);margin-bottom:6px">绑定为详情页采集字段：</div>
-                      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-                        <button class="btn btn-secondary" style="padding:4px 6px;font-size:0.74rem;justify-content:center" @click="assignPickedToField('vod_name')">片名 (vod_name)</button>
-                        <button class="btn btn-secondary" style="padding:4px 6px;font-size:0.74rem;justify-content:center" @click="assignPickedToField('vod_pic')">海报封面 (vod_pic)</button>
-                        <button class="btn btn-secondary" style="padding:4px 6px;font-size:0.74rem;justify-content:center" @click="assignPickedToField('vod_remarks')">集数状态 (remarks)</button>
-                        <button class="btn btn-secondary" style="padding:4px 6px;font-size:0.74rem;justify-content:center" @click="assignPickedToField('vod_content')">剧情简介 (content)</button>
-                        <button class="btn btn-secondary" style="padding:4px 6px;font-size:0.74rem;justify-content:center" @click="assignPickedToField('episodes')">选集按钮 (episodes)</button>
-                        <button class="btn btn-secondary" style="padding:4px 6px;font-size:0.74rem;justify-content:center" @click="assignPickedToField('lines')">播放线路 (lines)</button>
-                        <button class="btn btn-secondary" style="padding:4px 6px;font-size:0.74rem;justify-content:center" @click="assignPickedToField('vod_actor')">主演演员 (actor)</button>
-                        <button class="btn btn-secondary" style="padding:4px 6px;font-size:0.74rem;justify-content:center" @click="assignPickedToField('vod_tag')">分类标签 (tag)</button>
-                      </div>
+                <!-- 3. 单项分类快捷指派 -->
+                <div class="vp-card">
+                  <div class="vp-card-title">
+                    <span>🏷️ 单项指派至分类体系</span>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:6px">
+                    <button class="btn btn-secondary" style="justify-content:flex-start;padding:6px 10px;font-size:0.78rem" @click="addPickedAsPrimaryCategory">
+                      <span style="font-weight:700;color:var(--accent-primary)">+ 设为独立一级分类</span>
+                      <span style="color:var(--text-muted);margin-left:4px">({{ (currentPickedElement.text || '新分类').slice(0, 10) }})</span>
+                    </button>
+                    <button 
+                      class="btn btn-secondary" 
+                      style="justify-content:flex-start;padding:6px 10px;font-size:0.78rem" 
+                      :disabled="!currentPrimaryCategory"
+                      @click="addPickedAsSubcategory"
+                    >
+                      <span style="font-weight:700;color:#0284c7">+ 设为二级标签</span>
+                      <span style="color:var(--text-muted);margin-left:4px">归属于【{{ currentPrimaryCategory ? (currentPrimaryCategory.type_name || currentPrimaryCategory.name) : '当前一级分类' }}】</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- 4. 详情页 / 片单 核心采集字段快捷绑定 -->
+                <div class="vp-card">
+                  <div class="vp-card-title">
+                    <div style="display:flex;align-items:center;gap:6px">
+                      <span>📋 绑定采集字段</span>
+                      <span style="font-size:0.68rem;color:#64748b;font-weight:400">（点击绑定 / 再次点击解绑）</span>
                     </div>
+                    <span style="font-size:0.7rem;color:#64748b">已绑 {{ boundFieldsCount }}/{{ (structureResult && structureResult.detail_fields) ? structureResult.detail_fields.length : 13 }}</span>
+                  </div>
+                  <div class="vp-field-grid">
+                    <button 
+                      v-for="f in (structureResult ? structureResult.detail_fields : [])" 
+                      :key="f.field_key || f.field"
+                      class="vp-field-chip" 
+                      :class="{ 'is-bound': isFieldBound(f.field_key || f.field) }" 
+                      @click="toggleFieldBinding(f.field_key || f.field)"
+                      :title="isFieldBound(f.field_key || f.field) ? ('已绑定样本: ' + (f.detected_sample || f.sample) + '（再次点击即可直接解绑）') : ('点击指派为 ' + (f.field_label || f.label))"
+                    >
+                      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ getFieldIcon(f.field_key || f.field) }} {{ getShortFieldLabel(f.field_key || f.field) }}</span>
+                      <span style="font-size:0.65rem;flex-shrink:0" :style="{ color: isFieldBound(f.field_key || f.field) ? '#059669' : '#94a3b8' }">
+                        {{ isFieldBound(f.field_key || f.field) ? '✓ 已绑(点解绑)' : ((f.field_key === 'lines') ? '免填/待指派' : '○ 待指派') }}
+                      </span>
+                    </button>
+                  </div>
+                </div>
 
-                    <!-- 智能同类批量识别面板 -->
-                    <div v-if="currentPickedElement.siblings && currentPickedElement.siblings.length > 1" style="margin-top:12px;padding:10px;border-radius:6px;background:rgba(37,99,235,0.04);border:1px solid #3b82f6">
-                      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-                        <span style="font-weight:700;font-size:0.8rem;color:#2563eb">
-                          智能同类批量识别 (已探测 {{ currentPickedElement.siblings.length }} 个同组标签)
-                        </span>
-                        <div style="display:flex;gap:4px">
-                          <button class="btn btn-secondary" style="padding:2px 6px;font-size:0.7rem" @click="toggleSelectAllSiblings(true)">全选</button>
-                          <button class="btn btn-secondary" style="padding:2px 6px;font-size:0.7rem" @click="toggleSelectAllSiblings(false)">清空</button>
-                        </div>
-                      </div>
+                <!-- 6. 多选暂存篮 -->
+                <div class="vp-card" style="padding:8px 12px">
+                  <div style="display:flex;align-items:center;justify-content:space-between">
+                    <button class="btn btn-secondary" style="padding:3px 8px;font-size:0.72rem" @click="addToStashBasket">
+                      + 放入暂存篮
+                    </button>
+                    <span style="font-size:0.72rem;color:#64748b">
+                      暂存篮: {{ pickedStashList.length }} 项
+                    </span>
+                  </div>
 
-                      <div style="display:flex;flex-wrap:wrap;gap:4px;max-height:90px;overflow-y:auto;padding:4px;background:var(--bg-surface);border-radius:4px;border:1px solid var(--border-subtle);margin-bottom:8px">
-                        <label 
-                          v-for="(sib, idx) in currentPickedElement.siblings" 
-                          :key="idx" 
-                          style="display:inline-flex;align-items:center;gap:3px;font-size:0.72rem;background:var(--bg-surface-subtle);padding:2px 6px;border-radius:3px;cursor:pointer"
-                        >
-                          <input type="checkbox" :value="sib.text" v-model="pickedSiblingsSelected" style="cursor:pointer" />
-                          <span>{{ sib.text }}</span>
-                        </label>
-                      </div>
-
-                      <div style="display:flex;flex-direction:column;gap:5px">
-                        <button 
-                          class="btn btn-primary" 
-                          style="padding:5px 8px;font-size:0.76rem;justify-content:center" 
-                          @click="addPickedSiblingsAsSubcategories"
-                        >
-                          一键批量添加为二级标签 (已选 {{ pickedSiblingsSelected.length }} 项)
-                        </button>
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
-                          <button 
-                            class="btn btn-secondary" 
-                            style="padding:4px 6px;font-size:0.74rem;justify-content:center" 
-                            @click="addPickedSiblingsAsPrimaries"
-                          >
-                            批量添加为一级分类
-                          </button>
-                          <button 
-                            class="btn btn-secondary" 
-                            style="padding:4px 6px;font-size:0.74rem;justify-content:center" 
-                            @click="addPickedSiblingsAsTagField"
-                          >
-                            设为分类题材 (vod_tag)
-                          </button>
-                        </div>
-                      </div>
+                  <div v-if="pickedStashList.length > 0" style="margin-top:6px;padding:6px;border-radius:6px;background:#f8fafc;border:1px dashed #cbd5e1">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+                      <span style="font-size:0.72rem;font-weight:700">暂存列表</span>
+                      <button class="btn btn-secondary" style="padding:1px 5px;font-size:0.66rem" @click="clearStashBasket">清空</button>
                     </div>
-
-                    <!-- 多选暂存池 -->
-                    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;border-top:1px dashed var(--border-subtle);padding-top:6px">
-                      <button class="btn btn-secondary" style="padding:3px 8px;font-size:0.74rem" @click="addToStashBasket">
-                        + 放入多选暂存篮
-                      </button>
-                      <span style="font-size:0.72rem;color:var(--text-dim)">
-                        暂存篮: {{ pickedStashList.length }} 项
+                    <div style="display:flex;flex-wrap:wrap;gap:4px;max-height:70px;overflow-y:auto;margin-bottom:6px">
+                      <span 
+                        v-for="(item, sIdx) in pickedStashList" 
+                        :key="sIdx"
+                        class="tag" 
+                        style="font-size:0.7rem;padding:2px 6px;display:inline-flex;align-items:center;gap:4px;background:#e2e8f0;color:#1e293b"
+                      >
+                        {{ item.text }}
+                        <span style="cursor:pointer;font-weight:700;color:#ef4444" @click.stop="removeFromStashBasket(sIdx)">×</span>
                       </span>
                     </div>
-
-                    <div v-if="pickedStashList.length > 0" style="margin-top:6px;padding:6px;border-radius:6px;background:var(--bg-surface-subtle);border:1px dashed #64748b">
-                      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-                        <span style="font-size:0.74rem;font-weight:700;color:var(--text-main)">暂存篮列表</span>
-                        <button class="btn btn-secondary" style="padding:1px 5px;font-size:0.68rem" @click="clearStashBasket">清空</button>
-                      </div>
-                      <div style="display:flex;flex-wrap:wrap;gap:4px;max-height:80px;overflow-y:auto;margin-bottom:6px">
-                        <span 
-                          v-for="(item, sIdx) in pickedStashList" 
-                          :key="sIdx"
-                          class="tag" 
-                          style="font-size:0.7rem;padding:2px 6px;display:inline-flex;align-items:center;gap:4px;background:#e2e8f0;color:#1e293b"
-                        >
-                          {{ item.text }}
-                          <span style="cursor:pointer;font-weight:700" @click.stop="removeFromStashBasket(sIdx)">×</span>
-                        </span>
-                      </div>
-                      <button 
-                        class="btn btn-secondary" 
-                        style="width:100%;padding:4px 8px;font-size:0.74rem;justify-content:center" 
-                        @click="importStashToSubcategories"
-                      >
-                        一键将暂存项全部导入为二级标签 (共 {{ pickedStashList.length }} 项)
-                      </button>
-                    </div>
-
-                    <!-- 直达清单按钮 -->
-                    <button class="btn btn-secondary" style="width:100%;padding:6px;font-size:0.78rem;margin-top:10px;justify-content:center" @click="visualActiveTab = 'tree'">
-                      查看当前已选结构清单 ({{ selectedCategoriesCount }} 分类 · {{ totalSubcategoriesCount }} 标签) -&gt;
-                    </button>
-                  </div>
-
-                  <div v-else style="text-align:center;padding:2.5rem 1rem;color:var(--text-dim);font-size:0.82rem">
-                    <p style="margin-bottom:8px">在右侧真实网页中点击任意元素，此处将展示元素特征与指派选项。</p>
-                    <p style="font-size:0.75rem;color:var(--text-muted);margin-bottom:12px">快捷提示：按住 Ctrl 键点击超链接可直接穿透跳转新页面。</p>
-                    <button class="btn btn-primary" style="padding:5px 12px;font-size:0.78rem" @click="visualActiveTab = 'tree'">
-                      查看已选分类清单 ({{ selectedCategoriesCount }} 分类)
+                    <button 
+                      class="btn btn-secondary" 
+                      style="width:100%;padding:4px 8px;font-size:0.74rem;justify-content:center" 
+                      @click="importStashToSubcategories"
+                    >
+                      一键导入至【{{ currentPrimaryCategory ? (currentPrimaryCategory.type_name || currentPrimaryCategory.name) : '当前分类' }}】
                     </button>
                   </div>
                 </div>
+
               </div>
+
+              <!-- 状态 B: 当尚未点选任何元素时的【新手指导与极速起步看板】 -->
+              <div v-else style="display:flex;flex-direction:column;gap:12px">
+                
+                <!-- 3 步极速操作指引卡片 -->
+                <div class="vp-card">
+                  <div class="vp-card-title">
+                    <span>💡 3 步极速上手工作流</span>
+                    <span class="tag tag-python" style="font-size:0.66rem">引导</span>
+                  </div>
+
+                  <div class="vp-guide-step">
+                    <span class="vp-guide-step-num">1</span>
+                    <div>
+                      <strong style="font-size:0.78rem;color:#0f172a">鼠标移动高亮</strong>
+                      <p style="font-size:0.72rem;color:#64748b;margin-top:1px">在右侧真实网页中移动光标，目标元素会自动亮起蓝色边框。</p>
+                    </div>
+                  </div>
+
+                  <div class="vp-guide-step">
+                    <span class="vp-guide-step-num">2</span>
+                    <div>
+                      <strong style="font-size:0.78rem;color:#0f172a">单击捕获特征</strong>
+                      <p style="font-size:0.72rem;color:#64748b;margin-top:1px">点击分类导航或片单卡片，此处将自动识别文本、链接并推荐批量收录！</p>
+                    </div>
+                  </div>
+
+                  <div class="vp-guide-step">
+                    <span class="vp-guide-step-num">3</span>
+                    <div>
+                      <strong style="font-size:0.78rem;color:#0f172a">穿透进入详情页</strong>
+                      <p style="font-size:0.72rem;color:#64748b;margin-top:1px">按住 <code>Ctrl</code> 键（Mac为 <code>Cmd</code>）单击超链接，或切换为【自由浏览模式】即可跳转详情页。</p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 快捷手动新增一级分类卡片 -->
+                <div class="vp-card">
+                  <div class="vp-card-title">
+                    <span>➕ 手动快速新增一级分类</span>
+                  </div>
+                  <div style="display:flex;gap:4px">
+                    <input 
+                      class="smart-input" 
+                      style="padding:4px 8px;font-size:0.76rem;flex:1" 
+                      placeholder="输入分类名，如: 热门短剧..." 
+                      v-model="modalNewPrimaryName"
+                      @keyup.enter="addModalPrimaryCategory"
+                    />
+                    <button class="btn btn-secondary" style="padding:4px 10px;font-size:0.76rem" @click="addModalPrimaryCategory">
+                      + 添加
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+
             </div>
 
-            <!-- TAB 2: 已选结构清单与删除管理 -->
-            <div v-show="visualActiveTab === 'tree'" style="flex:1;display:flex;flex-direction:column;overflow-y:auto;padding:10px 12px;gap:12px">
-              <!-- 顶部已选成果概要统计 -->
-              <div style="background:var(--bg-surface-subtle);border:1px solid var(--border-subtle);border-radius:6px;padding:8px 10px;display:flex;align-items:center;justify-content:space-between">
-                <div>
-                  <div style="font-weight:700;font-size:0.82rem;color:var(--text-main)">当前已选成果总览</div>
-                  <div style="font-size:0.74rem;color:var(--text-muted);margin-top:2px">
-                    已选 {{ selectedCategoriesCount }} 个一级分类 · {{ totalSubcategoriesCount }} 个二级标签 · {{ boundFieldsCount }} 个字段
-                  </div>
-                </div>
-                <button class="btn btn-primary" style="padding:3px 8px;font-size:0.72rem" @click="visualActiveTab = 'pick'">
-                  + 继续点选元素
-                </button>
-              </div>
-
-              <!-- 一级分类新增工具条 -->
-              <div style="display:flex;gap:4px">
-                <input 
-                  class="smart-input" 
-                  style="padding:4px 8px;font-size:0.76rem;flex:1" 
-                  placeholder="手动输入新一级分类 (如: 动漫)..." 
-                  v-model="modalNewPrimaryName"
-                  @keyup.enter="addModalPrimaryCategory"
-                />
-                <button class="btn btn-secondary" style="padding:4px 8px;font-size:0.76rem" @click="addModalPrimaryCategory">
-                  + 添加一级分类
-                </button>
-              </div>
-
-              <!-- 一级分类列表 (含每个分类下的所有二级标签明细与直接删除) -->
+            <!-- ================= TAB 2: 分类与标签体系管理 ================= -->
+            <div class="vp-tab-body" v-show="visualActiveTab === 'categories' || visualActiveTab === 'tree'">
+              
+              <!-- 概览与新增栏 -->
               <div style="display:flex;flex-direction:column;gap:8px">
+                <div style="display:flex;align-items:center;justify-content:space-between">
+                  <div>
+                    <span style="font-weight:700;font-size:0.84rem;color:#0f172a">全站分类导航清单</span>
+                    <div style="font-size:0.72rem;color:#64748b;margin-top:1px">
+                      共 {{ selectedCategoriesCount }} 个一级分类 · {{ totalSubcategoriesCount }} 个二级标签
+                    </div>
+                  </div>
+                  <button class="btn btn-primary" style="padding:3px 8px;font-size:0.72rem" @click="visualActiveTab = 'pick'">
+                    + 网页点选
+                  </button>
+                </div>
+
+                <!-- 一级分类新增条 -->
+                <div style="display:flex;gap:4px">
+                  <input 
+                    class="smart-input" 
+                    style="padding:4px 8px;font-size:0.76rem;flex:1" 
+                    placeholder="输入新分类名 (如: 甜宠短剧)..." 
+                    v-model="modalNewPrimaryName"
+                    @keyup.enter="addModalPrimaryCategory"
+                  />
+                  <button class="btn btn-secondary" style="padding:4px 10px;font-size:0.76rem" @click="addModalPrimaryCategory">
+                    + 创建
+                  </button>
+                </div>
+              </div>
+
+              <!-- 分类卡片流 -->
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <!-- 空白状态提示 -->
+                <div v-if="!structureResult || !structureResult.categories_tree || structureResult.categories_tree.length === 0" style="text-align:center;padding:2.5rem 1rem;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:8px">
+                  <div style="font-size:1.8rem;margin-bottom:6px">🏷️</div>
+                  <div style="font-size:0.86rem;font-weight:700;color:#0f172a">当前尚未添加任何分类</div>
+                  <p style="font-size:0.75rem;color:#64748b;margin-top:6px;line-height:1.5">
+                    请在左侧网页中点击分类链接（如「短剧」、「现代都市」），然后指派为一级或二级分类；也可以在上方输入名称手动创建。
+                  </p>
+                </div>
+
                 <div 
                   v-for="(cat, cIdx) in (structureResult ? structureResult.categories_tree : [])" 
                   :key="cIdx"
-                  style="border:1px solid var(--border-subtle);border-radius:6px;background:var(--bg-surface);padding:8px 10px"
-                  :style="{ borderColor: activePrimaryIndex === cIdx ? 'var(--accent-primary)' : 'var(--border-subtle)', boxShadow: activePrimaryIndex === cIdx ? '0 0 0 1px var(--accent-primary)' : 'none' }"
+                  class="vp-card"
+                  :style="{ borderColor: activePrimaryIndex === cIdx ? '#4f46e5' : '#e2e8f0', boxShadow: activePrimaryIndex === cIdx ? '0 0 0 1.5px #4f46e5' : 'none' }"
                 >
-                  <!-- 分类卡片头部 -->
-                  <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px dashed var(--border-subtle);padding-bottom:6px;margin-bottom:6px">
+                  <!-- 分类卡头部 -->
+                  <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px dashed #e2e8f0;padding-bottom:6px">
                     <div style="display:flex;align-items:center;gap:6px;cursor:pointer" @click="activePrimaryIndex = cIdx">
                       <span 
                         class="tag" 
-                        :style="{ background: activePrimaryIndex === cIdx ? 'var(--accent-primary)' : 'var(--bg-surface-subtle)', color: activePrimaryIndex === cIdx ? '#fff' : 'var(--text-main)', fontSize: '0.72rem', padding: '1px 5px' }"
+                        :style="{ background: activePrimaryIndex === cIdx ? '#4f46e5' : '#f1f5f9', color: activePrimaryIndex === cIdx ? '#fff' : '#0f172a', fontSize: '0.68rem', padding: '1px 5px' }"
                       >
                         {{ activePrimaryIndex === cIdx ? '当前归属目标' : '设为目标' }}
                       </span>
-                      <strong style="font-size:0.86rem;color:var(--text-main)">{{ cat.type_name || cat.name }}</strong>
-                      <span style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-dim)">({{ cat.type_id || cat.tid }})</span>
+                      <strong style="font-size:0.86rem;color:#0f172a">{{ cat.type_name || cat.name }}</strong>
+                      <span style="font-family:var(--font-mono);font-size:0.68rem;color:#94a3b8">({{ cat.type_id || cat.tid }})</span>
                     </div>
 
                     <div style="display:flex;align-items:center;gap:6px">
-                      <span style="font-size:0.72rem;color:var(--text-muted);background:var(--bg-surface-subtle);padding:2px 6px;border-radius:4px">
-                        {{ cat.subcategories ? cat.subcategories.length : 0 }} 个标签
+                      <span style="font-size:0.7rem;color:#64748b;background:#f8fafc;padding:1px 5px;border-radius:4px">
+                        {{ cat.subcategories ? cat.subcategories.length : 0 }} 标签
                       </span>
                       <button 
                         class="btn btn-secondary" 
-                        style="padding:1px 6px;font-size:0.7rem;color:#ef4444;border-color:#fca5a5" 
+                        style="padding:1px 5px;font-size:0.68rem;color:#ef4444;border-color:#fca5a5" 
                         @click.stop="removePrimaryCategory(cIdx)"
                         title="删除整个一级分类"
                       >
-                        删除分类 ×
+                        删除 ×
                       </button>
                     </div>
                   </div>
 
-                  <!-- 分类卡片二级标签 Pills 明细 -->
+                  <!-- 二级标签流 -->
                   <div>
-                    <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:4px;display:flex;align-items:center;justify-content:space-between">
-                      <span>包含的二级标签明细 (点击红色 × 即可立即删除选错标签):</span>
+                    <div style="font-size:0.7rem;color:#64748b;margin-bottom:4px;display:flex;align-items:center;justify-content:space-between">
+                      <span>包含的二级标签明细 (点击红色 × 即删):</span>
                       <button 
                         v-if="cat.subcategories && cat.subcategories.length > 0"
                         class="btn btn-secondary" 
-                        style="padding:0 4px;font-size:0.68rem;color:#ef4444" 
+                        style="padding:0 4px;font-size:0.66rem;color:#ef4444" 
                         @click="clearSubcategories(cIdx)"
-                        title="清空此分类下的全部子标签"
                       >
-                        清空子标签
+                        清空子项
                       </button>
                     </div>
 
-                    <!-- 标签流展示 -->
-                    <div style="display:flex;flex-wrap:wrap;gap:4px;max-height:120px;overflow-y:auto;padding:2px 0">
+                    <div style="display:flex;flex-wrap:wrap;gap:4px;max-height:100px;overflow-y:auto;padding:2px 0">
                       <div 
                         v-for="(sub, sIdx) in (cat.subcategories || [])" 
                         :key="sIdx"
-                        style="display:inline-flex;align-items:center;gap:4px;padding:2px 6px;border-radius:4px;font-size:0.74rem;background:var(--bg-surface-subtle);border:1px solid var(--border-subtle)"
+                        style="display:inline-flex;align-items:center;gap:4px;padding:2px 6px;border-radius:4px;font-size:0.72rem;background:#f8fafc;border:1px solid #e2e8f0"
                       >
-                        <span style="color:var(--text-main);font-weight:600">{{ sub.type_name || sub.name }}</span>
+                        <span style="color:#0f172a;font-weight:600">{{ sub.type_name || sub.name }}</span>
                         <span 
-                          style="cursor:pointer;color:#ef4444;font-weight:800;font-size:0.8rem;padding:0 2px" 
+                          style="cursor:pointer;color:#ef4444;font-weight:800;font-size:0.76rem;padding:0 2px" 
                           @click.stop="removeSubcategory(cIdx, sIdx)"
-                          title="删除此标签"
                         >×</span>
                       </div>
-                      <div v-if="!cat.subcategories || cat.subcategories.length === 0" style="font-size:0.72rem;color:var(--text-dim);padding:4px">
-                        暂无子标签。切到【拾取与指派工作台】点击网页元素即可直接导入。
+                      <div v-if="!cat.subcategories || cat.subcategories.length === 0" style="font-size:0.7rem;color:#94a3b8;padding:2px">
+                        暂无子标签。在左侧【特征拾取】点选网页元素即可直接导入。
                       </div>
                     </div>
 
-                    <!-- 手动追加单子标签输入 -->
+                    <!-- 手动追加单子标签 -->
                     <div style="display:flex;gap:4px;margin-top:6px">
                       <input 
                         class="smart-input" 
                         style="padding:3px 6px;font-size:0.72rem;flex:1" 
-                        placeholder="手动追加二级标签 (如: 短剧)..." 
+                        placeholder="手动追加二级标签 (如: 战神)..." 
                         v-model="modalNewSubName"
                         @keyup.enter="addModalSubcategory(cIdx)"
                       />
@@ -2220,91 +3098,207 @@
                   </div>
                 </div>
 
-                <div v-if="!structureResult || !structureResult.categories_tree || structureResult.categories_tree.length === 0" style="text-align:center;padding:1.5rem;color:var(--text-dim);font-size:0.78rem">
-                  暂未添加任何分类。切回【拾取与指派工作台】在网页中点选，或上方手动添加。
+                <div v-if="!structureResult || !structureResult.categories_tree || structureResult.categories_tree.length === 0" style="text-align:center;padding:2rem 1rem;color:#94a3b8;font-size:0.78rem">
+                  暂未添加分类。可切回【特征拾取】点选网页，或上方手动添加、点击套用预设。
                 </div>
               </div>
 
-              <!-- 详情页字段绑定清单与解除绑定 -->
-              <div style="border-top:1px solid var(--border-subtle);padding-top:10px;margin-top:4px">
-                <div style="font-weight:700;font-size:0.8rem;color:var(--text-main);margin-bottom:6px">
-                  详情页已绑定字段 ({{ boundFieldsCount }} / {{ (structureResult && structureResult.detail_fields) ? structureResult.detail_fields.length : 8 }})
-                </div>
+            </div>
 
-                <div style="display:flex;flex-direction:column;gap:5px;max-height:160px;overflow-y:auto">
-                  <div 
-                    v-for="field in (structureResult ? structureResult.detail_fields : [])" 
-                    :key="field.field_key || field.field"
-                    style="padding:5px 8px;border-radius:4px;border:1px solid var(--border-subtle);display:flex;align-items:center;justify-content:space-between;gap:6px"
-                    :style="{ background: (field.detected_sample || field.sample) ? 'rgba(16,185,129,0.06)' : 'var(--bg-surface-subtle)', borderColor: (field.detected_sample || field.sample) ? '#10b981' : 'var(--border-subtle)' }"
-                  >
-                    <div style="flex:1;min-width:0">
-                      <div style="font-weight:600;font-size:0.76rem;color:var(--text-main);display:flex;align-items:center;gap:6px">
-                        <span>{{ field.field_label || field.label }}</span>
-                        <span class="tag" :class="(field.detected_sample || field.sample) ? 'tag-direct' : 'tag-json'" style="font-size:0.66rem;padding:0 3px">
-                          {{ (field.detected_sample || field.sample) ? '已绑定' : '未绑定' }}
-                        </span>
-                      </div>
-                      <div v-if="field.detected_sample || field.sample" style="font-size:0.7rem;color:#059669;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-                        采样: {{ field.detected_sample || field.sample }}
-                      </div>
+            <!-- ================= TAB 3: 采集字段映射与绑定 ================= -->
+            <div class="vp-tab-body" v-show="visualActiveTab === 'fields'">
+              
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <div>
+                  <span style="font-weight:700;font-size:0.84rem;color:#0f172a">详情页与片单采集字段 ({{ boundFieldsCount }}/{{ (structureResult && structureResult.detail_fields) ? structureResult.detail_fields.length : 13 }})</span>
+                  <div style="font-size:0.72rem;color:#64748b;margin-top:1px">
+                    在网页中点击目标元素后，点击卡片即可直接绑定；已绑定的字段可随时解绑
+                  </div>
+                </div>
+                <button class="btn btn-primary" style="padding:3px 8px;font-size:0.72rem" @click="visualActiveTab = 'pick'">
+                  去网页点选
+                </button>
+              </div>
+
+              <!-- 字段卡片列表 -->
+              <div style="display:flex;flex-direction:column;gap:7px">
+                <div 
+                  v-for="field in (structureResult ? structureResult.detail_fields : [])" 
+                  :key="field.field_key || field.field"
+                  class="vp-card"
+                  :style="{ background: (field.detected_sample || field.sample) ? '#f0fdf4' : '#ffffff', borderColor: (field.detected_sample || field.sample) ? '#86efac' : '#e2e8f0' }"
+                >
+                  <div style="display:flex;align-items:center;justify-content:space-between">
+                    <div style="display:flex;align-items:center;gap:6px">
+                      <span style="font-size:0.9rem">{{ getFieldIcon(field.field_key || field.field) }}</span>
+                      <strong style="font-size:0.82rem;color:#0f172a">{{ field.field_label || field.label }}</strong>
+                      <span class="tag" :class="(field.detected_sample || field.sample) ? 'tag-direct' : 'tag-json'" style="font-size:0.65rem;padding:0 4px">
+                        {{ (field.detected_sample || field.sample) ? '● 已绑定' : ((field.field_key === 'lines') ? '○ 可选(单线免填)' : '○ 待指派') }}
+                      </span>
                     </div>
-                    <button 
-                      v-if="field.detected_sample || field.sample" 
-                      class="btn btn-secondary" 
-                      style="padding:1px 5px;font-size:0.68rem;color:#ef4444;border-color:#fca5a5" 
-                      @click="unbindField(field.field_key || field.field)"
-                      title="解除绑定"
-                    >
-                      解除 ×
-                    </button>
+
+                    <div style="display:flex;align-items:center;gap:4px">
+                      <button 
+                        v-if="currentPickedElement"
+                        class="btn btn-primary" 
+                        style="padding:1px 6px;font-size:0.68rem" 
+                        @click="assignPickedToField(field.field_key || field.field)"
+                        title="将当前点选的高亮元素绑定至此字段"
+                      >
+                        绑定当前点选
+                      </button>
+                      <button 
+                        v-if="field.detected_sample || field.sample" 
+                        class="btn btn-secondary" 
+                        style="padding:1px 5px;font-size:0.68rem;color:#ef4444;border-color:#fca5a5" 
+                        @click="unbindField(field.field_key || field.field)"
+                        title="解除此字段绑定"
+                      >
+                        解除 ×
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- 针对单线路站点的贴心免填说明 -->
+                  <div v-if="field.field_key === 'lines' && !(field.detected_sample || field.sample)" style="font-size:0.7rem;color:#64748b;background:#f8fafc;padding:4px 8px;border-radius:4px;border:1px dashed #cbd5e1">
+                    💡 提示：若目标站点只有单一播放列表（没有多条线路切换按钮），<strong>无需指派此字段</strong>，系统与 AI 会自动将其归入【默认线路】。
+                  </div>
+
+                  <!-- 采样值预览 -->
+                  <div v-if="field.detected_sample || field.sample" style="font-size:0.72rem;color:#15803d;background:#ffffff;padding:4px 8px;border-radius:4px;border:1px solid #bbf7d0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                    <strong>采集样例文本:</strong> {{ field.detected_sample || field.sample }}
+                  </div>
+                  <div v-if="field.custom_selector" style="font-family:var(--font-mono);font-size:0.68rem;color:#64748b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                    规则: {{ field.custom_selector }}
                   </div>
                 </div>
               </div>
 
-              <!-- 返回点选按钮 -->
-                            <!-- 弹窗内快捷生成与行动区 -->
-              <div style="border-top:1px solid var(--border-subtle);padding-top:10px;margin-top:8px;display:flex;flex-direction:column;gap:6px">
-                <button class="btn btn-emerald" style="width:100%;padding:7px;font-size:0.82rem;font-weight:700;justify-content:center" :disabled="generatingCode" @click="generateCodeFromVisualConfig">
-                  <span v-if="!generatingCode">一键生成 Python 采集器脚本</span>
-                  <span v-else>正在编译生成中...</span>
-                </button>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-                  <button class="btn btn-secondary" style="padding:5px;font-size:0.74rem;justify-content:center" @click="generatePromptFromVisualConfig">
-                    生成 AI 提示词
+            </div>
+
+            <!-- ================= TAB 4: 成果清单与生成导出 ================= -->
+            <div class="vp-tab-body" v-show="visualActiveTab === 'export'">
+              
+              <div class="vp-card">
+                <div class="vp-card-title">
+                  <span>📊 规则成果体检进度</span>
+                  <span class="tag tag-python">{{ visualHostname }}</span>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
+                  <div style="background:#f8fafc;padding:8px;border-radius:6px;border:1px solid #e2e8f0;text-align:center">
+                    <div style="font-size:1.15rem;font-weight:800;color:#4f46e5">{{ selectedCategoriesCount }}</div>
+                    <div style="font-size:0.7rem;color:#64748b">一级分类 ({{ totalSubcategoriesCount }} 子标签)</div>
+                  </div>
+                  <div style="background:#f8fafc;padding:8px;border-radius:6px;border:1px solid #e2e8f0;text-align:center">
+                    <div style="font-size:1.15rem;font-weight:800;color:#10b981">{{ boundFieldsCount }} / {{ (structureResult && structureResult.detail_fields) ? structureResult.detail_fields.length : 13 }}</div>
+                    <div style="font-size:0.7rem;color:#64748b">已绑定详情字段</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 核心生成操作卡片 -->
+              <div class="vp-card">
+                <div class="vp-card-title">
+                  <span>⚡ 导出与自动化生成</span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:6px">
+                  <button class="btn btn-emerald" style="padding:8px 12px;font-size:0.84rem;font-weight:700;justify-content:center" :disabled="generatingCode" @click="generateCodeFromVisualConfig">
+                    <span v-if="!generatingCode">⚡ 一键生成 Python 采集器脚本</span>
+                    <span v-else>正在生成编译中...</span>
                   </button>
-                  <button class="btn btn-primary" style="padding:5px;font-size:0.74rem;justify-content:center" @click="visualActiveTab = 'pick'">
-                    <- 继续网页点选
+                  <button class="btn btn-secondary" style="padding:6px 10px;font-size:0.76rem;justify-content:center" @click="generatePromptFromVisualConfig">
+                    🤖 生成 AI 专用提示词 (用于让 LLM 编写复杂规则)
+                  </button>
+                  <button class="btn btn-secondary" style="padding:6px 10px;font-size:0.76rem;justify-content:center" @click="copyStructureJson">
+                    📋 复制当前规则 JSON
                   </button>
                 </div>
               </div>
+
+              <!-- 生成的代码预览卡片 (如有) -->
+              <div class="vp-card" v-if="generatedConfigCode">
+                <div class="vp-card-title">
+                  <span>🐍 已生成 Python 采集脚本</span>
+                  <button class="btn btn-secondary" style="padding:1px 6px;font-size:0.68rem" @click="copyGeneratedConfigCode">
+                    复制源码
+                  </button>
+                </div>
+                <textarea 
+                  class="smart-input" 
+                  style="font-family:var(--font-mono);font-size:0.74rem;min-height:160px;background:#0f172a;color:#e2e8f0;border-radius:6px" 
+                  v-model="generatedConfigCode"
+                  readonly
+                ></textarea>
+                <button class="btn btn-primary" style="padding:5px;font-size:0.76rem;justify-content:center" @click="loadGeneratedCodeToStudio">
+                  调入工坊运行全链路体检测试 →
+                </button>
+              </div>
+
             </div>
+
+            <!-- 侧边栏底部常驻行动条 (Persistent Footer Bar) -->
+            <div class="vp-bottom-bar">
+              <div style="display:flex;align-items:center;justify-content:space-between;font-size:0.75rem">
+                <span style="color:#64748b">已捕获特征:</span>
+                <strong style="color:#0f172a">{{ selectedCategoriesCount }} 类 · {{ totalSubcategoriesCount }} 标 · {{ boundFieldsCount }} 字段</strong>
+              </div>
+              <div style="display:flex;gap:6px">
+                <button 
+                  class="btn btn-primary" 
+                  style="flex:1;padding:8px 12px;font-size:0.84rem;font-weight:700;justify-content:center;box-shadow:0 2px 8px rgba(79,70,229,0.25)" 
+                  @click="generatePromptFromVisualConfig"
+                >
+                  ✨ 下一步: 生成 AI 提示词 (Prompt) ➔
+                </button>
+              </div>
+            </div>
+
           </div>
 
-          <!-- 右侧真实网页内嵌视图 (flex: 1 撑满剩余空间) -->
-          <div style="flex:1;min-width:0;display:flex;flex-direction:column;border:1px solid var(--border-subtle);border-radius:8px;overflow:hidden;background:#fff">
-            <!-- 提示信息条 -->
-            <div style="background:var(--bg-surface-subtle);border-bottom:1px solid var(--border-subtle);padding:6px 12px;font-size:0.78rem;color:var(--text-muted);display:flex;align-items:center;justify-content:space-between">
-              <div>
-                <span v-if="visualPickingMode === 'pick'">
-                  当前处于【点选捕获模式】：鼠标移动高亮元素，点击在控制面板中指派规则；任何模式下按住 Ctrl 键（Mac 为 Cmd 键）点击超链接可直接穿透跳转新页面。
-                </span>
-                <span v-else>
-                  当前处于【自由浏览模式】：点击超链接即可在站内自由翻页跳转（例如点进影片详情页），进入目标页后点击【点选捕获模式】即可点选元素。
-                </span>
+          <!-- 右侧真实网页内嵌沙箱视图 (flex: 1) -->
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;background:#ffffff;position:relative">
+            <!-- 模式提醒横幅 -->
+            <div v-if="visualPickingMode === 'pick'" style="background:linear-gradient(90deg, #eef2ff 0%, #e0e7ff 100%);border-bottom:1px solid #c7d2fe;padding:6px 14px;font-size:0.78rem;color:#3730a3;display:flex;align-items:center;justify-content:space-between">
+              <div style="display:flex;align-items:center;gap:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                <span class="vp-pulse-dot" style="background:#4f46e5;box-shadow:0 0 6px #4f46e5"></span>
+                <strong>点选捕获模式：</strong>
+                <span>鼠标移动高亮元素，点击右侧指派规则。按住 <code>Ctrl</code> 键（Mac为 <code>Cmd</code>）单击超链接可直接穿透跳转详情页。</span>
               </div>
-              <span style="font-family:var(--font-mono);font-size:0.74rem;color:var(--text-dim)">
-                沙箱保护隔离
-              </span>
+              <button class="btn btn-secondary" style="padding:2px 8px;font-size:0.7rem;flex-shrink:0" @click="setVisualPickingMode('browse')">切到自由浏览</button>
+            </div>
+            
+            <div v-else style="background:linear-gradient(90deg, #f0fdf4 0%, #dcfce7 100%);border-bottom:1px solid #bbf7d0;padding:6px 14px;font-size:0.78rem;color:#166534;display:flex;align-items:center;justify-content:space-between">
+              <div style="display:flex;align-items:center;gap:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                <span>🌐</span>
+                <strong>自由浏览模式：</strong>
+                <span>在此模式下可正常在站内点击链接、翻页或进详情页。准备好拾取后，切回点选捕获模式即可。</span>
+              </div>
+              <button class="btn btn-primary" style="padding:2px 10px;font-size:0.7rem;flex-shrink:0" @click="setVisualPickingMode('pick')">🎯 切回点选捕获模式</button>
             </div>
 
+            <!-- 网页沙箱 Iframe -->
             <iframe 
               ref="visualProxyIframe" 
               :src="visualProxyIframeSrc" 
               style="width:100%;flex:1;border:none;background:#fff"
               sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
             ></iframe>
+
+            <!-- 底部实时元素浮动指示条 -->
+            <div style="background:rgba(15,23,42,0.92);backdrop-filter:blur(6px);color:#f8fafc;padding:5px 14px;font-size:0.72rem;display:flex;align-items:center;justify-content:space-between;border-top:1px solid rgba(255,255,255,0.1)">
+              <div style="display:flex;align-items:center;gap:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                <span style="color:#94a3b8">目标站点:</span>
+                <span style="font-family:var(--font-mono);color:#38bdf8">{{ visualPickerUrl }}</span>
+                <span v-if="currentHoveredElement" style="color:#cbd5e1;margin-left:8px;display:flex;align-items:center;gap:4px">
+                  <span style="color:#fbbf24">🔍 悬停元素:</span>
+                  <code style="background:rgba(255,255,255,0.18);padding:1px 5px;border-radius:3px;color:#facc15">&lt;{{ currentHoveredElement.tagName }}&gt;</code>
+                  <span style="font-family:var(--font-mono);font-size:0.68rem;color:#cbd5e1">{{ currentHoveredElement.selector }}</span>
+                </span>
+              </div>
+              <span class="tag tag-python" style="font-size:0.64rem;padding:0 5px;flex-shrink:0">纯本地沙箱代理中继</span>
+            </div>
           </div>
+
         </div>
       </div>
     </div>
@@ -2378,13 +3372,86 @@
           return structureResult.value.detail_fields.filter(f => Boolean(f.detected_sample || f.sample)).length;
         });
 
-        // 本地代理配置状态
+        const visualHostname = computed(() => {
+          try {
+            return new URL(visualPickerUrl.value).hostname;
+          } catch (e) {
+            return '目标站点';
+          }
+        });
+
+        function isFieldBound(fieldKey) {
+          if (!structureResult.value || !structureResult.value.detail_fields) return false;
+          const f = structureResult.value.detail_fields.find(item => (item.field_key || item.field) === fieldKey);
+          return Boolean(f && (f.detected_sample || f.sample));
+        }
+
+        function getFieldIcon(key) {
+          const map = {
+            vod_name: '🎬',
+            vod_pic: '🖼️',
+            episodes: '🔘',
+            vod_remarks: '🎞️',
+            vod_year: '📅',
+            vod_score: '⭐',
+            vod_hits: '🔥',
+            vod_area: '🌍',
+            vod_actor: '🌟',
+            vod_director: '🎥',
+            vod_tag: '🏷️',
+            vod_content: '📝',
+            lines: '📡'
+          };
+          return map[key] || '📌';
+        }
+
+        function getShortFieldLabel(key) {
+          const map = {
+            vod_name: '片名',
+            vod_pic: '封面',
+            episodes: '选集按钮',
+            vod_remarks: '集数',
+            vod_year: '年份',
+            vod_score: '评分',
+            vod_hits: '热度',
+            vod_area: '地区',
+            vod_actor: '主演',
+            vod_director: '导演',
+            vod_tag: '题材',
+            vod_content: '简介',
+            lines: '线路 (单线免填)'
+          };
+          return map[key] || key;
+        }
+
+        function copyStructureJson() {
+          if (!structureResult.value) return;
+          const text = JSON.stringify(structureResult.value, null, 2);
+          navigator.clipboard.writeText(text);
+          alert('当前完整采集规则 JSON 已复制到剪贴板！');
+        }
+
+        // 本地代理与节点指派中心状态
         const showProxyModal = ref(false);
         const proxyConfig = ref({ enabled: false, proxy_url: 'http://127.0.0.1:10809' });
         const proxyForm = ref({ enabled: false, proxy_url: 'http://127.0.0.1:10809' });
         const testingProxy = ref(false);
         const proxyTestResult = ref(null);
         const savingProxy = ref(false);
+
+        const proxyModalTab = ref('assignments');
+        const proxyNodes = ref([]);
+        const proxyBindings = ref({});
+        const newNodeRawUrl = ref('');
+        const newNodeName = ref('');
+        const newNodePort = ref(10809);
+        const addingNode = ref(false);
+        const testingNodeId = ref(null);
+        const siteTestingMap = ref({});
+        const siteTestResultMap = ref({});
+        const showXrayExportModal = ref(false);
+        const xrayConfigStr = ref('');
+        const copyXrayBtnText = ref('📋 复制配置');
 
         // 外部脚本测试工坊状态
         const scriptFileInputRef = ref(null);
@@ -2654,19 +3721,22 @@
 
         // 实时可视化点选拾取器交互逻辑
         function openVisualPickerModal() {
-          let targetUrl = smartUrl.value.trim() || (structureResult.value ? structureResult.value.base_url : 'https://rou.video');
+          let targetUrl = smartUrl.value.trim() || 'https://huangguoai.com';
           smartUrl.value = targetUrl;
           visualPickerUrl.value = targetUrl;
           visualPickingMode.value = 'pick';
           visualProxyIframeSrc.value = '/api/v1/smart/visual-proxy?url=' + encodeURIComponent(targetUrl) + '&mode=pick';
           currentPickedElement.value = null;
           pickedSiblingsSelected.value = [];
+          visualActiveTab.value = 'pick';
 
-          if (!structureResult.value) {
-            let suggestedKey = 'custom_site';
-            try {
-              suggestedKey = new URL(targetUrl).hostname.replace(/\./g, '_');
-            } catch (e) {}
+          let suggestedKey = 'custom_site';
+          try {
+            suggestedKey = new URL(targetUrl).hostname.replace(/\./g, '_');
+          } catch (e) {}
+
+          // 保持完全空白干净的状态，绝不私自预填任何假分类和假字段，一切以用户点选为准
+          if (!structureResult.value || structureResult.value.base_url !== targetUrl) {
             structureResult.value = {
               base_url: targetUrl,
               site_name: suggestedKey,
@@ -2676,38 +3746,19 @@
               detail_fields: [
                 { field_key: 'vod_name', field_label: '影片名称 (vod_name)', required: true, selected: true, found: false, detected_sample: '' },
                 { field_key: 'vod_pic', field_label: '海报封面 (vod_pic)', required: true, selected: true, found: false, detected_sample: '' },
-                { field_key: 'vod_remarks', field_label: '集数状态 (vod_remarks)', required: false, selected: true, found: false, detected_sample: '' },
-                { field_key: 'vod_content', field_label: '剧情简介 (vod_content)', required: false, selected: true, found: false, detected_sample: '' },
-                { field_key: 'episodes', field_label: '选集列表 (episodes)', required: true, selected: true, found: false, detected_sample: '' },
-                { field_key: 'lines', field_label: '播放线路 (lines)', required: false, selected: true, found: false, detected_sample: '' },
+                { field_key: 'episodes', field_label: '选集按钮 (episodes)', required: true, selected: false, found: false, detected_sample: '' },
+                { field_key: 'vod_remarks', field_label: '集数状态 (vod_remarks)', required: false, selected: false, found: false, detected_sample: '' },
+                { field_key: 'vod_year', field_label: '上映年份 (vod_year)', required: false, selected: false, found: false, detected_sample: '' },
+                { field_key: 'vod_score', field_label: '影视评分 (vod_score)', required: false, selected: false, found: false, detected_sample: '' },
+                { field_key: 'vod_hits', field_label: '热度播放 (vod_hits)', required: false, selected: false, found: false, detected_sample: '' },
+                { field_key: 'vod_area', field_label: '制片地区 (vod_area)', required: false, selected: false, found: false, detected_sample: '' },
                 { field_key: 'vod_actor', field_label: '主演演员 (vod_actor)', required: false, selected: false, found: false, detected_sample: '' },
-                { field_key: 'vod_tag', field_label: '分类题材 (vod_tag)', required: false, selected: true, found: false, detected_sample: '' }
+                { field_key: 'vod_director', field_label: '导演主创 (vod_director)', required: false, selected: false, found: false, detected_sample: '' },
+                { field_key: 'vod_tag', field_label: '分类题材 (vod_tag)', required: false, selected: false, found: false, detected_sample: '' },
+                { field_key: 'vod_content', field_label: '剧情简介 (vod_content)', required: false, selected: false, found: false, detected_sample: '' },
+                { field_key: 'lines', field_label: '播放线路 (lines)', required: false, selected: false, found: false, detected_sample: '', tip: '可选：单线路源站无需指派' }
               ]
             };
-          }
-
-          // 若当前分类清单为空，后台静默自动预探测一次（能识别则自动填入，省去用户重复输入）
-          if (!structureResult.value.categories_tree || structureResult.value.categories_tree.length === 0) {
-            fetch('/api/v1/smart/inspect-structure', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ url: targetUrl })
-            }).then(res => res.json()).then(json => {
-              if (json.ok && json.data) {
-                if (!structureResult.value.categories_tree || structureResult.value.categories_tree.length === 0) {
-                  if (json.data.categories_tree && json.data.categories_tree.length > 0) {
-                    structureResult.value.categories_tree = json.data.categories_tree;
-                  }
-                  if (json.data.site_name) structureResult.value.site_name = json.data.site_name;
-                  if (json.data.suggested_key) structureResult.value.suggested_key = json.data.suggested_key;
-                  if (json.data.detail_fields && json.data.detail_fields.length > 0) {
-                    structureResult.value.detail_fields = json.data.detail_fields;
-                  }
-                }
-              }
-            }).catch(e => {
-              console.warn('静默预探测背景任务异常:', e);
-            });
           }
 
           showVisualPickerModal.value = true;
@@ -2937,6 +3988,31 @@
           }
         }
 
+        function toggleFieldBinding(fieldKey) {
+          if (!structureResult.value || !structureResult.value.detail_fields) return;
+          const f = structureResult.value.detail_fields.find(item => (item.field_key || item.field) === fieldKey);
+          if (!f) return;
+
+          const isBound = isFieldBound(fieldKey);
+          const currentSelector = currentPickedElement.value ? currentPickedElement.value.selector : '';
+
+          if (isBound) {
+            // 已绑定状态：如果用户在网页中点选了一个不同的全新元素，则重新指派；否则再次点击该字段直接解绑！
+            if (currentPickedElement.value && f.custom_selector && f.custom_selector !== currentSelector) {
+              assignPickedToField(fieldKey);
+            } else {
+              unbindField(fieldKey);
+            }
+          } else {
+            // 未绑定状态：绑定当前点选的高亮元素
+            if (currentPickedElement.value) {
+              assignPickedToField(fieldKey);
+            } else {
+              alert(`请先在右侧网页中点击选择【${f.field_label || f.label || fieldKey}】的目标元素，再点击此字段完成绑定！`);
+            }
+          }
+        }
+
         function clearSubcategories(primaryIdx) {
           if (!structureResult.value || !structureResult.value.categories_tree) return;
           const cat = structureResult.value.categories_tree[primaryIdx];
@@ -3134,6 +4210,35 @@
           }
         }
 
+        // 计算试播直链与首页抓取样本
+        const testPlayStreamUrl = computed(() => {
+          if (!testReport.value || !testReport.value.steps) return '';
+          const s = testReport.value.steps.find(step => step.name && step.name.includes('play'));
+          return (s && s.data && s.data.url) ? s.data.url : '';
+        });
+
+        const testHomeRecommendList = computed(() => {
+          if (!testReport.value || !testReport.value.steps) return [];
+          const s = testReport.value.steps.find(step => step.name && step.name.includes('home'));
+          return (s && s.data && s.data.recommend) ? s.data.recommend : [];
+        });
+
+        function copyTestErrorReportToAI() {
+          if (!testReport.value || !testReport.value.steps) return;
+          const failedStep = testReport.value.steps.find(s => !s.passed);
+          if (!failedStep) return;
+          const siteName = testReport.value.site_name || testCustomKey.value || '目标影视源';
+          const prompt = `你之前为【${siteName}】编写的单文件 Python 爬虫在运行冒烟测试时出现错误，请修复：\n\n【失败环节】：${failedStep.name}\n【错误详情】：${failedStep.error || '未按协议输出合规内容'}\n\n【修复要求】：\n1. 严格使用 crawler_kit 规范，只允许 import crawler_kit 与标准库，禁止三方重依赖；\n2. 保持 meta/home/category/search/detail/play 的统一 JSON 信封与子命令调用；\n3. 请分析上述错误原因并重新输出一份修复后的完整单文件 Python 代码。`;
+          navigator.clipboard.writeText(prompt);
+          alert('已复制错误诊断提示词！请直接粘贴发给 AI 让其自愈修复代码。');
+        }
+
+        function goToTestStudioAfterPrompt() {
+          showPromptModal.value = false;
+          showVisualPickerModal.value = false;
+          tab.value = 'test_studio';
+        }
+
         // 运行工坊测试
         async function runScriptTestSuite() {
           if (!testScriptCode.value || testScriptCode.value.trim().length < 20) {
@@ -3154,6 +4259,12 @@
             const json = await res.json();
             if (json.ok) {
               testReport.value = json.data;
+              setTimeout(() => {
+                const playStep = json.data.steps ? json.data.steps.find(s => s.name && s.name.includes('play')) : null;
+                if (playStep && playStep.passed && playStep.data && playStep.data.url) {
+                  mountVideo(playStep.data.url, 'testSuiteVideoPlayer');
+                }
+              }, 400);
             } else {
               alert('测试失败: ' + (json.error ? json.error.message : '未知异常'));
             }
@@ -3298,7 +4409,7 @@
           generatedPrompt.value = '正在根据目标源特征及定制结构合成专属提示词...';
           try {
             const payload = {
-              url: smartUrl.value || 'https://example.com',
+              url: visualPickerUrl.value || smartUrl.value || 'https://example.com',
               site_name: structureResult.value ? structureResult.value.site_name : (smartResult.value ? smartResult.value.site_name : ''),
               site_key: structureResult.value ? structureResult.value.suggested_key : (smartResult.value ? smartResult.value.suggested_key : ''),
               difficulty_note: promptDifficulty.value,
@@ -3579,10 +4690,176 @@ if __name__ == "__main__":
           }
         }
 
-        function openProxyModal() {
+        function formatImgProxyUrl(rawUrl, siteKey) {
+          if (!rawUrl || typeof rawUrl !== 'string') return '';
+          const trimmed = rawUrl.trim();
+          if (trimmed.startsWith('data:')) return trimmed;
+          if (trimmed.startsWith('/api/v1/proxy/image')) return trimmed;
+          const siteParam = siteKey ? `&site=${encodeURIComponent(siteKey)}` : '';
+          return `/api/v1/proxy/image?url=${encodeURIComponent(trimmed)}${siteParam}`;
+        }
+
+        async function fetchProxyNodes() {
+          try {
+            const res = await fetch('/api/v1/proxy/nodes');
+            const json = await res.json();
+            if (json.ok && json.data) {
+              proxyNodes.value = json.data.nodes || [];
+              proxyBindings.value = json.data.bindings || {};
+            }
+          } catch (e) {
+            console.warn('获取节点列表失败', e);
+          }
+        }
+
+        async function openProxyModal() {
           proxyForm.value = { ...proxyConfig.value };
           proxyTestResult.value = null;
+          await fetchProxyNodes();
           showProxyModal.value = true;
+        }
+
+        async function submitAddNode() {
+          if (!newNodeRawUrl.value.trim()) return;
+          addingNode.value = true;
+          try {
+            const res = await fetch('/api/v1/proxy/nodes', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                raw_url: newNodeRawUrl.value.trim(),
+                name: newNodeName.value.trim(),
+                local_port: Number(newNodePort.value) || 10809,
+              })
+            });
+            const json = await res.json();
+            if (json.ok && json.data) {
+              newNodeRawUrl.value = '';
+              newNodeName.value = '';
+              await fetchProxyNodes();
+              alert(`节点 [${json.data.name}] 添加成功！您可以在“采集器指派”栏目中将其指派给特定采集器。`);
+            } else {
+              alert('添加节点失败: ' + (json.error ? json.error.message : '未知错误'));
+            }
+          } catch (e) {
+            alert('请求异常: ' + e);
+          } finally {
+            addingNode.value = false;
+          }
+        }
+
+        async function deleteNode(nodeId) {
+          if (!confirm('确定要删除该节点吗？已绑定的采集器将恢复为默认模式。')) return;
+          try {
+            const res = await fetch(`/api/v1/proxy/nodes/${nodeId}`, { method: 'DELETE' });
+            const json = await res.json();
+            if (json.ok) {
+              await fetchProxyNodes();
+            } else {
+              alert('删除失败: ' + (json.error ? json.error.message : '未知错误'));
+            }
+          } catch (e) {
+            alert('删除异常: ' + e);
+          }
+        }
+
+        async function handleBindingChange(siteKey, targetNode) {
+          try {
+            const res = await fetch('/api/v1/proxy/bind', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                site_key: siteKey,
+                node_id: targetNode,
+              })
+            });
+            const json = await res.json();
+            if (json.ok) {
+              proxyBindings.value[siteKey] = targetNode;
+            } else {
+              alert('指派失败: ' + (json.error ? json.error.message : '未知错误'));
+            }
+          } catch (e) {
+            alert('绑定异常: ' + e);
+          }
+        }
+
+        async function testSiteBinding(siteKey) {
+          siteTestingMap.value[siteKey] = true;
+          siteTestResultMap.value[siteKey] = null;
+          try {
+            const targetSite = sites.value.find(s => s.key === siteKey);
+            const targetUrl = targetSite ? targetSite.base_url : 'https://www.google.com';
+            const boundNodeId = proxyBindings.value[siteKey];
+
+            const res = await fetch('/api/v1/proxy/test', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                target_url: targetUrl,
+                node_id: (boundNodeId && boundNodeId !== 'default' && boundNodeId !== 'direct') ? boundNodeId : null
+              })
+            });
+            const json = await res.json();
+            if (json.ok && json.data) {
+              siteTestResultMap.value[siteKey] = json.data;
+            } else {
+              siteTestResultMap.value[siteKey] = { ok: false, message: '测速失败: ' + (json.error ? json.error.message : '未知错误') };
+            }
+          } catch (e) {
+            siteTestResultMap.value[siteKey] = { ok: false, message: '网络异常: ' + e };
+          } finally {
+            siteTestingMap.value[siteKey] = false;
+          }
+        }
+
+        async function testNodeConnectivity(node) {
+          testingNodeId.value = node.id;
+          try {
+            const res = await fetch('/api/v1/proxy/test', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                target_url: 'https://www.google.com',
+                node_id: node.id
+              })
+            });
+            const json = await res.json();
+            if (json.ok && json.data) {
+              alert(`节点 [${node.name}] 测试结果:\n${json.data.message}\n使用代理: ${json.data.proxy_used}`);
+            } else {
+              alert(`节点测试失败: ` + (json.error ? json.error.message : '未知错误'));
+            }
+          } catch (e) {
+            alert('测速网络异常: ' + e);
+          } finally {
+            testingNodeId.value = null;
+          }
+        }
+
+        async function openXrayExport(node) {
+          try {
+            const res = await fetch(`/api/v1/proxy/nodes/${node.id}/xray-config`);
+            const json = await res.json();
+            if (json.ok && json.data) {
+              xrayConfigStr.value = json.data.config_str;
+              copyXrayBtnText.value = '📋 复制配置';
+              showXrayExportModal.value = true;
+            } else {
+              alert('生成 Xray 配置失败: ' + (json.error ? json.error.message : '未知错误'));
+            }
+          } catch (e) {
+            alert('生成异常: ' + e);
+          }
+        }
+
+        function copyXrayConfig() {
+          if (!xrayConfigStr.value) return;
+          navigator.clipboard.writeText(xrayConfigStr.value);
+          copyXrayBtnText.value = '✅ 已复制到剪贴板！';
+          setTimeout(() => {
+            copyXrayBtnText.value = '📋 复制配置';
+          }, 2500);
         }
 
         async function testProxyConnection() {
@@ -3630,12 +4907,18 @@ if __name__ == "__main__":
           }
         }
 
+        async function saveGlobalProxySettings() {
+          await saveProxySettings();
+        }
+
         onMounted(() => {
           fetchSites();
           fetchProxySettings();
+          fetchProxyNodes();
           // 监听来自可视化点选中继 iframe 的交互拾取消息
           window.addEventListener('message', (e) => {
-            if (!e.data) return;
+            if (!e.data || typeof e.data !== 'object') return;
+            if (visualProxyIframe.value && e.source !== visualProxyIframe.value.contentWindow) return;
             if (e.data.type === 'PLOVE_ELEMENT_CLICKED') {
               currentPickedElement.value = e.data.data;
               visualActiveTab.value = 'pick';
@@ -3680,6 +4963,12 @@ if __name__ == "__main__":
           pickedStashList,
           visualPanelPosition,
           visualActiveTab,
+          visualHostname,
+          isFieldBound,
+          getFieldIcon,
+          getShortFieldLabel,
+          toggleFieldBinding,
+          copyStructureJson,
           modalNewPrimaryName,
           modalNewSubName,
           totalSubcategoriesCount,
@@ -3760,6 +5049,29 @@ if __name__ == "__main__":
           openProxyModal,
           testProxyConnection,
           saveProxySettings,
+          saveGlobalProxySettings,
+          proxyModalTab,
+          proxyNodes,
+          proxyBindings,
+          newNodeRawUrl,
+          newNodeName,
+          newNodePort,
+          addingNode,
+          testingNodeId,
+          siteTestingMap,
+          siteTestResultMap,
+          showXrayExportModal,
+          xrayConfigStr,
+          copyXrayBtnText,
+          submitAddNode,
+          deleteNode,
+          handleBindingChange,
+          testSiteBinding,
+          testNodeConnectivity,
+          openXrayExport,
+          copyXrayConfig,
+          fetchProxyNodes,
+          formatImgProxyUrl,
           fetchSites,
           startSmartExplore,
           loadSmartCodeToTester,
@@ -3793,7 +5105,11 @@ if __name__ == "__main__":
           loadSampleTesterCode,
           runSandboxExtract,
           loadSampleHtml,
-          loadSampleJson
+          loadSampleJson,
+          testPlayStreamUrl,
+          testHomeRecommendList,
+          copyTestErrorReportToAI,
+          goToTestStudioAfterPrompt
         };
       }
     });

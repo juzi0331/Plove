@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+import concurrent.futures
 import time
 from typing import Any
 
@@ -89,7 +90,7 @@ def run_probe(
             cleaned = catalog_service.detail(registry, cache, site, vod_id=vod_id, force=req.bypass_cache)
             cleaned_data = cleaned.model_dump()
             try:
-                raw_data = registry.run(site, "detail", vod_id=vod_id)
+                raw_data = registry.run(site, "detail", id=vod_id)
             except Exception:
                 raw_data = cleaned_data
 
@@ -154,14 +155,14 @@ def aggregate_search(
             )
         try:
             res = catalog_service.search(registry, k, kw=kw, page=1)
-            items = [item.model_dump() for item in res.items[:6]]
+            videos = [item.model_dump() for item in res.videos[:6]]
             return AggregateSearchSiteResult(
                 site=k,
                 site_name=site_name,
                 supported=True,
-                count=len(res.items),
+                count=len(res.videos),
                 elapsed_ms=round((time.perf_counter() - t_start) * 1000, 2),
-                items=items,
+                items=videos,
             )
         except Exception as exc:
             return AggregateSearchSiteResult(
@@ -173,23 +174,43 @@ def aggregate_search(
                 error=str(exc),
             )
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=min(8, len(keys) or 1)) as pool:
+    if not keys:
+        return AggregateSearchPayload(kw=kw, total_sites=0, results=[])
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=min(8, len(keys))) as pool:
         future_map = {pool.submit(_search_single, k): k for k in keys}
-        for fut in concurrent.futures.as_completed(future_map, timeout=timeout_seconds + 1):
-            try:
-                results.append(fut.result())
-            except Exception as e:
-                k = future_map[fut]
-                results.append(
-                    AggregateSearchSiteResult(
-                        site=k,
-                        site_name=k,
-                        supported=True,
-                        count=0,
-                        elapsed_ms=timeout_seconds * 1000,
-                        error=f"并发超时或异常: {e}",
+        completed_futures = set()
+        try:
+            for fut in concurrent.futures.as_completed(future_map, timeout=timeout_seconds + 1):
+                completed_futures.add(fut)
+                try:
+                    results.append(fut.result())
+                except Exception as e:
+                    k = future_map[fut]
+                    results.append(
+                        AggregateSearchSiteResult(
+                            site=k,
+                            site_name=k,
+                            supported=True,
+                            count=0,
+                            elapsed_ms=timeout_seconds * 1000,
+                            error=f"并发异常: {e}",
+                        )
                     )
-                )
+        except TimeoutError:
+            # 捕获全局超时，为未完成的任务填充超时结果
+            for fut, k in future_map.items():
+                if fut not in completed_futures:
+                    results.append(
+                        AggregateSearchSiteResult(
+                            site=k,
+                            site_name=k,
+                            supported=True,
+                            count=0,
+                            elapsed_ms=timeout_seconds * 1000,
+                            error="搜索超时",
+                        )
+                    )
 
     total_count = sum(r.count for r in results)
     return AggregateSearchPayload(

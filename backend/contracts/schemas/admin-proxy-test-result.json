@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-proxy-test-result.json",
+  "description": "连通性测速结果。",
+  "properties": {
+    "ok": {
+      "description": "是否测试通过",
+      "title": "Ok",
+      "type": "boolean"
+    },
+    "duration_ms": {
+      "description": "响应耗时毫秒数",
+      "title": "Duration Ms",
+      "type": "number"
+    },
+    "status_code": {
+      "description": "HTTP 状态码",
+      "title": "Status Code",
+      "type": "integer"
+    },
+    "proxy_used": {
+      "description": "使用的代理地址",
+      "title": "Proxy Used",
+      "type": "string"
+    },
+    "message": {
+      "description": "测试结果说明",
+      "title": "Message",
+      "type": "string"
+    }
+  },
+  "required": [
+    "ok",
+    "duration_ms",
+    "status_code",
+    "proxy_used",
+    "message"
+  ],
+  "title": "ProxyTestResult",
+  "type": "object"
+}

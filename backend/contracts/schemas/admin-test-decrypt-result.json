@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-test-decrypt-result.json",
+  "description": "测试解密响应。",
+  "properties": {
+    "success": {
+      "description": "是否成功解密或验证为合法图片",
+      "title": "Success",
+      "type": "boolean"
+    },
+    "message": {
+      "description": "结果或诊断信息",
+      "title": "Message",
+      "type": "string"
+    },
+    "matched_rule_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "命中的解密规则 ID",
+      "title": "Matched Rule Id"
+    },
+    "mime_type": {
+      "default": "",
+      "description": "图片 MIME 类型，如 image/jpeg",
+      "title": "Mime Type",
+      "type": "string"
+    },
+    "size_bytes": {
+      "default": 0,
+      "description": "图片字节大小",
+      "title": "Size Bytes",
+      "type": "integer"
+    },
+    "elapsed_ms": {
+      "default": 0.0,
+      "description": "解密与请求耗时（毫秒）",
+      "title": "Elapsed Ms",
+      "type": "number"
+    },
+    "preview_data_url": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "解密成功后的 Base64 Data URL 预览图片",
+      "title": "Preview Data Url"
+    }
+  },
+  "required": [
+    "success",
+    "message"
+  ],
+  "title": "TestDecryptResult",
+  "type": "object"
+}

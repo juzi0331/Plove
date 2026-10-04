@@ -932,13 +932,54 @@
     const AUTH_KEY = 'plove_backend_portal_auth_v1';
     const CORRECT_PWD = 'admin888';
 
-    // 检查登录状态
+    // 检查登录状态与自适应 IP 端口
     window.addEventListener('DOMContentLoaded', () => {
       const isAuth = localStorage.getItem(AUTH_KEY);
       if (isAuth === 'true') {
         showDashboard();
       }
+      adaptDynamicHost();
     });
+
+    function adaptDynamicHost() {
+      const host = window.location.hostname || '127.0.0.1';
+      const isRemote = host !== '127.0.0.1' && host !== 'localhost';
+
+      // 1. 横幅
+      const mainAddr = document.getElementById('main-addr');
+      if (mainAddr) mainAddr.textContent = `http://${host}:4001`;
+
+      // 2. 遍历更新所有卡片中的 URL、直达跳转和复制按钮
+      document.querySelectorAll('.link-row').forEach(row => {
+        const urlEl = row.querySelector('.link-url');
+        const copyBtn = row.querySelector('button.action-btn');
+        const directLink = row.querySelector('a.action-btn');
+
+        if (urlEl) {
+          let raw = urlEl.textContent.trim();
+          if (isRemote) {
+            raw = raw.replace(/127\.0\.0\.1/g, host);
+            if (raw.includes(':4000')) {
+              raw = raw.replace(':4000', ':8088');
+            }
+          }
+          urlEl.textContent = raw;
+
+          if (copyBtn) {
+            copyBtn.setAttribute('onclick', `copyText('${raw}')`);
+          }
+          if (directLink) {
+            directLink.setAttribute('href', raw);
+          }
+        }
+      });
+
+      // 3. 顶部横幅一键复制按钮
+      const bannerBtn = document.querySelector('.notice-banner .action-btn');
+      if (bannerBtn) {
+        bannerBtn.setAttribute('onclick', `copyText('http://${host}:4001')`);
+      }
+    }
 
     function fillDefaultPwd() {
       const input = document.getElementById('pwd-input');
@@ -967,6 +1008,7 @@
     function showDashboard() {
       document.getElementById('lock-screen').style.display = 'none';
       document.getElementById('main-dashboard').style.display = 'block';
+      adaptDynamicHost();
     }
 
     function handleLock() {

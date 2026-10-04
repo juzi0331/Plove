@@ -23,6 +23,8 @@ from urllib.parse import quote, urljoin, urlparse
 
 import httpx
 
+from app.core.security import is_safe_public_url
+
 logger = logging.getLogger("stream_proxy")
 
 # 注入爬虫目录以便动态加载各站点适配器媒体解密/解封装钩子
@@ -95,11 +97,15 @@ def fetch_and_rewrite_m3u8(
     upstream_url: str,
     site: str | None = None,
     custom_referer: str | None = None,
+    token: str | None = None,
 ) -> tuple[str, str]:
     """拉取上游 m3u8 清单，解封装并重写其中的分片与密钥地址。
 
     返回: (rewritten_m3u8_text, content_type)
     """
+    if not is_safe_public_url(upstream_url):
+        raise ValueError(f"不合规或受保护的流媒体地址: {upstream_url}")
+
     headers = _build_upstream_headers(upstream_url, custom_referer)
     with httpx.Client(follow_redirects=True, timeout=15.0) as client:
         resp = client.get(upstream_url, headers=headers)
@@ -107,6 +113,8 @@ def fetch_and_rewrite_m3u8(
             raise RuntimeError(f"上游清单返回 HTTP {resp.status_code}: {upstream_url}")
 
         final_url = str(resp.url)
+        if final_url != upstream_url and not is_safe_public_url(final_url):
+            raise ValueError(f"清单重定向到不安全地址: {final_url}")
         raw_body = resp.content
 
     # 1. 尝试解封装（如 rou.video 伪装成 PNG 的 zlib 压缩清单）
@@ -121,13 +129,19 @@ def fetch_and_rewrite_m3u8(
             raise RuntimeError(f"解析后的内容不是有效 HLS 清单（长度 {len(text)} 字节）")
 
     # 2. 改写清单中的 URI
-    rewritten = rewrite_m3u8_content(text, base_url=final_url, site=site)
+    rewritten = rewrite_m3u8_content(text, base_url=final_url, site=site, token=token)
     return rewritten, "application/vnd.apple.mpegurl; charset=utf-8"
 
 
-def rewrite_m3u8_content(m3u8_text: str, base_url: str, site: str | None = None) -> str:
+def rewrite_m3u8_content(
+    m3u8_text: str,
+    base_url: str,
+    site: str | None = None,
+    token: str | None = None,
+) -> str:
     """改写 m3u8 清单文本，将所有变体、分片与密钥链接路由到后端流中继。"""
     site_param = f"&site={quote(site)}" if site else ""
+    token_param = f"&token={quote(token)}" if token else ""
     lines = m3u8_text.splitlines()
     output_lines: list[str] = []
     is_variant_stream = False
@@ -150,7 +164,7 @@ def rewrite_m3u8_content(m3u8_text: str, base_url: str, site: str | None = None)
             def replace_key_uri(match: re.Match) -> str:
                 original_uri = match.group(1)
                 abs_key_url = urljoin(base_url, original_uri)
-                proxy_key_url = f"/api/v1/proxy/stream/key?url={quote(abs_key_url)}{site_param}"
+                proxy_key_url = f"/api/v1/proxy/stream/key?url={quote(abs_key_url)}{site_param}{token_param}"
                 return f'URI="{proxy_key_url}"'
 
             new_line = re.sub(r'URI="([^"]+)"', replace_key_uri, line)
@@ -162,7 +176,7 @@ def rewrite_m3u8_content(m3u8_text: str, base_url: str, site: str | None = None)
             def replace_map_uri(match: re.Match) -> str:
                 original_uri = match.group(1)
                 abs_map_url = urljoin(base_url, original_uri)
-                proxy_seg_url = f"/api/v1/proxy/stream/segment?url={quote(abs_map_url)}{site_param}"
+                proxy_seg_url = f"/api/v1/proxy/stream/segment?url={quote(abs_map_url)}{site_param}{token_param}"
                 return f'URI="{proxy_seg_url}"'
 
             new_line = re.sub(r'URI="([^"]+)"', replace_map_uri, line)
@@ -178,11 +192,11 @@ def rewrite_m3u8_content(m3u8_text: str, base_url: str, site: str | None = None)
         abs_target_url = urljoin(base_url, stripped)
         if is_variant_stream:
             # 变体流子清单 -> 继续走 m3u8 中继
-            proxy_url = f"/api/v1/proxy/stream/m3u8?url={quote(abs_target_url)}{site_param}"
+            proxy_url = f"/api/v1/proxy/stream/m3u8?url={quote(abs_target_url)}{site_param}{token_param}"
             is_variant_stream = False
         else:
             # 媒体切片 -> 走 segment 中继
-            proxy_url = f"/api/v1/proxy/stream/segment?url={quote(abs_target_url)}{site_param}"
+            proxy_url = f"/api/v1/proxy/stream/segment?url={quote(abs_target_url)}{site_param}{token_param}"
 
         output_lines.append(proxy_url)
 
@@ -199,6 +213,9 @@ def fetch_and_decode_segment(
 
     返回: (data_bytes, media_type, status_code, extra_headers)
     """
+    if not is_safe_public_url(upstream_url):
+        raise ValueError(f"不合规或受保护的流媒体切片地址: {upstream_url}")
+
     headers = _build_upstream_headers(upstream_url, custom_referer)
     if range_header:
         headers["Range"] = range_header
@@ -207,6 +224,10 @@ def fetch_and_decode_segment(
         resp = client.get(upstream_url, headers=headers)
         if resp.status_code >= 400:
             raise RuntimeError(f"上游分片返回 HTTP {resp.status_code}: {upstream_url}")
+
+        final_url = str(resp.url)
+        if final_url != upstream_url and not is_safe_public_url(final_url):
+            raise ValueError(f"切片重定向到不安全地址: {final_url}")
 
         raw_body = resp.content
         upstream_content_type = resp.headers.get("content-type") or ""
@@ -258,12 +279,20 @@ def fetch_and_decode_key(
     custom_referer: str | None = None,
 ) -> tuple[bytes, str]:
     """拉取 AES-128 加密密钥，解封装后返回。"""
+    if not is_safe_public_url(upstream_url):
+        raise ValueError(f"不合规或受保护的密钥地址: {upstream_url}")
+
     headers = _build_upstream_headers(upstream_url, custom_referer)
     with httpx.Client(follow_redirects=True, timeout=10.0) as client:
         resp = client.get(upstream_url, headers=headers)
         if resp.status_code >= 400:
             raise RuntimeError(f"上游密钥返回 HTTP {resp.status_code}: {upstream_url}")
+        final_url = str(resp.url)
+        if final_url != upstream_url and not is_safe_public_url(final_url):
+            raise ValueError(f"密钥重定向到不安全地址: {final_url}")
         raw = resp.content
+        if len(raw) > 8192:
+            raise ValueError("密钥响应体异常过大")
 
     decoded = _decode_media_content(raw, site=site)
     return decoded, "application/octet-stream"

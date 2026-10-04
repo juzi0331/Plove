@@ -41,6 +41,8 @@ export const useSitesStore = defineStore('sites', () => {
     }
   }
 
+  let inFlightPromise: Promise<void> | null = null
+
   /**
    * 拉取站点列表。
    *
@@ -48,25 +50,30 @@ export const useSitesStore = defineStore('sites', () => {
    * 基本不会变，没必要每次进首页都去问一遍。
    */
   async function load(force = false): Promise<void> {
-    if (loading.value) return
+    if (inFlightPromise) return inFlightPromise
     if (!force && sites.value.length > 0) return
 
     loading.value = true
     lastError.value = null
-    try {
-      const result = await api.listSites()
-      sites.value = result.sites ?? []
-      // 当前选的源可能已经没了（被下架 / 跑不起来）—— 这时自动切到第一个，
-      // 否则用户会停在一个永远转圈的首页上。
-      if (sites.value.length > 0 && !sites.value.some((s) => s.key === currentKey.value)) {
-        select(sites.value[0]!.key)
+    inFlightPromise = (async () => {
+      try {
+        const result = await api.listSites()
+        sites.value = result.sites ?? []
+        // 当前选的源可能已经没了（被下架 / 跑不起来）—— 这时自动切到第一个，
+        // 否则用户会停在一个永远转圈的首页上。
+        if (sites.value.length > 0 && !sites.value.some((s) => s.key === currentKey.value)) {
+          select(sites.value[0]!.key)
+        }
+        if (sites.value.length === 0) currentKey.value = null
+      } catch (error) {
+        lastError.value = describeError(error)
+      } finally {
+        loading.value = false
+        inFlightPromise = null
       }
-      if (sites.value.length === 0) currentKey.value = null
-    } catch (error) {
-      lastError.value = describeError(error)
-    } finally {
-      loading.value = false
-    }
+    })()
+
+    return inFlightPromise
   }
 
   /** 在当前源出问题时用：切到列表里的下一个源 */

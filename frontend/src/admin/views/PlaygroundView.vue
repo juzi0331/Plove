@@ -35,10 +35,14 @@ import {
   Film,
   FolderOpened,
   Refresh,
+  RefreshRight,
   Search,
+  TopRight,
   VideoPlay,
+  Warning,
 } from '@element-plus/icons-vue'
-import { computed, onMounted, ref } from 'vue'
+import Hls from 'hls.js'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import { listSites, probePlayground, searchAggregate } from '@/admin/api'
 import type {
@@ -291,6 +295,143 @@ const previewItemList = computed<any[]>(() => {
   if (Array.isArray(data.list)) return data.list
   return []
 })
+
+// ------------------------------------------------------------------ HLS 试播播放器内核
+const videoPlayerRef = ref<HTMLVideoElement | null>(null)
+let hlsInstance: Hls | null = null
+const videoStatus = ref<'idle' | 'loading' | 'playing' | 'paused' | 'error'>('idle')
+const videoErrorMsg = ref('')
+const videoResolution = ref('')
+const videoDuration = ref(0)
+const videoCurrentTime = ref(0)
+const currentRate = ref(1.0)
+
+function cleanupHls(): void {
+  if (hlsInstance) {
+    hlsInstance.destroy()
+    hlsInstance = null
+  }
+}
+
+function initVideoPlayer(url: string): void {
+  cleanupHls()
+  const video = videoPlayerRef.value
+  if (!video || !url) return
+
+  videoStatus.value = 'loading'
+  videoErrorMsg.value = ''
+  videoResolution.value = ''
+  videoDuration.value = 0
+  videoCurrentTime.value = 0
+
+  const isM3u8 = url.includes('.m3u8') || url.includes('m3u8')
+
+  if (isM3u8 && Hls.isSupported()) {
+    hlsInstance = new Hls({
+      enableWorker: true,
+      lowLatencyMode: true,
+    })
+    hlsInstance.loadSource(url)
+    hlsInstance.attachMedia(video)
+    hlsInstance.on(Hls.Events.MANIFEST_PARSED, (_event, data) => {
+      videoStatus.value = 'playing'
+      if (data.levels && data.levels.length > 0) {
+        const topLevel = data.levels[data.levels.length - 1]
+        if (topLevel.width && topLevel.height) {
+          videoResolution.value = `${topLevel.width}×${topLevel.height}`
+        }
+      }
+      video.play().catch(() => {
+        videoStatus.value = 'paused'
+      })
+    })
+    hlsInstance.on(Hls.Events.ERROR, (_event, data) => {
+      if (data.fatal) {
+        videoStatus.value = 'error'
+        videoErrorMsg.value = `HLS 流加载异常: ${data.details || '源站跨域限制 (CORS) 或切片已失效'}`
+      }
+    })
+  } else if (video.canPlayType('application/vnd.apple.mpegurl') || !isM3u8) {
+    video.src = url
+    video.play().then(() => {
+      videoStatus.value = 'playing'
+    }).catch(() => {
+      videoStatus.value = 'paused'
+    })
+  } else {
+    video.src = url
+  }
+}
+
+function setPlaybackRate(rate: number): void {
+  currentRate.value = rate
+  if (videoPlayerRef.value) {
+    videoPlayerRef.value.playbackRate = rate
+  }
+}
+
+function onTimeUpdate(): void {
+  if (videoPlayerRef.value) {
+    videoCurrentTime.value = Math.floor(videoPlayerRef.value.currentTime)
+    videoDuration.value = Math.floor(videoPlayerRef.value.duration || 0)
+    if (!videoResolution.value && videoPlayerRef.value.videoWidth) {
+      videoResolution.value = `${videoPlayerRef.value.videoWidth}×${videoPlayerRef.value.videoHeight}`
+    }
+  }
+}
+
+function onVideoPlay(): void {
+  videoStatus.value = 'playing'
+}
+
+function onVideoPause(): void {
+  videoStatus.value = 'paused'
+}
+
+function onVideoWaiting(): void {
+  videoStatus.value = 'loading'
+}
+
+function onVideoError(): void {
+  videoStatus.value = 'error'
+  if (!videoErrorMsg.value) {
+    videoErrorMsg.value = '视频流无法播放，可能受到源站防盗链/CORS限制'
+  }
+}
+
+function formatDuration(sec: number): string {
+  if (!sec || isNaN(sec)) return '00:00'
+  const m = Math.floor(sec / 60)
+  const s = Math.floor(sec % 60)
+  return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`
+}
+
+function reloadStream(): void {
+  if (probeResult.value?.playback_url) {
+    initVideoPlayer(probeResult.value.playback_url)
+  }
+}
+
+function openStreamExternal(): void {
+  if (probeResult.value?.playback_url) {
+    window.open(probeResult.value.playback_url, '_blank')
+  }
+}
+
+watch(
+  () => probeResult.value?.playback_url,
+  (newUrl) => {
+    if (newUrl && probeResult.value?.command === 'play') {
+      nextTick(() => {
+        initVideoPlayer(newUrl)
+      })
+    }
+  }
+)
+
+onBeforeUnmount(() => {
+  cleanupHls()
+})
 </script>
 
 <template>
@@ -503,20 +644,104 @@ const previewItemList = computed<any[]>(() => {
         <div v-if="probeResult.command === 'play' && probeResult.playback_url" class="player-panel">
           <div class="panel-head">
             <div class="head-left">
-              <ElIcon :size="18"><VideoPlay /></ElIcon>
-              <span class="head-title">视频流实时试播台</span>
+              <ElIcon :size="20"><VideoPlay /></ElIcon>
+              <span class="head-title">视频流实时试播台 (HLS / m3u8)</span>
+              <!-- 播放状态徽章 -->
+              <ElTag
+                v-if="videoStatus === 'playing'"
+                type="success"
+                effect="dark"
+                size="small"
+              >
+                🟢 正在播放
+              </ElTag>
+              <ElTag
+                v-else-if="videoStatus === 'loading'"
+                type="warning"
+                effect="dark"
+                size="small"
+              >
+                🟡 缓冲就绪中...
+              </ElTag>
+              <ElTag
+                v-else-if="videoStatus === 'paused'"
+                type="info"
+                effect="plain"
+                size="small"
+              >
+                ⏸ 已暂停
+              </ElTag>
+              <ElTag
+                v-else-if="videoStatus === 'error'"
+                type="danger"
+                effect="dark"
+                size="small"
+              >
+                🔴 播放受限
+              </ElTag>
+
+              <!-- 分辨率与时长 -->
+              <ElTag v-if="videoResolution" size="small" type="primary" effect="plain">
+                {{ videoResolution }}
+              </ElTag>
+              <span v-if="videoDuration > 0" class="time-counter a-muted font-mono">
+                {{ formatDuration(videoCurrentTime) }} / {{ formatDuration(videoDuration) }}
+              </span>
             </div>
+
             <div class="head-actions">
-              <code class="url-badge">{{ probeResult.playback_url }}</code>
+              <!-- 倍速选择 -->
+              <div class="speed-group">
+                <span
+                  v-for="rate in [1.0, 1.25, 1.5, 2.0]"
+                  :key="rate"
+                  class="speed-btn"
+                  :class="{ active: currentRate === rate }"
+                  @click="setPlaybackRate(rate)"
+                >
+                  {{ rate }}x
+                </span>
+              </div>
+
+              <ElButton size="small" :icon="RefreshRight" @click="reloadStream">
+                重新加载
+              </ElButton>
+              <ElButton size="small" :icon="TopRight" @click="openStreamExternal">
+                新窗口播放
+              </ElButton>
               <ElButton size="small" :icon="CopyDocument" @click="copyText(probeResult.playback_url!)">
                 复制地址
               </ElButton>
             </div>
           </div>
+
+          <!-- 播放地址提示 -->
+          <div class="url-bar">
+            <span class="url-label">视频流直链:</span>
+            <code class="url-badge">{{ probeResult.playback_url }}</code>
+          </div>
+
+          <!-- 播放器容器 -->
           <div class="video-container">
-            <video :src="probeResult.playback_url" controls autoplay class="real-player">
+            <video
+              ref="videoPlayerRef"
+              controls
+              playsinline
+              class="real-player"
+              @timeupdate="onTimeUpdate"
+              @play="onVideoPlay"
+              @pause="onVideoPause"
+              @waiting="onVideoWaiting"
+              @error="onVideoError"
+            >
               您的浏览器不支持此视频流播放
             </video>
+          </div>
+
+          <!-- 错误提示 / 跨域指引 -->
+          <div v-if="videoStatus === 'error'" class="video-error-bar">
+            <ElIcon :size="16" style="margin-right: 6px;"><Warning /></ElIcon>
+            <span>{{ videoErrorMsg }}。提示：部分源站切片限制当前网页同源播放，可点击右上角「新窗口播放」直接通过浏览器原生流媒体插件解析。</span>
           </div>
         </div>
 
@@ -572,7 +797,7 @@ const previewItemList = computed<any[]>(() => {
 
       <!-- 尚未探测时的就绪引导卡片 -->
       <div v-else class="ready-banner-card">
-        <div class="ready-icon">⚡</div>
+        <div class="ready-icon"><ElIcon :size="28"><Aim /></ElIcon></div>
         <div class="ready-title">在线探针控制台已就绪</div>
         <div class="ready-sub">点击上方「步骤 1 ~ 4」任一工作流卡片，即可一键对选定源站发起全自动穿透体检与在线播放测试。</div>
       </div>
@@ -995,15 +1220,69 @@ const previewItemList = computed<any[]>(() => {
 .head-left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   font-weight: 700;
   font-size: 14.5px;
+}
+
+.time-counter {
+  font-size: 12px;
+  background: var(--a-bg-surface);
+  padding: 2px 8px;
+  border-radius: 4px;
 }
 
 .head-actions {
   display: flex;
   align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.speed-group {
+  display: flex;
+  align-items: center;
+  background: var(--a-card);
+  border: 1px solid var(--a-border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.speed-btn {
+  padding: 3px 8px;
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--a-text-2);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.speed-btn:hover {
+  background: var(--a-hover);
+  color: var(--a-text);
+}
+
+.speed-btn.active {
+  background: var(--a-brand);
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.url-bar {
+  display: flex;
+  align-items: center;
   gap: 10px;
+  padding: 8px 20px;
+  background: rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid var(--a-border);
+}
+
+.url-label {
+  font-size: 12px;
+  color: var(--a-text-3);
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .url-badge {
@@ -1013,10 +1292,11 @@ const previewItemList = computed<any[]>(() => {
   border: 1px solid var(--a-border);
   padding: 3px 8px;
   border-radius: 4px;
-  max-width: 480px;
+  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--a-text);
 }
 
 .video-container {
@@ -1024,14 +1304,27 @@ const previewItemList = computed<any[]>(() => {
   background: #000000;
   display: flex;
   justify-content: center;
+  position: relative;
 }
 
 .real-player {
-  max-height: 420px;
+  max-height: 480px;
   width: 100%;
-  max-width: 800px;
+  max-width: 900px;
   border-radius: 8px;
   outline: none;
+  background: #000000;
+}
+
+.video-error-bar {
+  display: flex;
+  align-items: center;
+  padding: 10px 20px;
+  background: rgba(239, 68, 68, 0.12);
+  border-top: 1px solid rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+  font-size: 12.5px;
+  line-height: 1.5;
 }
 
 /* 海报预览网格 */

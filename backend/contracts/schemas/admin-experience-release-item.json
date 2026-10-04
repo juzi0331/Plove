@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-experience-release-item.json",
+  "description": "单条发布历史记录概要。",
+  "properties": {
+    "release_id": {
+      "description": "发布唯一 ID",
+      "title": "Release Id",
+      "type": "string"
+    },
+    "revision": {
+      "description": "自增修订号",
+      "title": "Revision",
+      "type": "integer"
+    },
+    "published_at": {
+      "description": "发布时间",
+      "title": "Published At",
+      "type": "string"
+    },
+    "published_by": {
+      "description": "发布操作者",
+      "title": "Published By",
+      "type": "string"
+    },
+    "note": {
+      "default": "",
+      "description": "发布说明或回滚来源备注",
+      "title": "Note",
+      "type": "string"
+    },
+    "is_active": {
+      "default": false,
+      "description": "当前是否为全站激活中版本",
+      "title": "Is Active",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "release_id",
+    "revision",
+    "published_at",
+    "published_by"
+  ],
+  "title": "ExperienceReleaseItem",
+  "type": "object"
+}

@@ -95,10 +95,10 @@ def home(
     force: bool = False,
 ) -> HomePayload:
     _ensure_enabled(registry, key)
+    actual_store = store or site_settings.store()
 
     def _assemble() -> HomePayload:
         raw = _load(HomePayload, registry, key, "home")
-        actual_store = store or site_settings.store()
         filtered_categories = site_control_service.apply_category_rules(key, raw.categories, actual_store)
 
         # 计算应在首页展示的分类计划（后台勾选 或 新站点默认前 3 个）
@@ -140,7 +140,8 @@ def home(
 
         return raw.model_copy(update={"categories": filtered_categories})
 
-    return cache.home(key, _assemble, force=force)
+    policy = site_control_service.get_site_cache_policy(actual_store, key)
+    return cache.home(key, _assemble, force=force, ttl=policy.home_ttl)
 
 
 def category(
@@ -159,12 +160,14 @@ def category(
     options: dict[str, object] = {"page": page}
     if tid:
         options["tid"] = tid
+    policy = site_control_service.get_site_cache_policy(actual_store, key)
     return cache.category(
         key,
         tid,
         page,
         lambda: _load(ListPayload, registry, key, "category", **options),
         force=force,
+        ttl=policy.category_ttl,
     )
 
 
@@ -188,13 +191,15 @@ def detail(
     force: bool = False,
 ) -> DetailPayload:
     _ensure_enabled(registry, key)
+    actual_store = store or site_settings.store()
+    policy = site_control_service.get_site_cache_policy(actual_store, key)
     raw = cache.detail(
         key,
         vod_id,
         lambda: _load(DetailPayload, registry, key, "detail", id=vod_id),
         force=force,
+        ttl=policy.detail_ttl,
     )
-    actual_store = store or site_settings.store()
     return site_control_service.apply_detail_policy(
         key, raw, actual_store, registry=registry
     )

@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-test-decrypt-request.json",
+  "$defs": {
+    "ImageDecryptionRule": {
+      "description": "站点图片解密规则配置。",
+      "properties": {
+        "id": {
+          "default": "",
+          "description": "规则唯一标识（如 UUID 或简短 ID）",
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "default": "",
+          "description": "规则名称或备注（如 黄果艾加密封面）",
+          "title": "Name",
+          "type": "string"
+        },
+        "site_key": {
+          "default": "",
+          "description": "对应站点标识（如 huangguoai_com，留空表示全站通用匹配）",
+          "title": "Site Key",
+          "type": "string"
+        },
+        "match_domains": {
+          "description": "匹配的加密图床域名特征列表（如 pic.wirqed.cn）",
+          "items": {
+            "type": "string"
+          },
+          "title": "Match Domains",
+          "type": "array"
+        },
+        "algorithm": {
+          "default": "AES-128-CBC",
+          "description": "解密算法",
+          "enum": [
+            "AES-128-CBC",
+            "AES-128-ECB"
+          ],
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "key": {
+          "default": "",
+          "description": "解密密钥 Key（16/24/32字符Hex或UTF-8字符串）",
+          "title": "Key",
+          "type": "string"
+        },
+        "iv": {
+          "default": "",
+          "description": "偏移量 IV（CBC模式需16字符）",
+          "title": "Iv",
+          "type": "string"
+        },
+        "is_hex": {
+          "default": false,
+          "description": "Key/IV 是否为 Hex 编码十六进制字符串",
+          "title": "Is Hex",
+          "type": "boolean"
+        },
+        "enabled": {
+          "default": true,
+          "description": "是否启用该解密规则",
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "created_at": {
+          "default": "",
+          "description": "规则创建时间",
+          "title": "Created At",
+          "type": "string"
+        }
+      },
+      "title": "ImageDecryptionRule",
+      "type": "object"
+    }
+  },
+  "description": "测试解密请求。",
+  "properties": {
+    "url": {
+      "description": "待测试的图片链接",
+      "title": "Url",
+      "type": "string"
+    },
+    "site_key": {
+      "default": "",
+      "description": "可选的站点标识",
+      "title": "Site Key",
+      "type": "string"
+    },
+    "rule": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ImageDecryptionRule"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "临时测试的解密规则（若不提供则套用已保存的规则）"
+    }
+  },
+  "required": [
+    "url"
+  ],
+  "title": "TestDecryptRequest",
+  "type": "object"
+}

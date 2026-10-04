@@ -44,6 +44,14 @@ from app.schemas.admin_site_control import (
     CrawlerUploadResult,
     CrawlerValidateRequest,
     CrawlerValidateResult,
+    ProxyEngineActionResponse,
+    ProxyEngineStatusPayload,
+    ProxyNodeBindRequest,
+    ProxyNodeCreateRequest,
+    ProxyNodeItem,
+    ProxyNodeListPayload,
+    ProxyTestRequest,
+    ProxyTestResult,
     SiteAdvancedSettingPayload,
     SiteAdvancedSettingUpdateRequest,
     SiteCategoryRulePayload,
@@ -74,6 +82,8 @@ from app.schemas.admin_extended import (
     SystemMaintenancePayload,
     SystemNoticePayload,
     SystemStatusPayload,
+    TestDecryptRequest,
+    TestDecryptResult,
 )
 from app.schemas.catalog import DetailPayload, HomePayload, HomeSection, ListPayload
 from app.schemas.envelope import Envelope, ErrorInfo
@@ -82,6 +92,18 @@ from app.schemas.playback import Playback
 from app.schemas.site import SiteListPayload, SiteMeta
 from app.schemas.system import HealthPayload
 from app.schemas.vod import SubCategory, VodCategory, VodItem
+from app.modules.experience.schemas import (
+    ClientBootstrapPayload,
+    DraftSaveResult,
+    ExperienceDraftPayload,
+    ExperienceDraftUpdateRequest,
+    ExperienceReleaseItem,
+    PageViewModel,
+    ReleaseCurrentPayload,
+    ReleasePublishRequest,
+    ReleasePublishResult,
+    ReleaseRollbackRequest,
+)
 
 __all__ = [
     "EXPORTS",
@@ -158,6 +180,26 @@ __all__ = [
     "SystemStatusPayload",
     "CodeCleanupResult",
     "ImageProxyConfig",
+    "ProxyNodeItem",
+    "ProxyNodeListPayload",
+    "ProxyNodeCreateRequest",
+    "ProxyTestRequest",
+    "ProxyTestResult",
+    "ProxyNodeBindRequest",
+    "ProxyEngineStatusPayload",
+    "ProxyEngineActionResponse",
+    "TestDecryptRequest",
+    "TestDecryptResult",
+    "ClientBootstrapPayload",
+    "ReleaseCurrentPayload",
+    "PageViewModel",
+    "ExperienceDraftPayload",
+    "ExperienceDraftUpdateRequest",
+    "DraftSaveResult",
+    "ExperienceReleaseItem",
+    "ReleasePublishRequest",
+    "ReleasePublishResult",
+    "ReleaseRollbackRequest",
 ]
 
 #: 导出清单：文件名（不含扩展名） -> 模型
@@ -236,4 +278,26 @@ EXPORTS: dict[str, type[BaseModel]] = {
     "admin-aggregate-search": AggregateSearchPayload,
     # 激活码批量清理
     "admin-code-cleanup": CodeCleanupResult,
+    # 代理节点池与引擎管理
+    "admin-proxy-node-item": ProxyNodeItem,
+    "admin-proxy-node-list": ProxyNodeListPayload,
+    "admin-proxy-node-create-request": ProxyNodeCreateRequest,
+    "admin-proxy-test-request": ProxyTestRequest,
+    "admin-proxy-test-result": ProxyTestResult,
+    "admin-proxy-node-bind-request": ProxyNodeBindRequest,
+    "admin-proxy-engine-status": ProxyEngineStatusPayload,
+    "admin-proxy-engine-action-response": ProxyEngineActionResponse,
+    "admin-test-decrypt-request": TestDecryptRequest,
+    "admin-test-decrypt-result": TestDecryptResult,
+    # 前台体验与发布中心
+    "client-bootstrap": ClientBootstrapPayload,
+    "client-release-current": ReleaseCurrentPayload,
+    "client-page-view-model": PageViewModel,
+    "admin-experience-draft": ExperienceDraftPayload,
+    "admin-experience-draft-update": ExperienceDraftUpdateRequest,
+    "admin-draft-save-result": DraftSaveResult,
+    "admin-experience-release-item": ExperienceReleaseItem,
+    "admin-release-publish-request": ReleasePublishRequest,
+    "admin-release-publish-result": ReleasePublishResult,
+    "admin-release-rollback-request": ReleaseRollbackRequest,
 }

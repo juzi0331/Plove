@@ -5,19 +5,22 @@
  * 2. 全站系统状态感知（停服维护模式全屏拦截、大厅重要弹窗 Modal、顶部走字跑马灯）；
  * 3. 全局海报防盗链中继开关同步。
  */
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import { ADMIN_BASE_PATH, adminPath } from '@/admin/config'
 import { getPublicSystemStatus } from '@/api/client'
 import type { SystemNoticePayload, SystemStatusPayload } from '@/api/types'
 import { useDeviceStore } from '@/stores/device'
-import { setGlobalImageProxy } from '@/utils/format'
+import { useExperienceStore } from '@/stores/experience'
+import { setDecryptDomains, setGlobalImageProxy } from '@/utils/format'
 
 const device = useDeviceStore()
+const experience = useExperienceStore()
 const router = useRouter()
 const route = useRoute()
 
-const isAdminRoute = computed(() => route.path.startsWith('/admin'))
+const isAdminRoute = computed(() => route.path.startsWith(ADMIN_BASE_PATH) || route.path.startsWith('/admin'))
 
 // ------------------------------------------------------------------ 互踢对话框
 const showKicked = computed({
@@ -43,6 +46,8 @@ async function goActivate(): Promise<void> {
 // ------------------------------------------------------------------ 全站状态与广播
 const sysStatus = ref<SystemStatusPayload | null>(null)
 const bannerDismissed = ref(false)
+const headerBarDismissed = ref(false)
+const floatDismissed = ref(false)
 const showModalNotice = ref(false)
 
 const activeNotice = computed<SystemNoticePayload | null>(() => {
@@ -52,22 +57,41 @@ const activeNotice = computed<SystemNoticePayload | null>(() => {
   return null
 })
 
+// 顶部滚动跑马灯
 const showBannerNotice = computed(() => {
   if (isAdminRoute.value || bannerDismissed.value) return false
   const n = activeNotice.value
   if (!n) return false
-  return n.display_type === 'banner' || n.display_type === 'both'
+  return n.display_type === 'banner' || n.display_type === 'both' || n.display_type === 'all'
+})
+
+// 顶部常驻静态横幅
+const showHeaderBarNotice = computed(() => {
+  if (isAdminRoute.value || headerBarDismissed.value) return false
+  const n = activeNotice.value
+  if (!n) return false
+  return n.display_type === 'header_bar' || n.display_type === 'all'
+})
+
+// 右下角悬浮提示卡片
+const showFloatNotice = computed(() => {
+  if (isAdminRoute.value || floatDismissed.value) return false
+  const n = activeNotice.value
+  if (!n) return false
+  return n.display_type === 'float' || n.display_type === 'all'
 })
 
 async function fetchStatus(): Promise<void> {
   try {
     const res = await getPublicSystemStatus()
     sysStatus.value = res
-    if (res.image_proxy_enabled) {
-      setGlobalImageProxy(true)
-    }
-    // 首次弹窗策略：若公告为 modal 或 both，且本次会话未关闭过
-    if (res.notice?.enabled && (res.notice.display_type === 'modal' || res.notice.display_type === 'both')) {
+    setGlobalImageProxy(Boolean(res.image_proxy_enabled))
+    setDecryptDomains(res.image_decrypt_domains || [])
+    // 首次弹窗策略：若公告为 modal 或 both 或 all，且本次会话未关闭过
+    if (
+      res.notice?.enabled &&
+      (res.notice.display_type === 'modal' || res.notice.display_type === 'both' || res.notice.display_type === 'all')
+    ) {
       const seenKey = `plove_notice_seen_${res.notice.title || 'default'}`
       if (!sessionStorage.getItem(seenKey)) {
         showModalNotice.value = true
@@ -89,16 +113,30 @@ function handleDismissBanner(): void {
   bannerDismissed.value = true
 }
 
+function handleDismissHeaderBar(): void {
+  headerBarDismissed.value = true
+}
+
+function handleDismissFloat(): void {
+  floatDismissed.value = true
+}
+
 function handleReload(): void {
   window.location.reload()
 }
 
 function goAdmin(): void {
-  void router.push('/admin')
+  void router.push(adminPath())
 }
 
 onMounted(() => {
   void fetchStatus()
+  void experience.loadBootstrap()
+  experience.startVersionPolling()
+})
+
+onBeforeUnmount(() => {
+  experience.stopVersionPolling()
 })
 
 watch(
@@ -120,7 +158,9 @@ watch(
       <div class="maintenance-box">
         <div class="maint-icon-wrap">
           <div class="maint-halo" />
-          <div class="maint-icon">⚠️</div>
+          <svg class="maint-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
         </div>
         <div class="maint-title-en">SYSTEM MAINTENANCE</div>
         <h1 class="maint-title">系统升级维护中</h1>
@@ -141,13 +181,44 @@ watch(
 
     <!-- 2. 正常路由渲染 -->
     <template v-else>
-      <!-- 顶部跑马灯通知条 -->
+      <!-- 2.1 顶部常驻静态横幅 Notice Bar -->
+      <div
+        v-if="showHeaderBarNotice && activeNotice"
+        class="global-header-bar"
+        :class="`bar-level--${activeNotice.level || 'info'}`"
+      >
+        <div class="bar-inner">
+          <span class="bar-tag">公告</span>
+          <span class="bar-title">{{ activeNotice.title }}</span>
+          <span class="bar-sep">—</span>
+          <span class="bar-text">{{ activeNotice.content }}</span>
+          <a
+            v-if="activeNotice.action_url"
+            :href="activeNotice.action_url"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="bar-action-link"
+          >
+            {{ activeNotice.action_text || '查看详情' }} &rarr;
+          </a>
+        </div>
+        <button
+          v-if="activeNotice.dismissible"
+          class="bar-close-btn"
+          title="关闭通告"
+          @click="handleDismissHeaderBar"
+        >
+          ✕
+        </button>
+      </div>
+
+      <!-- 2.2 顶部跑马灯通知条 -->
       <div
         v-if="showBannerNotice && activeNotice"
         class="global-marquee-banner"
         :class="`marquee-level--${activeNotice.level || 'info'}`"
       >
-        <div class="marquee-icon-badge">📢 系统广播</div>
+        <div class="marquee-icon-badge">系统广播</div>
         <div class="marquee-scroller-viewport">
           <div class="marquee-scroller-track">
             <span class="marquee-scroller-item">
@@ -156,6 +227,15 @@ watch(
             </span>
           </div>
         </div>
+        <a
+          v-if="activeNotice.action_url"
+          :href="activeNotice.action_url"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="marquee-action-btn"
+        >
+          {{ activeNotice.action_text || '查看' }}
+        </a>
         <button
           v-if="activeNotice.dismissible"
           class="marquee-close-btn"
@@ -168,7 +248,7 @@ watch(
 
       <router-view />
 
-      <!-- 3. 大厅重要通知强弹窗 Modal -->
+      <!-- 2.3 大厅重要通知强弹窗 Modal -->
       <div
         v-if="showModalNotice && activeNotice && !isAdminRoute"
         class="modal-backdrop"
@@ -191,10 +271,54 @@ watch(
             <p>{{ activeNotice.content }}</p>
           </div>
           <div class="modal-dialog-footer">
+            <a
+              v-if="activeNotice.action_url"
+              :href="activeNotice.action_url"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="modal-btn-link"
+            >
+              {{ activeNotice.action_text || '查看详情' }}
+            </a>
             <button class="modal-btn-confirm" @click="handleDismissModal">
               我知道了
             </button>
           </div>
+        </div>
+      </div>
+
+      <!-- 2.4 右下角悬浮提示气泡卡片 -->
+      <div
+        v-if="showFloatNotice && activeNotice && !isAdminRoute"
+        class="global-floating-capsule"
+        :class="`float-level--${activeNotice.level || 'info'}`"
+      >
+        <div class="float-capsule-header">
+          <div class="float-capsule-title-box">
+            <span class="float-capsule-badge">站内通报</span>
+            <span class="float-capsule-title">{{ activeNotice.title }}</span>
+          </div>
+          <button
+            v-if="activeNotice.dismissible"
+            class="float-capsule-close"
+            title="关闭"
+            @click="handleDismissFloat"
+          >
+            ✕
+          </button>
+        </div>
+        <div class="float-capsule-body">
+          {{ activeNotice.content }}
+        </div>
+        <div v-if="activeNotice.action_url" class="float-capsule-footer">
+          <a
+            :href="activeNotice.action_url"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="float-action-btn"
+          >
+            {{ activeNotice.action_text || '立即查看' }} &rarr;
+          </a>
         </div>
       </div>
     </template>
@@ -530,5 +654,242 @@ watch(
 
 .modal-btn-confirm:hover {
   background: #f40612;
+}
+
+.modal-btn-link {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 18px;
+  border-radius: 6px;
+  text-decoration: none;
+  margin-right: 10px;
+  display: inline-flex;
+  align-items: center;
+  transition: background 0.2s ease;
+}
+
+.modal-btn-link:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.marquee-action-btn {
+  background: rgba(0, 0, 0, 0.3);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 2px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.marquee-action-btn:hover {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.maint-icon-svg {
+  width: 36px;
+  height: 36px;
+  color: #f87171;
+  position: relative;
+  z-index: 2;
+}
+
+/* 顶部常驻静态横幅 */
+.global-header-bar {
+  position: relative;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  font-size: 13px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.bar-level--info {
+  background: #0c4a6e;
+  color: #f0f9ff;
+}
+
+.bar-level--warning {
+  background: #78350f;
+  color: #fffbeb;
+}
+
+.bar-level--danger {
+  background: #7f1d1d;
+  color: #fef2f2;
+}
+
+.bar-inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  line-height: 1.4;
+}
+
+.bar-tag {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.18);
+  letter-spacing: 0.5px;
+}
+
+.bar-title {
+  font-weight: 700;
+}
+
+.bar-sep {
+  opacity: 0.5;
+}
+
+.bar-text {
+  opacity: 0.95;
+}
+
+.bar-action-link {
+  font-size: 12px;
+  font-weight: 600;
+  color: #ffffff;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  margin-left: 6px;
+}
+
+.bar-action-link:hover {
+  opacity: 0.8;
+}
+
+.bar-close-btn {
+  background: none;
+  border: none;
+  color: #ffffff;
+  font-size: 14px;
+  cursor: pointer;
+  opacity: 0.7;
+  padding: 2px 6px;
+  line-height: 1;
+}
+
+.bar-close-btn:hover {
+  opacity: 1;
+}
+
+/* 右下角悬浮提示气泡卡片 */
+.global-floating-capsule {
+  position: fixed;
+  right: 24px;
+  bottom: calc(24px + var(--plove-safe-bottom, 0px));
+  z-index: 9990;
+  max-width: 360px;
+  width: calc(100vw - 48px);
+  background: #14171f;
+  border-radius: 12px;
+  padding: 16px 18px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+  animation: float-rise 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+@keyframes float-rise {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.float-level--info {
+  border: 1px solid rgba(56, 189, 248, 0.35);
+}
+
+.float-level--warning {
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.float-level--danger {
+  border: 1px solid rgba(239, 68, 68, 0.45);
+}
+
+.float-capsule-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.float-capsule-title-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.float-capsule-badge {
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.float-capsule-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.float-capsule-close {
+  background: none;
+  border: none;
+  color: #64748b;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.float-capsule-close:hover {
+  color: #ffffff;
+}
+
+.float-capsule-body {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #cbd5e1;
+}
+
+.float-capsule-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 2px;
+}
+
+.float-action-btn {
+  font-size: 12px;
+  font-weight: 600;
+  color: #38bdf8;
+  text-decoration: none;
+  background: rgba(56, 189, 248, 0.1);
+  padding: 4px 12px;
+  border-radius: 4px;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  transition: all 0.2s ease;
+}
+
+.float-action-btn:hover {
+  background: rgba(56, 189, 248, 0.2);
 }
 </style>
