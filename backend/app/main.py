@@ -166,6 +166,8 @@ def create_app() -> FastAPI:
     app.include_router(experience_v2_router, prefix="/api/v2")
 
     @app.get("/", response_class=HTMLResponse, include_in_schema=False)
+    @app.get("/portal", response_class=HTMLResponse, include_in_schema=False)
+    @app.get("/api/portal", response_class=HTMLResponse, include_in_schema=False)
     async def serve_backend_portal():
         return HTMLResponse(content=_PORTAL_HTML)
 
