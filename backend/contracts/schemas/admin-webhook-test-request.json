@@ -3,7 +3,8 @@
   "$id": "https://plove.local/schemas/admin-webhook-test-request.json",
   "properties": {
     "channel": {
-      "description": "测试通道：telegram | wechat_work | feishu | custom_http",
+      "default": "telegram",
+      "description": "测试通道：telegram",
       "title": "Channel",
       "type": "string"
     },
@@ -14,9 +15,6 @@
       "type": "string"
     }
   },
-  "required": [
-    "channel"
-  ],
   "title": "WebhookTestRequest",
   "type": "object"
 }

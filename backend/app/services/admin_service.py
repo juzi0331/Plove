@@ -34,7 +34,12 @@ from app.core.clock import as_aware, utcnow
 from app.core.errors import AppError, ErrorCode
 from app.models.activation import ActivationCode
 from app.models.device import Device
-from app.schemas.admin import CodeListItem, DeviceItem
+from app.schemas.admin import (
+    CodeListItem,
+    DeviceItem,
+    DevicePlaybackHistoryItem,
+    DevicePlaybackHistoryPayload,
+)
 from app.services import activation_service
 
 #: 设备令牌在后台只露前 6 位（见 schemas/admin.py 的说明）
@@ -56,6 +61,28 @@ def to_code_item(record: ActivationCode) -> CodeListItem:
     """把一个 ``ActivationCode`` 行转成载荷。**所有出口都走这里**，字段口径才一致。"""
     devices = list(record.devices or [])
     active = next((d for d in devices if d.id == record.active_device_id), None)
+
+    # 监控用户实时状态：120秒内心跳算在线，心跳+正在播放且播放上报在120秒内算使用中
+    now = utcnow()
+    is_online = False
+    is_playing = False
+    current_playback = None
+
+    for d in devices:
+        last_seen = d.last_seen_at
+        if last_seen:
+            diff_seen = (now - last_seen).total_seconds()
+            if diff_seen <= 120.0:
+                is_online = True
+                d_playing = getattr(d, "is_playing", False)
+                d_last_pb = getattr(d, "last_playback_at", None)
+                if d_playing and d_last_pb and (now - d_last_pb).total_seconds() <= 120.0:
+                    is_playing = True
+                    current_playback = getattr(d, "current_vod_title", "") or None
+                    break
+                elif not current_playback and getattr(d, "current_vod_title", ""):
+                    current_playback = getattr(d, "current_vod_title", "")
+
     return CodeListItem(
         id=record.id,
         code=record.code,
@@ -69,6 +96,9 @@ def to_code_item(record: ActivationCode) -> CodeListItem:
         device_count=len(devices),
         max_devices=getattr(record, "max_devices", 1) or 1,
         active_device_name=(active.name or None) if active else None,
+        is_online=is_online,
+        is_playing=is_playing,
+        current_playback=current_playback,
     )
 
 
@@ -126,17 +156,74 @@ def list_devices(session: Session, code_id: int) -> tuple[ActivationCode, list[D
     """某个码用过的设备。**按最近出现排序** —— 运维想看的通常是\"最后在用的那台\"。"""
     record = get_code(session, code_id)
     devices = sorted(record.devices or [], key=lambda d: d.last_seen_at or d.created_at, reverse=True)
-    return record, [
-        DeviceItem(
-            id=device.id,
-            name=device.name or "",
-            token_prefix=device.token[:TOKEN_PREFIX_LEN],
-            created_at=as_aware(device.created_at),
-            last_seen_at=as_aware(device.last_seen_at),
-            is_active=device.id == record.active_device_id,
+    now = utcnow()
+    device_items = []
+    for device in devices:
+        last_pb = getattr(device, "last_playback_at", None)
+        is_p = bool(getattr(device, "is_playing", False))
+        if is_p and last_pb and (now - last_pb).total_seconds() > 120.0:
+            is_p = False
+
+        device_items.append(
+            DeviceItem(
+                id=device.id,
+                name=device.name or "",
+                token_prefix=device.token[:TOKEN_PREFIX_LEN],
+                created_at=as_aware(device.created_at),
+                last_seen_at=as_aware(device.last_seen_at),
+                is_active=device.id == record.active_device_id,
+                is_playing=is_p,
+                current_vod_title=getattr(device, "current_vod_title", "") or "",
+                last_playback_at=as_aware(last_pb) if last_pb else None,
+            )
         )
-        for device in devices
-    ]
+    return record, device_items
+
+
+def get_device_playback_history(
+    session: Session, device_id: int, limit: int = 50
+) -> DevicePlaybackHistoryPayload:
+    """获取指定设备的观看历史记录（按最近观看倒序）。"""
+    device = session.get(Device, device_id)
+    if device is None:
+        raise AppError(ErrorCode.NOT_FOUND, "没有找到该设备")
+
+    from app.models.playback import PlaybackRecord
+
+    stmt = (
+        select(PlaybackRecord)
+        .where(PlaybackRecord.device_id == device_id)
+        .order_by(PlaybackRecord.updated_at.desc())
+        .limit(limit)
+    )
+    records = list(session.scalars(stmt))
+    now = utcnow()
+    items = []
+    for r in records:
+        is_p = bool(r.is_playing)
+        if is_p and (now - r.updated_at).total_seconds() > 120.0:
+            is_p = False
+        items.append(
+            DevicePlaybackHistoryItem(
+                id=r.id,
+                vod_id=r.vod_id,
+                vod_name=r.vod_name or "未命名影片",
+                vod_pic=r.vod_pic or "",
+                ep_name=r.ep_name or "",
+                site_key=r.site_key or "",
+                position=float(r.position or 0.0),
+                duration=float(r.duration or 0.0),
+                progress_percent=int(r.progress_percent or 0),
+                is_playing=is_p,
+                updated_at=as_aware(r.updated_at),
+            )
+        )
+    return DevicePlaybackHistoryPayload(
+        device_id=device.id,
+        device_name=device.name or f"设备#{device.id}",
+        records=items,
+        total=len(items),
+    )
 
 
 # ------------------------------------------------------------------ 写

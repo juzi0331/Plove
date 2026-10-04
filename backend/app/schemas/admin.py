@@ -27,6 +27,8 @@ from app.schemas.admin_code import (
 from app.schemas.admin_device import (
     DeviceItem,
     DeviceListPayload,
+    DevicePlaybackHistoryItem,
+    DevicePlaybackHistoryPayload,
     KickResult,
 )
 
@@ -84,6 +86,7 @@ class AdminSiteItem(BaseModel):
         "但它是排查问题时第一个该看的东西（比如爬虫文件刚上传、还没跑通）",
     )
     health: SiteHealth
+    badge: str = Field(default="", description="前台自定义线路标识/角标")
     proxy_enabled: bool = Field(default=False, description="是否为该站点开启独立代理")
     proxy_url: str = Field(default="", description="该站点使用的代理地址")
     proxy_node_id: str = Field(default="", description="绑定的代理节点 ID")
@@ -133,5 +136,7 @@ __all__ = [
     "CodeActionResult",
     "DeviceItem",
     "DeviceListPayload",
+    "DevicePlaybackHistoryItem",
+    "DevicePlaybackHistoryPayload",
     "KickResult",
 ]

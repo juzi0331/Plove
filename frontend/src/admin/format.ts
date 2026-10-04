@@ -28,27 +28,38 @@ export function humanRemaining(seconds: number): string {
   return hours > 0 ? `${hours} 小时 ${minutes} 分` : `${minutes} 分`
 }
 
-export type TagType = 'success' | 'warning' | 'danger' | 'info'
+export type TagType = 'success' | 'warning' | 'danger' | 'info' | 'primary'
 
 export interface CodeState {
   label: string
   tag: TagType
+  isPlaying?: boolean
+  currentPlayback?: string | null
 }
 
 /**
  * 一个码现在到底算什么状态。
  *
- * **注意 `remaining_seconds === 0` 有两种含义**（契约里写明了）：
- * 还没激活、或者已经到期。只看 0 会得出错误结论，所以这里必须结合
- * `activated_at` 一起判断。
+ * 状态口径说明：
+ * - 已停用：管理员手动封禁
+ * - 未激活：发放后尚未在任何设备上兑换
+ * - 已到期：有效期已过
+ * - 使用中：当前有设备正在播放视频（实时心跳活跃）
+ * - 空闲中：码正常有效，但当前无设备在播放
  */
 export function codeState(item: CodeListItem): CodeState {
   if (item.disabled_at) return { label: '已停用', tag: 'danger' }
   if (!item.activated_at) return { label: '未激活', tag: 'info' }
-  // 生成的类型里带默认值的字段是可选的（JSON Schema 的 required 才是硬约定），
-  // 所以这里统一兜一个 0，而不是在每个调用点写 `?? 0`。
   if ((item.remaining_seconds ?? 0) <= 0) return { label: '已到期', tag: 'warning' }
-  return { label: '使用中', tag: 'success' }
+  if (item.is_playing) {
+    return {
+      label: '使用中',
+      tag: 'success',
+      isPlaying: true,
+      currentPlayback: item.current_playback,
+    }
+  }
+  return { label: '空闲中', tag: 'info', isPlaying: false }
 }
 
 /** 命中率（%）：命中 / (命中 + 未命中)。没有请求时给 0 而不是 NaN。 */

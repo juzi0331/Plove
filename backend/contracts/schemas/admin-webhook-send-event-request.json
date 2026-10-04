@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-webhook-send-event-request.json",
+  "properties": {
+    "channel": {
+      "default": "telegram",
+      "description": "目标推送通道：telegram",
+      "title": "Channel",
+      "type": "string"
+    },
+    "event_type": {
+      "default": "test",
+      "description": "事件类型标识",
+      "title": "Event Type",
+      "type": "string"
+    },
+    "title": {
+      "default": "",
+      "description": "自定义标题（留空时自动生成对应事件仿真内容）",
+      "title": "Title",
+      "type": "string"
+    },
+    "content": {
+      "default": "",
+      "description": "自定义正文（留空时自动生成对应事件仿真描述）",
+      "title": "Content",
+      "type": "string"
+    },
+    "fields": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "自定义附加字段字典",
+      "title": "Fields"
+    },
+    "raw_html": {
+      "default": false,
+      "description": "是否为原生 Telegram HTML 格式（开启后不执行二次转义，原生渲染 b, code, i 等标签）",
+      "title": "Raw Html",
+      "type": "boolean"
+    }
+  },
+  "title": "WebhookSendEventRequest",
+  "type": "object"
+}

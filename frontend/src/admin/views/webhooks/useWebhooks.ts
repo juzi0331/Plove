@@ -2,9 +2,10 @@ import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 
 import type {
+  EventSubscriptions,
   ProxyNodeItem,
+  TelegramConfig,
   TelegramVerifyResult,
-  WebhookConfigPayload,
   WebhookDeliveryLogItem,
 } from '@/api/types'
 import {
@@ -18,6 +19,14 @@ import {
   verifyTelegramBot,
 } from '@/admin/api/webhooks'
 import { listProxyNodes } from '@/admin/api/proxy-nodes'
+
+export interface WebhookAdminConfig {
+  telegram: Required<TelegramConfig>
+  events: Required<EventSubscriptions>
+  wechat_work?: unknown | null
+  feishu?: unknown | null
+  custom_http?: unknown | null
+}
 
 export function useWebhooks() {
   const loading = ref(false)
@@ -33,7 +42,7 @@ export function useWebhooks() {
   // 代理节点池列表
   const proxyNodes = ref<ProxyNodeItem[]>([])
 
-  const config = ref<Required<WebhookConfigPayload>>({
+  const config = ref<WebhookAdminConfig>({
     telegram: {
       enabled: false,
       bot_token: '',

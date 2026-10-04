@@ -29,6 +29,9 @@ backend/data/*
 !backend/data/.gitkeep
 **/img_cache/
 *webhook_config.json
+*proxy_config.json
+!*proxy_config.example.json
+*proxy_nodes.json
 
 # 编辑器与操作系统痕迹
 .idea/

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://plove.local/schemas/admin-telegram-verify-request.json",
+  "$id": "https://plove.local/schemas/admin-telegram-detect-chat-request.json",
   "properties": {
     "bot_token": {
       "description": "Telegram Bot Token",
@@ -24,6 +24,6 @@
   "required": [
     "bot_token"
   ],
-  "title": "TelegramVerifyRequest",
+  "title": "TelegramDetectChatRequest",
   "type": "object"
 }

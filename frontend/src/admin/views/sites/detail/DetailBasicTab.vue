@@ -60,15 +60,18 @@ function goToProxyNodes(): void {
           />
         </ElFormItem>
 
-        <ElFormItem label="自定义角标（如 4K、蓝光、极速）" style="width: 240px;">
+        <ElFormItem label="自定义线路标识 / 角标" style="width: 260px;">
           <ElInput
             v-model="currentAdvanced.badge"
-            placeholder="留空无角标"
-            maxlength="10"
+            :placeholder="currentAdvanced.key ? `留空显示 (${currentAdvanced.key})` : '留空显示原始Key'"
+            maxlength="20"
             show-word-limit
             :disabled="ui.readOnly"
           />
         </ElFormItem>
+      </div>
+      <div class="form-item-tip" style="margin-top: -10px; margin-bottom: 14px;">
+        💡 线路标识将直接展示在前台切源下拉列表中（「线路标识: 自定义值」），如：蓝光专线、极速4K；留空则显示原始爬虫 Key
       </div>
 
       <div class="form-row-2">

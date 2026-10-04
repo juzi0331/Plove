@@ -6,6 +6,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import { reportPlaybackHeartbeat } from '@/api/client'
 import type { Episode } from '@/api/types'
 import { useDeviceStore } from '@/stores/device'
 import { useSitesStore } from '@/stores/sites'
@@ -320,6 +321,59 @@ useKeyboard({
   isDrawerOpen: () => state.isDrawerOpen.value,
 })
 
+// ==========================================
+// 播放状态与观看足迹心跳上报
+// ==========================================
+let heartbeatTimer: ReturnType<typeof setInterval> | null = null
+
+function sendHeartbeat(isPlaying: boolean): void {
+  if (!props.vodId) return
+  const dur = Math.round(state.duration.value || 0)
+  const pos = Math.round(state.currentTime.value || 0)
+  const pct = dur > 0 ? Math.min(100, Math.max(0, Math.round((pos / dur) * 100))) : 0
+
+  void reportPlaybackHeartbeat({
+    vod_id: String(props.vodId),
+    vod_name: vodTitle.value || '未知影片',
+    vod_pic: videoMeta.value?.vod_pic || '',
+    ep_name: displayEpText.value || `第 ${props.ep} 集`,
+    site: (route.query.site as string) || sitesStore.currentKey || '',
+    position: pos,
+    duration: dur,
+    progress: pct,
+    is_playing: isPlaying,
+  }).catch(() => undefined)
+}
+
+function startHeartbeatLoop(): void {
+  stopHeartbeatLoop()
+  sendHeartbeat(true)
+  heartbeatTimer = setInterval(() => {
+    if (state.isPlaying.value) {
+      sendHeartbeat(true)
+    }
+  }, 25000)
+}
+
+function stopHeartbeatLoop(): void {
+  if (heartbeatTimer) {
+    clearInterval(heartbeatTimer)
+    heartbeatTimer = null
+  }
+}
+
+watch(
+  () => state.isPlaying.value,
+  (playing) => {
+    if (playing) {
+      startHeartbeatLoop()
+    } else {
+      stopHeartbeatLoop()
+      sendHeartbeat(false)
+    }
+  },
+)
+
 onMounted(() => {
   hlsEngine.setUnmounted(false)
   void hlsEngine.load()
@@ -328,6 +382,8 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  stopHeartbeatLoop()
+  sendHeartbeat(false)
   hlsEngine.setUnmounted(true)
   hlsEngine.destroyPlayer()
   state.cleanup()

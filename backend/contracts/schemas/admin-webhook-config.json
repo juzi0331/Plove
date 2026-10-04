@@ -2,29 +2,6 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://plove.local/schemas/admin-webhook-config.json",
   "$defs": {
-    "CustomHttpConfig": {
-      "properties": {
-        "enabled": {
-          "default": false,
-          "title": "Enabled",
-          "type": "boolean"
-        },
-        "url": {
-          "default": "",
-          "description": "自定义 HTTP 回调地址（POST JSON）",
-          "title": "Url",
-          "type": "string"
-        },
-        "secret_token": {
-          "default": "",
-          "description": "签名或请求头校验 Token（X-Plove-Token）",
-          "title": "Secret Token",
-          "type": "string"
-        }
-      },
-      "title": "CustomHttpConfig",
-      "type": "object"
-    },
     "EventSubscriptions": {
       "properties": {
         "circuit_break": {
@@ -33,10 +10,34 @@
           "title": "Circuit Break",
           "type": "boolean"
         },
+        "circuit_recover": {
+          "default": true,
+          "description": "内容源自愈恢复通知",
+          "title": "Circuit Recover",
+          "type": "boolean"
+        },
+        "site_health_report": {
+          "default": true,
+          "description": "聚合内容源清单与连通性自检报告",
+          "title": "Site Health Report",
+          "type": "boolean"
+        },
         "code_activated": {
           "default": true,
-          "description": "新激活码激活与使用通知",
+          "description": "新激活码首次绑定激活通知",
           "title": "Code Activated",
+          "type": "boolean"
+        },
+        "device_conflict": {
+          "default": true,
+          "description": "同码多设备抢线/冲突下线告警",
+          "title": "Device Conflict",
+          "type": "boolean"
+        },
+        "security_alert": {
+          "default": true,
+          "description": "接口防刷与高频限流安全告警",
+          "title": "Security Alert",
           "type": "boolean"
         },
         "proxy_offline": {
@@ -51,6 +52,12 @@
           "title": "Daily Report",
           "type": "boolean"
         },
+        "system_startup": {
+          "default": false,
+          "description": "Plove 服务集群启动/重启就绪通知",
+          "title": "System Startup",
+          "type": "boolean"
+        },
         "fail_threshold": {
           "default": 3,
           "description": "连续失败触发告警的阈值次数",
@@ -61,29 +68,6 @@
         }
       },
       "title": "EventSubscriptions",
-      "type": "object"
-    },
-    "FeishuConfig": {
-      "properties": {
-        "enabled": {
-          "default": false,
-          "title": "Enabled",
-          "type": "boolean"
-        },
-        "webhook_url": {
-          "default": "",
-          "description": "飞书群自定义机器人 Webhook 地址",
-          "title": "Webhook Url",
-          "type": "string"
-        },
-        "secret": {
-          "default": "",
-          "description": "可选的飞书签名校验 Secret",
-          "title": "Secret",
-          "type": "string"
-        }
-      },
-      "title": "FeishuConfig",
       "type": "object"
     },
     "TelegramConfig": {
@@ -122,26 +106,15 @@
           "description": "自动识别的 Bot 名称",
           "title": "Bot Name",
           "type": "string"
-        }
-      },
-      "title": "TelegramConfig",
-      "type": "object"
-    },
-    "WeChatWorkConfig": {
-      "properties": {
-        "enabled": {
-          "default": false,
-          "title": "Enabled",
-          "type": "boolean"
         },
-        "webhook_url": {
+        "console_url": {
           "default": "",
-          "description": "企业微信群机器人 Webhook 地址",
-          "title": "Webhook Url",
+          "description": "管理后台公网或局域网访问地址（用于推送通知内快捷直达按钮）",
+          "title": "Console Url",
           "type": "string"
         }
       },
-      "title": "WeChatWorkConfig",
+      "title": "TelegramConfig",
       "type": "object"
     }
   },
@@ -149,17 +122,38 @@
     "telegram": {
       "$ref": "#/$defs/TelegramConfig"
     },
-    "wechat_work": {
-      "$ref": "#/$defs/WeChatWorkConfig"
-    },
-    "feishu": {
-      "$ref": "#/$defs/FeishuConfig"
-    },
-    "custom_http": {
-      "$ref": "#/$defs/CustomHttpConfig"
-    },
     "events": {
       "$ref": "#/$defs/EventSubscriptions"
+    },
+    "wechat_work": {
+      "anyOf": [
+        {},
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Wechat Work"
+    },
+    "feishu": {
+      "anyOf": [
+        {},
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Feishu"
+    },
+    "custom_http": {
+      "anyOf": [
+        {},
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Custom Http"
     }
   },
   "title": "WebhookConfigPayload",

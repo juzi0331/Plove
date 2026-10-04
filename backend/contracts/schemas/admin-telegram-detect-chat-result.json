@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-telegram-detect-chat-result.json",
+  "properties": {
+    "ok": {
+      "title": "Ok",
+      "type": "boolean"
+    },
+    "chat_id": {
+      "default": "",
+      "title": "Chat Id",
+      "type": "string"
+    },
+    "chat_title": {
+      "default": "",
+      "title": "Chat Title",
+      "type": "string"
+    },
+    "username": {
+      "default": "",
+      "title": "Username",
+      "type": "string"
+    },
+    "chat_type": {
+      "default": "",
+      "title": "Chat Type",
+      "type": "string"
+    },
+    "error": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Error"
+    }
+  },
+  "required": [
+    "ok"
+  ],
+  "title": "TelegramDetectChatResult",
+  "type": "object"
+}

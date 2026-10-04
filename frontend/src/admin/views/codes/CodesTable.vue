@@ -9,6 +9,7 @@ import {
   ElTable,
   ElTableColumn,
   ElTag,
+  ElTooltip,
 } from 'element-plus'
 import {
   CopyDocument,
@@ -107,9 +108,18 @@ function getCodeState(row: any) {
           </template>
         </ElTableColumn>
 
-        <ElTableColumn label="状态" :width="props.widthOf('status', 105)">
+        <ElTableColumn label="状态" :width="props.widthOf('status', 115)">
           <template #default="{ row }">
-            <ElTag :type="getCodeState(row).tag" size="small">
+            <ElTooltip
+              v-if="getCodeState(row).isPlaying && row.current_playback"
+              :content="`正在观看: ${row.current_playback}`"
+              placement="top"
+            >
+              <ElTag type="success" size="small" class="status-tag-watching">
+                <span class="pulse-dot">●</span> 使用中
+              </ElTag>
+            </ElTooltip>
+            <ElTag v-else :type="getCodeState(row).tag" size="small">
               {{ getCodeState(row).label }}
             </ElTag>
           </template>
@@ -124,14 +134,14 @@ function getCodeState(row: any) {
             >
               <ElTag
                 size="small"
-                :type="(row.active_device_count || 0) >= (row.max_devices || 1) ? 'danger' : 'info'"
+                :type="(row.device_count || 0) >= (row.max_devices || 1) ? 'danger' : 'info'"
                 class="device-badge-clickable"
               >
                 <ElIcon style="margin-right: 2px;"><Monitor /></ElIcon>
-                {{ row.active_device_count || 0 }} / {{ row.max_devices || 1 }} 台
+                {{ row.device_count || 0 }} / {{ row.max_devices || 1 }} 台
               </ElTag>
-              <span v-if="row.last_device_name" class="device-name-hint" :title="row.last_device_name">
-                {{ row.last_device_name }}
+              <span v-if="row.active_device_name" class="device-name-hint" :title="row.active_device_name">
+                {{ row.active_device_name }}
               </span>
             </div>
           </template>
@@ -181,7 +191,7 @@ function getCodeState(row: any) {
                 type="primary"
                 @click="onOpenDevices(row)"
               >
-                设备({{ row.active_device_count || 0 }})
+                设备({{ row.device_count || 0 }})
               </ElButton>
 
               <ElButton
@@ -233,3 +243,54 @@ function getCodeState(row: any) {
     </template>
   </ElCard>
 </template>
+
+<style scoped>
+.code-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.code-mono {
+  font-family: monospace;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+}
+.device-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  cursor: pointer;
+}
+.device-badge-clickable {
+  cursor: pointer;
+  width: fit-content;
+}
+.device-name-hint {
+  font-size: 11px;
+  color: var(--el-text-color-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.status-tag-watching {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.pulse-dot {
+  color: #67c23a;
+  font-size: 10px;
+  animation: pulse-glow 1.5s infinite ease-in-out;
+}
+@keyframes pulse-glow {
+  0% { opacity: 0.3; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.1); }
+  100% { opacity: 0.3; transform: scale(0.9); }
+}
+.pagination-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+</style>

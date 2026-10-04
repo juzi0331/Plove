@@ -6,7 +6,7 @@
 // 重新生成：cd frontend && npm run gen:types
 // 检查是否过期：npm run check:types（退出码非 0 = 契约改过但没重新生成）
 //
-// 契约指纹：4c66faaaacdf
+// 契约指纹：a9e4050db895
 /** 命名意图动作描述。由前端映射至受控处理函数，不执行动态代码。 */
 export interface ActionPayload {
   type: string
@@ -45,6 +45,7 @@ export interface AdminSiteItem {
   capabilities?: string[]
   meta_error?: string | null
   health: SiteHealth
+  badge?: string
   proxy_enabled?: boolean
   proxy_url?: string
   proxy_node_id?: string
@@ -230,6 +231,9 @@ export interface CodeListItem {
   device_count?: number
   max_devices?: number
   active_device_name?: string | null
+  is_online?: boolean
+  is_playing?: boolean
+  current_playback?: string | null
 }
 
 /** 激活码列表（分页）。 */
@@ -289,12 +293,6 @@ export interface CrawlerValidateResult {
   checks?: string[]
 }
 
-export interface CustomHttpConfig {
-  enabled?: boolean
-  url?: string
-  secret_token?: string
-}
-
 export interface DetailPayload {
   video: VodItem
   desc?: string
@@ -310,12 +308,38 @@ export interface DeviceItem {
   created_at: string
   last_seen_at: string
   is_active: boolean
+  is_playing?: boolean
+  current_vod_title?: string
+  last_playback_at?: string | null
 }
 
 /** 某个码用过的所有设备。 */
 export interface DeviceListPayload {
   devices?: DeviceItem[]
   active_device_id?: number | null
+}
+
+/** 单条播放足迹记录。 */
+export interface DevicePlaybackHistoryItem {
+  id: number
+  vod_id: string
+  vod_name: string
+  vod_pic?: string
+  ep_name?: string
+  site_key?: string
+  position?: number
+  duration?: number
+  progress_percent?: number
+  is_playing?: boolean
+  updated_at: string
+}
+
+/** 设备观看记录载荷。 */
+export interface DevicePlaybackHistoryPayload {
+  device_id: number
+  device_name?: string
+  records?: DevicePlaybackHistoryItem[]
+  total?: number
 }
 
 /** 草稿保存结果。 */
@@ -404,12 +428,6 @@ export interface ExperienceReleaseItem {
 /** 延长时长。**只能加时间，不能减** —— 减时间应该用停用。 */
 export interface ExtendRequest {
   hours: number
-}
-
-export interface FeishuConfig {
-  enabled?: boolean
-  webhook_url?: string
-  secret?: string
 }
 
 /** 健康检查。故意只回最少的字段：它要能在数据库、爬虫全挂时照样返回。 */
@@ -549,6 +567,23 @@ export interface Playback {
   url: string
   format?: "m3u8" | "mp4"
   headers?: Record<string, string>
+}
+
+export interface PlaybackHeartbeatRequest {
+  vod_id: string
+  vod_name?: string
+  vod_pic?: string
+  ep_name?: string
+  site?: string
+  position?: number
+  duration?: number
+  progress?: number
+  is_playing?: boolean
+}
+
+export interface PlaybackHeartbeatResult {
+  ok?: boolean
+  message?: string
 }
 
 /** 播放器客户端全局默认偏好。 */
@@ -891,22 +926,9 @@ export interface TelegramConfig {
   console_url?: string
 }
 
-export interface TelegramVerifyRequest {
-  bot_token: string
-  proxy_url?: string
-}
-
-export interface TelegramVerifyResult {
-  ok: boolean
-  id?: number
-  username?: string
-  first_name?: string
-  error?: string | null
-}
-
 export interface TelegramDetectChatRequest {
   bot_token: string
-  proxy_url?: string
+  proxy_url?: string | null
 }
 
 export interface TelegramDetectChatResult {
@@ -915,6 +937,19 @@ export interface TelegramDetectChatResult {
   chat_title?: string
   username?: string
   chat_type?: string
+  error?: string | null
+}
+
+export interface TelegramVerifyRequest {
+  bot_token: string
+  proxy_url?: string | null
+}
+
+export interface TelegramVerifyResult {
+  ok: boolean
+  id?: number
+  username?: string
+  first_name?: string
   error?: string | null
 }
 
@@ -999,6 +1034,9 @@ export interface WarmupStatus {
 export interface WebhookConfigPayload {
   telegram?: TelegramConfig
   events?: EventSubscriptions
+  wechat_work?: unknown | null
+  feishu?: unknown | null
+  custom_http?: unknown | null
 }
 
 export interface WebhookDeliveryLogItem {
@@ -1019,18 +1057,18 @@ export interface WebhookLogsPayload {
   total?: number
 }
 
-export interface WebhookTestRequest {
-  channel: string
-  custom_text?: string
-}
-
 export interface WebhookSendEventRequest {
   channel?: string
-  event_type: string
+  event_type?: string
   title?: string
   content?: string
-  fields?: Record<string, unknown>
+  fields?: Record<string, unknown> | null
   raw_html?: boolean
+}
+
+export interface WebhookTestRequest {
+  channel?: string
+  custom_text?: string
 }
 
 export interface WebhookTestResult {
@@ -1040,9 +1078,4 @@ export interface WebhookTestResult {
   duration_ms?: number
   message?: string
   error?: string | null
-}
-
-export interface WeChatWorkConfig {
-  enabled?: boolean
-  webhook_url?: string
 }

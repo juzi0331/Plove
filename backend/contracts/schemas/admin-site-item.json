@@ -136,6 +136,12 @@
     "health": {
       "$ref": "#/$defs/SiteHealth"
     },
+    "badge": {
+      "default": "",
+      "description": "前台自定义线路标识/角标",
+      "title": "Badge",
+      "type": "string"
+    },
     "proxy_enabled": {
       "default": false,
       "description": "是否为该站点开启独立代理",

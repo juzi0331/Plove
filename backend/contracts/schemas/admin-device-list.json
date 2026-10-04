@@ -34,6 +34,32 @@
           "description": "它是不是当前占着活跃位的那台",
           "title": "Is Active",
           "type": "boolean"
+        },
+        "is_playing": {
+          "default": false,
+          "description": "当前是否正在播放影片",
+          "title": "Is Playing",
+          "type": "boolean"
+        },
+        "current_vod_title": {
+          "default": "",
+          "description": "当前正在观看的剧名与集数",
+          "title": "Current Vod Title",
+          "type": "string"
+        },
+        "last_playback_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "最后播放上报时间",
+          "title": "Last Playback At"
         }
       },
       "required": [

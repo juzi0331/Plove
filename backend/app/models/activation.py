@@ -20,6 +20,7 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.models.device import Device
+    from app.models.playback import PlaybackRecord
 
 
 class ActivationCode(Base):
@@ -53,6 +54,11 @@ class ActivationCode(Base):
     active_device_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     devices: Mapped[list["Device"]] = relationship(
+        back_populates="activation",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    playback_records: Mapped[list["PlaybackRecord"]] = relationship(
         back_populates="activation",
         cascade="all, delete-orphan",
         lazy="selectin",

@@ -46,6 +46,8 @@ const emit = defineEmits<{
   (e: 'cancelAutoNext'): void
   (e: 'toggleDrawer'): void
   (e: 'seekTo', time: number): void
+  (e: 'dragStart'): void
+  (e: 'dragEnd'): void
 }>()
 
 const isAspectMenuOpen = ref(false)
@@ -60,6 +62,7 @@ const isDragging = ref(false)
 
 function onProgressPointerDown(e: MouseEvent): void {
   isDragging.value = true
+  emit('dragStart')
   updateProgressByEvent(e, true)
 
   const onPointerMove = (ev: MouseEvent) => {
@@ -72,6 +75,7 @@ function onProgressPointerDown(e: MouseEvent): void {
     if (isDragging.value) {
       updateProgressByEvent(ev, true)
       isDragging.value = false
+      emit('dragEnd')
     }
     window.removeEventListener('mousemove', onPointerMove)
     window.removeEventListener('mouseup', onPointerUp)
@@ -85,6 +89,7 @@ function onProgressTouchStart(e: TouchEvent): void {
   const touch = e.touches[0]
   if (!touch || !props.duration) return
   isDragging.value = true
+  emit('dragStart')
   updateProgressByTouch(touch, true)
 }
 
@@ -102,6 +107,7 @@ function onProgressTouchEnd(e: TouchEvent): void {
     }
     isDragging.value = false
     hoverTime.value = null
+    emit('dragEnd')
   }
 }
 

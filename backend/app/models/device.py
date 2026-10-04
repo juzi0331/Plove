@@ -9,7 +9,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.clock import utcnow
@@ -17,6 +17,7 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.models.activation import ActivationCode
+    from app.models.playback import PlaybackRecord
 
 
 class Device(Base):
@@ -35,5 +36,16 @@ class Device(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     #: 最后一次心跳/激活时间。后台用它判断"这台还在不在线"。
     last_seen_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    #: 当前是否正在播放影片
+    is_playing: Mapped[bool] = mapped_column(Boolean, default=False)
+    #: 当前正在播放的影片标题与集数
+    current_vod_title: Mapped[str] = mapped_column(String(255), default="")
+    #: 最后一次播放上报时间
+    last_playback_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     activation: Mapped["ActivationCode"] = relationship(back_populates="devices")
+    playback_records: Mapped[list["PlaybackRecord"]] = relationship(
+        back_populates="device",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )

@@ -11,6 +11,7 @@ from __future__ import annotations
 from app.models.activation import ActivationCode
 from app.models.device import Device
 from app.models.experience import ExperienceActivePointer, ExperienceDraft, ExperienceRelease
+from app.models.playback import PlaybackRecord
 from app.models.site_setting import SiteSetting
 from app.models.system_setting import SystemSetting
 
@@ -20,6 +21,7 @@ __all__ = [
     "ExperienceActivePointer",
     "ExperienceDraft",
     "ExperienceRelease",
+    "PlaybackRecord",
     "SiteSetting",
     "SystemSetting",
 ]

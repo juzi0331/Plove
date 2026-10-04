@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import commit_now, get_db
 from app.api.v1.admin._audit import audit
 from app.core.middleware import get_request_id
-from app.schemas.admin import DeviceListPayload, KickResult
+from app.schemas.admin import DeviceListPayload, DevicePlaybackHistoryPayload, KickResult
 from app.schemas.envelope import Envelope, ok
 from app.services import admin_service
 
@@ -75,3 +75,19 @@ def unbind_device(
         ),
         request_id,
     )
+
+
+@router.get(
+    "/devices/{device_id}/history",
+    response_model=Envelope[DevicePlaybackHistoryPayload],
+    summary="查询设备观看历史记录",
+)
+def get_device_history(
+    device_id: int,
+    limit: int = 50,
+    request_id: str = Depends(get_request_id),
+    db: Session = Depends(get_db),
+) -> Envelope[DevicePlaybackHistoryPayload]:
+    """查询指定设备最近看过的影片流水（影片、海报、集数、进度、时间）。"""
+    history = admin_service.get_device_playback_history(db, device_id, limit=limit)
+    return ok(history, request_id)

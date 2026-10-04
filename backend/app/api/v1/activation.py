@@ -21,7 +21,8 @@ from app.schemas.activation import (
 )
 from app.schemas.catalog import VodItem
 from app.schemas.envelope import Envelope, ok
-from app.services import activation_service, catalog_service
+from app.schemas.playback import PlaybackHeartbeatRequest, PlaybackHeartbeatResult
+from app.services import activation_service, catalog_service, playback_service
 
 router = APIRouter(tags=["激活"], prefix="/activation")
 redeem_limiter = RateLimitGuard(limit=5, window_seconds=60, scope="redeem")
@@ -73,6 +74,24 @@ def heartbeat(
     这样切后台、锁屏、网络抖动都不会误踢，也没有阈值要调。
     """
     return ok(activation_service.heartbeat(db, token), request_id)
+
+
+@router.post(
+    "/playback-heartbeat",
+    response_model=Envelope[PlaybackHeartbeatResult],
+    summary="播放器心跳与进度上报",
+)
+def playback_heartbeat(
+    payload: PlaybackHeartbeatRequest,
+    request_id: str = Depends(get_request_id),
+    db: Session = Depends(get_db),
+    token: str | None = Security(device_token_header),
+) -> Envelope[PlaybackHeartbeatResult]:
+    """播放器每 20~30 秒或暂停/换集时上报。更新设备观看中状态并持久化观看历史。"""
+    device = activation_service.require_active(db, token)
+    result = playback_service.record_playback_heartbeat(db, device, payload)
+    commit_now(db)
+    return ok(result, request_id)
 
 
 @router.get("/trending", response_model=Envelope[list[VodItem]], summary="落地页现正热播与背景海报")

@@ -15,6 +15,8 @@ import type {
   HomePayload,
   ListPayload,
   Playback,
+  PlaybackHeartbeatRequest,
+  PlaybackHeartbeatResult,
   SessionState,
   SiteListPayload,
   SiteMeta,
@@ -57,6 +59,16 @@ export function redeem(input: RedeemInput): Promise<ActivationResult> {
 
 export function heartbeat(): Promise<SessionState> {
   return request('/activation/heartbeat', { method: 'POST' })
+}
+
+/** 播放端定期上报播放心跳与观看历史足迹 */
+export function reportPlaybackHeartbeat(
+  payload: PlaybackHeartbeatRequest,
+): Promise<PlaybackHeartbeatResult> {
+  return request('/activation/playback-heartbeat', {
+    method: 'POST',
+    body: payload,
+  })
 }
 
 /** 落地页获取现正热播片单与真实封面 */

@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-device-playback-history.json",
+  "$defs": {
+    "DevicePlaybackHistoryItem": {
+      "description": "单条播放足迹记录。",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "integer"
+        },
+        "vod_id": {
+          "title": "Vod Id",
+          "type": "string"
+        },
+        "vod_name": {
+          "title": "Vod Name",
+          "type": "string"
+        },
+        "vod_pic": {
+          "default": "",
+          "title": "Vod Pic",
+          "type": "string"
+        },
+        "ep_name": {
+          "default": "",
+          "title": "Ep Name",
+          "type": "string"
+        },
+        "site_key": {
+          "default": "",
+          "title": "Site Key",
+          "type": "string"
+        },
+        "position": {
+          "default": 0.0,
+          "title": "Position",
+          "type": "number"
+        },
+        "duration": {
+          "default": 0.0,
+          "title": "Duration",
+          "type": "number"
+        },
+        "progress_percent": {
+          "default": 0,
+          "title": "Progress Percent",
+          "type": "integer"
+        },
+        "is_playing": {
+          "default": false,
+          "title": "Is Playing",
+          "type": "boolean"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "vod_id",
+        "vod_name",
+        "updated_at"
+      ],
+      "title": "DevicePlaybackHistoryItem",
+      "type": "object"
+    }
+  },
+  "description": "设备观看记录载荷。",
+  "properties": {
+    "device_id": {
+      "title": "Device Id",
+      "type": "integer"
+    },
+    "device_name": {
+      "default": "",
+      "title": "Device Name",
+      "type": "string"
+    },
+    "records": {
+      "items": {
+        "$ref": "#/$defs/DevicePlaybackHistoryItem"
+      },
+      "title": "Records",
+      "type": "array"
+    },
+    "total": {
+      "default": 0,
+      "title": "Total",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "device_id"
+  ],
+  "title": "DevicePlaybackHistoryPayload",
+  "type": "object"
+}

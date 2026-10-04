@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/playback-heartbeat-request.json",
+  "properties": {
+    "vod_id": {
+      "description": "影视剧 ID",
+      "title": "Vod Id",
+      "type": "string"
+    },
+    "vod_name": {
+      "default": "",
+      "description": "影视剧名称",
+      "title": "Vod Name",
+      "type": "string"
+    },
+    "vod_pic": {
+      "default": "",
+      "description": "海报封面地址",
+      "title": "Vod Pic",
+      "type": "string"
+    },
+    "ep_name": {
+      "default": "",
+      "description": "当前集数名称",
+      "title": "Ep Name",
+      "type": "string"
+    },
+    "site": {
+      "default": "",
+      "description": "当前来源站点 key",
+      "title": "Site",
+      "type": "string"
+    },
+    "position": {
+      "default": 0.0,
+      "description": "当前播放时间秒数",
+      "title": "Position",
+      "type": "number"
+    },
+    "duration": {
+      "default": 0.0,
+      "description": "总时长秒数",
+      "title": "Duration",
+      "type": "number"
+    },
+    "progress": {
+      "default": 0,
+      "description": "播放进度百分比 0-100",
+      "maximum": 100,
+      "minimum": 0,
+      "title": "Progress",
+      "type": "integer"
+    },
+    "is_playing": {
+      "default": true,
+      "description": "当前是否处于播放中状态",
+      "title": "Is Playing",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "vod_id"
+  ],
+  "title": "PlaybackHeartbeatRequest",
+  "type": "object"
+}

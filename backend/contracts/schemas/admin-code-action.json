@@ -100,6 +100,31 @@
           "default": null,
           "description": "当前活跃的那台设备名",
           "title": "Active Device Name"
+        },
+        "is_online": {
+          "default": false,
+          "description": "当前是否有设备在线",
+          "title": "Is Online",
+          "type": "boolean"
+        },
+        "is_playing": {
+          "default": false,
+          "description": "当前是否正在播放影片",
+          "title": "Is Playing",
+          "type": "boolean"
+        },
+        "current_playback": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "当前正在观看的剧名与集数",
+          "title": "Current Playback"
         }
       },
       "required": [

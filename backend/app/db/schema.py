@@ -58,6 +58,21 @@ def _align_columns(engine: Engine) -> None:
                 except Exception:
                     pass
 
+    if "devices" in insp.get_table_names():
+        existing_cols = {c["name"] for c in insp.get_columns("devices")}
+        needed_dev = {
+            "is_playing": "BOOLEAN DEFAULT 0",
+            "current_vod_title": "VARCHAR(255) DEFAULT ''",
+            "last_playback_at": "DATETIME NULL",
+        }
+        with engine.begin() as conn:
+            for col_name, col_def in needed_dev.items():
+                if col_name not in existing_cols:
+                    try:
+                        conn.execute(text(f"ALTER TABLE devices ADD COLUMN {col_name} {col_def}"))
+                    except Exception:
+                        pass
+
 
 def table_names(engine: Engine) -> list[str]:
     return sorted(inspect(engine).get_table_names())

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/playback-heartbeat-result.json",
+  "properties": {
+    "ok": {
+      "default": true,
+      "title": "Ok",
+      "type": "boolean"
+    },
+    "message": {
+      "default": "ok",
+      "title": "Message",
+      "type": "string"
+    }
+  },
+  "title": "PlaybackHeartbeatResult",
+  "type": "object"
+}

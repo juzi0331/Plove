@@ -30,6 +30,9 @@ class CodeListItem(BaseModel):
     device_count: int = Field(default=0, description="这个码用过几台设备")
     max_devices: int = Field(default=1, description="最多允许绑定的设备数（仅后台可见）")
     active_device_name: str | None = Field(default=None, description="当前活跃的那台设备名")
+    is_online: bool = Field(default=False, description="当前是否有设备在线")
+    is_playing: bool = Field(default=False, description="当前是否正在播放影片")
+    current_playback: str | None = Field(default=None, description="当前正在观看的剧名与集数")
 
     @property
     def is_disabled(self) -> bool:  # pragma: no cover - 方便 Python 侧读

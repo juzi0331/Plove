@@ -2837,7 +2837,7 @@
           const failedStep = testReport.value.steps.find(s => !s.passed);
           if (!failedStep) return;
           const siteName = testReport.value.site_name || testCustomKey.value || '目标影视源';
-          const prompt = `你之前为【${siteName}】编写的单文件 Python 爬虫在运行冒烟测试时出现错误，请修复：\n\n【失败环节】：${failedStep.name}\n【错误详情】：${failedStep.error || '未按协议输出合规内容'}\n\n【修复要求】：\n1. 严格使用 crawler_kit 规范，只允许 import crawler_kit 与标准库，禁止三方重依赖；\n2. 保持 meta/home/category/search/detail/play 的统一 JSON 信封与子命令调用；\n3. 请分析上述错误原因并重新输出一份修复后的完整单文件 Python 代码。`;
+          const prompt = `你之前为【${siteName}】编写的单文件 Python 爬虫在运行冒烟测试时出现错误，请修复：\n\n【失败环节】：${failedStep.name}\n【错误详情】：${failedStep.error || '未按协议输出合规内容'}\n\n【严格要求】：\n1. 严格使用 crawler_kit 规范，只允许 import crawler_kit 与标准库，禁止三方重依赖；\n2. 保持 meta/home/category/search/detail/play 的统一 JSON 信封；\n3. 严禁任何文字说明、前言、教程或解释性废话！\n4. 若发现源站有加密，必须在最上方单独用 JSON 块给出 key 和 iv；若无加密直接标明；\n5. 直接给出修复后的完整可用单文件 Python 代码。`;
           copyToClipboard(prompt, null, '已复制错误诊断提示词！请直接粘贴发给 AI 让其自愈修复代码。');
         }
 

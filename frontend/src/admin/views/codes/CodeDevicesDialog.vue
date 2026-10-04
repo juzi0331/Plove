@@ -1,16 +1,21 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import {
   ElButton,
   ElDialog,
+  ElDrawer,
   ElLoading,
+  ElProgress,
   ElTag,
 } from 'element-plus'
-import { Refresh } from '@element-plus/icons-vue'
-import type { CodeListItem, DeviceItem } from '@/api/types'
+import { Refresh, VideoPlay } from '@element-plus/icons-vue'
+import type { CodeListItem, DeviceItem, DevicePlaybackHistoryItem } from '@/api/types'
+import { getDeviceHistory } from '@/admin/api'
 import EmptyState from '@/admin/components/EmptyState.vue'
 import TimeAgo from '@/admin/components/TimeAgo.vue'
 import { humanRemaining, type TagType } from '@/admin/format'
 import { ui } from '@/admin/ui'
+import { formatPosterUrl } from '@/utils/format'
 
 const vLoading = ElLoading.directive
 
@@ -28,12 +33,45 @@ const emit = defineEmits<{
   (e: 'unbindDevice', device: DeviceItem): void
 }>()
 
-const RECENT_MS = 5 * 60 * 1000
-function getDeviceOnlineState(device: DeviceItem): { label: string; tag: TagType } {
-  if (device.is_active) return { label: '活跃播放中', tag: 'success' }
+const historyDrawerVisible = ref(false)
+const selectedDevice = ref<DeviceItem | null>(null)
+const historyList = ref<DevicePlaybackHistoryItem[]>([])
+const loadingHistory = ref(false)
+
+async function openDeviceHistory(dev: DeviceItem): Promise<void> {
+  selectedDevice.value = dev
+  historyDrawerVisible.value = true
+  loadingHistory.value = true
+  try {
+    const res = await getDeviceHistory(dev.id)
+    historyList.value = res.records || []
+  } catch {
+    historyList.value = []
+  } finally {
+    loadingHistory.value = false
+  }
+}
+
+const RECENT_MS = 2 * 60 * 1000
+function getDeviceOnlineState(device: DeviceItem): { label: string; tag: TagType; isPlaying?: boolean } {
+  if (device.is_playing && device.current_vod_title) {
+    return { label: `正在播放：${device.current_vod_title}`, tag: 'success', isPlaying: true }
+  }
   const seen = new Date(device.last_seen_at).getTime()
-  if (!Number.isNaN(seen) && Date.now() - seen < RECENT_MS) return { label: '最近活跃', tag: 'info' }
+  if (!Number.isNaN(seen) && Date.now() - seen < RECENT_MS) {
+    return { label: '在线空闲', tag: 'primary' }
+  }
+  if (device.is_active) {
+    return { label: '空闲中', tag: 'info' }
+  }
   return { label: '离线', tag: 'info' }
+}
+
+function handlePosterError(event: Event) {
+  const target = event.target as HTMLImageElement
+  if (target) {
+    target.src = 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&q=80'
+  }
 }
 </script>
 
@@ -41,7 +79,7 @@ function getDeviceOnlineState(device: DeviceItem): { label: string; tag: TagType
   <ElDialog
     :model-value="props.modelValue"
     :title="`绑定设备管控 · ${props.currentDeviceCode?.code || ''}`"
-    width="720px"
+    width="740px"
     destroy-on-close
     @update:model-value="emit('update:modelValue', $event)"
   >
@@ -83,7 +121,21 @@ function getDeviceOnlineState(device: DeviceItem): { label: string; tag: TagType
           <div class="device-card-main">
             <div class="device-header-row">
               <span class="device-name">{{ dev.name || '未命名设备' }}</span>
-              <ElTag :type="getDeviceOnlineState(dev).tag" size="small" effect="dark">
+              <ElTag
+                v-if="getDeviceOnlineState(dev).isPlaying"
+                type="success"
+                size="small"
+                effect="dark"
+                class="watching-tag"
+              >
+                <span class="pulse-dot">●</span> {{ getDeviceOnlineState(dev).label }}
+              </ElTag>
+              <ElTag
+                v-else
+                :type="getDeviceOnlineState(dev).tag"
+                size="small"
+                effect="plain"
+              >
                 {{ getDeviceOnlineState(dev).label }}
               </ElTag>
             </div>
@@ -101,6 +153,15 @@ function getDeviceOnlineState(device: DeviceItem): { label: string; tag: TagType
           <div class="device-card-actions">
             <ElButton
               size="small"
+              type="primary"
+              plain
+              :icon="VideoPlay"
+              @click="openDeviceHistory(dev)"
+            >
+              观看记录
+            </ElButton>
+            <ElButton
+              size="small"
               type="warning"
               plain
               :disabled="ui.readOnly"
@@ -115,12 +176,66 @@ function getDeviceOnlineState(device: DeviceItem): { label: string; tag: TagType
               :disabled="ui.readOnly"
               @click="emit('unbindDevice', dev)"
             >
-              解绑释放名额
+              解绑
             </ElButton>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- 观看记录足迹抽屉 -->
+    <ElDrawer
+      v-model="historyDrawerVisible"
+      :title="`${selectedDevice?.name || '设备'} · 观看记录 (${historyList.length})`"
+      size="460px"
+      destroy-on-close
+      append-to-body
+    >
+      <div v-loading="loadingHistory" class="history-drawer-body">
+        <div v-if="!historyList.length" class="history-empty">
+          <EmptyState
+            title="暂无播放足迹"
+            hint="用户在此设备上播放影片时，系统将自动记录并实时更新进度"
+          />
+        </div>
+        <div v-else class="history-items-list">
+          <div v-for="item in historyList" :key="item.id" class="history-item-card">
+            <img
+              :src="formatPosterUrl(item.vod_pic, item.site_key) || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&q=80'"
+              class="history-item-poster"
+              loading="lazy"
+              @error="handlePosterError"
+            />
+            <div class="history-item-detail">
+              <div class="history-item-title-row">
+                <span class="history-item-title" :title="item.vod_name">{{ item.vod_name }}</span>
+                <ElTag v-if="item.is_playing" type="success" size="small" class="history-playing-tag">
+                  <span class="pulse-dot">●</span> 正在播放
+                </ElTag>
+              </div>
+
+              <div class="history-item-sub">
+                <span class="history-ep-badge">{{ item.ep_name || '正片' }}</span>
+                <span v-if="item.site_key" class="history-site-badge">{{ item.site_key }}</span>
+              </div>
+
+              <div class="history-item-progress-section">
+                <ElProgress
+                  :percentage="item.progress_percent || 0"
+                  :stroke-width="6"
+                  :show-text="false"
+                  :status="item.progress_percent === 100 ? 'success' : undefined"
+                />
+                <div class="history-item-meta">
+                  <span class="history-percent-text">已看 {{ item.progress_percent || 0 }}%</span>
+                  <span class="history-time-text"><TimeAgo :value="item.updated_at" /></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </ElDrawer>
 
     <template #footer>
       <div class="dialog-footer">
@@ -139,3 +254,115 @@ function getDeviceOnlineState(device: DeviceItem): { label: string; tag: TagType
     </template>
   </ElDialog>
 </template>
+
+<style scoped>
+.watching-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.pulse-dot {
+  font-size: 10px;
+  animation: pulse-glow 1.5s infinite ease-in-out;
+}
+@keyframes pulse-glow {
+  0% { opacity: 0.3; }
+  50% { opacity: 1; }
+  100% { opacity: 0.3; }
+}
+
+.history-drawer-body {
+  padding: 8px 4px;
+  min-height: 200px;
+}
+.history-empty {
+  padding: 40px 0;
+}
+.history-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.history-item-card {
+  display: flex;
+  gap: 14px;
+  padding: 12px;
+  background: var(--el-fill-color-light, #f8fafc);
+  border: 1px solid var(--a-border, #e2e8f0);
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+.history-item-card:hover {
+  border-color: #0284c7;
+  background: var(--a-card, #ffffff);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+.history-item-poster {
+  width: 72px;
+  height: 98px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: #1e293b;
+  flex-shrink: 0;
+}
+.history-item-detail {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  flex: 1;
+  min-width: 0;
+}
+.history-item-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.history-item-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--a-text, #1e293b);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.history-playing-tag {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.history-item-sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0;
+}
+.history-ep-badge {
+  font-size: 12px;
+  color: var(--a-primary, #0284c7);
+  background: rgba(2, 132, 199, 0.1);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+.history-site-badge {
+  font-size: 11px;
+  color: var(--a-text-2, #64748b);
+  background: rgba(100, 116, 139, 0.1);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+.history-item-progress-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.history-item-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: var(--a-text-2, #64748b);
+}
+</style>

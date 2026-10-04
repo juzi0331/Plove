@@ -58,6 +58,7 @@ defineExpose({
     >
       <span class="nf-switch-dot" />
       <span class="nf-switch-name">{{ sites.current?.name ?? sites.currentKey ?? '默認站點' }}</span>
+      <span v-if="sites.current?.badge" class="nf-switch-badge">{{ sites.current.badge }}</span>
       <span class="nf-switch-arrow" :class="{ 'is-rotated': isOpen }">▾</span>
     </button>
 
@@ -80,8 +81,11 @@ defineExpose({
             <div class="nf-site-option__left">
               <span class="nf-site-option__dot" />
               <div class="nf-site-option__meta">
-                <span class="nf-site-option__name">{{ site.name || site.key }}</span>
-                <span class="nf-site-option__key">線路標識: {{ site.key }}</span>
+                <div class="nf-site-option__title-row">
+                  <span class="nf-site-option__name">{{ site.name || site.key }}</span>
+                  <span v-if="site.badge" class="nf-site-option__tag">{{ site.badge }}</span>
+                </div>
+                <span class="nf-site-option__key">線路標識: {{ site.badge || site.key }}</span>
               </div>
             </div>
             <span v-if="site.key === sites.currentKey" class="nf-site-option__badge">✓ 當前在線</span>
@@ -133,6 +137,18 @@ defineExpose({
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 500;
+}
+
+.nf-switch-badge {
+  font-size: 10px;
+  line-height: 1.2;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(229, 9, 20, 0.85);
+  color: #ffffff;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
 }
 
 .nf-switch-arrow {
@@ -227,10 +243,28 @@ defineExpose({
   gap: 2px;
 }
 
+.nf-site-option__title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .nf-site-option__name {
   font-size: 13px;
   color: #ffffff;
   font-weight: 500;
+}
+
+.nf-site-option__tag {
+  font-size: 9px;
+  line-height: 1.2;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(229, 9, 20, 0.22);
+  border: 1px solid rgba(229, 9, 20, 0.55);
+  color: #ff5e62;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .nf-site-option__key {

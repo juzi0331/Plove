@@ -85,6 +85,9 @@ async function pingSite(siteKey: string): Promise<void> {
           <div class="site-title-box">
             <span class="site-name" :title="site.name">{{ site.name }}</span>
             <code class="site-key-badge">{{ site.key }}</code>
+            <ElTag v-if="site.badge" size="small" type="danger" effect="plain" class="mini-badge">
+              {{ site.badge }}
+            </ElTag>
             <ElTag v-if="site.mode === 'proxy'" size="small" type="warning" effect="plain" class="mini-tag">
               反代
             </ElTag>

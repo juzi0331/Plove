@@ -64,8 +64,14 @@ const router = useRouter()
           <ElInput v-model="currentAdvanced.custom_name" placeholder="如：VIP蓝光秒播站" />
         </ElFormItem>
 
-        <ElFormItem label="站点角标 / 徽章（如：4K, 极速, 推荐, 备用）">
-          <ElInput v-model="currentAdvanced.badge" placeholder="如：4K极速" />
+        <ElFormItem label="自定义线路标识 / 角标（前台片源切换列表显示）">
+          <ElInput
+            v-model="currentAdvanced.badge"
+            :placeholder="currentAdvanced.key ? `留空显示 (${currentAdvanced.key})` : '留空显示原始Key'"
+          />
+          <div class="form-item-tip" style="font-size: 12px; color: #909399; margin-top: 4px;">
+            💡 配置后前台片源切换列表中展示为「线路标识: 自定义值」，如：4K极速、蓝光专线；留空默认使用脚本原始 Key
+          </div>
         </ElFormItem>
 
         <ElFormItem label="单站独立超时秒数（0 表示使用系统全局默认 20s/25s）">

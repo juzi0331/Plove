@@ -62,8 +62,10 @@ from app.schemas.admin_crawler import (
 from app.schemas.admin_device import (
     DeviceItem,
     DeviceListPayload,
+    DevicePlaybackHistoryPayload,
     KickResult,
 )
+from app.schemas.playback import PlaybackHeartbeatRequest, PlaybackHeartbeatResult
 from app.schemas.admin_extended import (
     AggregateSearchPayload,
     ImageProxyClearResult,
@@ -110,6 +112,7 @@ from app.schemas.webhook import (
     WebhookConfigPayload,
     WebhookDeliveryLogItem,
     WebhookLogsPayload,
+    WebhookSendEventRequest,
     WebhookTestRequest,
     WebhookTestResult,
 )
@@ -145,7 +148,10 @@ EXPORTS: dict[str, type[BaseModel]] = {
     "admin-code-action": CodeActionResult,
     "admin-device-item": DeviceItem,
     "admin-device-list": DeviceListPayload,
+    "admin-device-playback-history": DevicePlaybackHistoryPayload,
     "admin-kick-result": KickResult,
+    "playback-heartbeat-request": PlaybackHeartbeatRequest,
+    "playback-heartbeat-result": PlaybackHeartbeatResult,
     # 站点（源）管理：列表 / 开与关 / 重排（步骤 10）
     "admin-site-item": AdminSiteItem,
     "admin-site-list": AdminSiteListPayload,
@@ -222,4 +228,5 @@ EXPORTS: dict[str, type[BaseModel]] = {
     "admin-telegram-detect-chat-request": TelegramDetectChatRequest,
     "admin-telegram-detect-chat-result": TelegramDetectChatResult,
     "admin-webhook-delivery-log-item": WebhookDeliveryLogItem,
+    "admin-webhook-send-event-request": WebhookSendEventRequest,
 }
