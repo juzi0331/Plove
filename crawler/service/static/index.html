@@ -3424,11 +3424,81 @@
           return map[key] || key;
         }
 
+        // 通用剪贴板复制工具函数 (支持 navigator.clipboard 与 textarea 兜底，支持按钮文案反馈与提示框)
+        function copyToClipboard(text, btnRef = null, successMsg = '已复制到剪贴板！', origText = null, timeout = 2500) {
+          if (!text) return;
+          const onSuccess = () => {
+            if (btnRef) {
+              const prev = origText || btnRef.value;
+              btnRef.value = successMsg;
+              setTimeout(() => {
+                btnRef.value = prev;
+              }, timeout);
+            } else {
+              alert(successMsg);
+            }
+          };
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(onSuccess).catch(() => {
+              const ta = document.createElement('textarea');
+              ta.value = text;
+              document.body.appendChild(ta);
+              ta.select();
+              document.execCommand('copy');
+              document.body.removeChild(ta);
+              onSuccess();
+            });
+          } else {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            onSuccess();
+          }
+        }
+
+        // 通用 API 请求封装 (统一前缀、JSON序列化/解析、loadingRef状态生命周期管理与错误归一化)
+        async function apiFetch(path, options = {}, { loadingRef = null, errorPrefix = '', silent = false } = {}) {
+          if (loadingRef) loadingRef.value = true;
+          try {
+            const fetchOpts = { ...options };
+            if (fetchOpts.body && typeof fetchOpts.body === 'object' && !(fetchOpts.body instanceof FormData)) {
+              fetchOpts.headers = { 'Content-Type': 'application/json', ...(fetchOpts.headers || {}) };
+              fetchOpts.body = JSON.stringify(fetchOpts.body);
+            }
+            const res = await fetch(path, fetchOpts);
+            let json;
+            try {
+              json = await res.json();
+            } catch (_) {
+              json = { ok: res.ok, status: res.status };
+            }
+            if (json && json.ok) {
+              return { ok: true, data: json.data, raw: json };
+            }
+            const rawMsg = (json && json.error && json.error.message) || (json && json.message) || `HTTP ${res.status}`;
+            const errMsg = errorPrefix ? `${errorPrefix}: ${rawMsg}` : rawMsg;
+            if (!silent) {
+              alert(errMsg);
+            }
+            return { ok: false, error: errMsg, raw: json };
+          } catch (err) {
+            const detail = (err && err.message) ? err.message : String(err);
+            const errMsg = (errorPrefix ? `${errorPrefix}网络异常: ` : '网络连接异常: ') + detail;
+            if (!silent) {
+              alert(errMsg);
+            }
+            return { ok: false, error: errMsg, exception: err };
+          } finally {
+            if (loadingRef) loadingRef.value = false;
+          }
+        }
+
         function copyStructureJson() {
           if (!structureResult.value) return;
-          const text = JSON.stringify(structureResult.value, null, 2);
-          navigator.clipboard.writeText(text);
-          alert('当前完整采集规则 JSON 已复制到剪贴板！');
+          copyToClipboard(JSON.stringify(structureResult.value, null, 2), null, '当前完整采集规则 JSON 已复制到剪贴板！');
         }
 
         // 本地代理与节点指派中心状态
@@ -3532,17 +3602,12 @@
 
         // 获取站点列表
         async function fetchSites() {
-          try {
-            const res = await fetch('/api/v1/rules');
-            const json = await res.json();
-            if (json.ok) {
-              sites.value = json.data;
-              if (sites.value.length > 0 && !live.value.siteKey) {
-                live.value.siteKey = sites.value[0].key;
-              }
+          const res = await apiFetch('/api/v1/rules', {}, { silent: true });
+          if (res.ok && res.data) {
+            sites.value = res.data;
+            if (sites.value.length > 0 && !live.value.siteKey) {
+              live.value.siteKey = sites.value[0].key;
             }
-          } catch (e) {
-            console.error('拉取站点库失败', e);
           }
         }
 
@@ -3552,24 +3617,13 @@
             alert('请输入主页 URL');
             return;
           }
-          smartLoading.value = true;
           smartResult.value = null;
-          try {
-            const res = await fetch('/api/v1/smart/explore', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ url: smartUrl.value })
-            });
-            const json = await res.json();
-            if (json.ok) {
-              smartResult.value = json.data;
-            } else {
-              alert('智能探索失败: ' + (json.error ? json.error.message : '未知异常'));
-            }
-          } catch (e) {
-            alert('网络连接错误: ' + e);
-          } finally {
-            smartLoading.value = false;
+          const res = await apiFetch('/api/v1/smart/explore', {
+            method: 'POST',
+            body: { url: smartUrl.value }
+          }, { loadingRef: smartLoading, errorPrefix: '智能探索失败' });
+          if (res.ok) {
+            smartResult.value = res.data;
           }
         }
 
@@ -3579,26 +3633,15 @@
             alert('请输入主页 URL');
             return;
           }
-          structureLoading.value = true;
           generatedConfigCode.value = '';
-          try {
-            const res = await fetch('/api/v1/smart/inspect-structure', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ url: smartUrl.value })
-            });
-            const json = await res.json();
-            if (json.ok) {
-              structureResult.value = json.data;
-              activePrimaryIndex.value = 0;
-              isStudioCollapsed.value = false;
-            } else {
-              alert('结构勘探失败: ' + (json.error ? json.error.message : '未知异常'));
-            }
-          } catch (e) {
-            alert('网络连接错误: ' + e);
-          } finally {
-            structureLoading.value = false;
+          const res = await apiFetch('/api/v1/smart/inspect-structure', {
+            method: 'POST',
+            body: { url: smartUrl.value }
+          }, { loadingRef: structureLoading, errorPrefix: '结构勘探失败' });
+          if (res.ok) {
+            structureResult.value = res.data;
+            activePrimaryIndex.value = 0;
+            isStudioCollapsed.value = false;
           }
         }
 
@@ -4082,29 +4125,18 @@
 
         async function generateCodeFromVisualConfig() {
           if (!structureResult.value) return;
-          generatingCode.value = true;
-          try {
-            const res = await fetch('/api/v1/smart/generate-code', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                url: smartUrl.value,
-                site_name: structureResult.value.site_name,
-                site_key: structureResult.value.suggested_key,
-                categories_tree: structureResult.value.categories_tree,
-                detail_fields: structureResult.value.detail_fields,
-              })
-            });
-            const json = await res.json();
-            if (json.ok) {
-              generatedConfigCode.value = json.data.python_code;
-            } else {
-              alert('代码生成失败: ' + (json.error ? json.error.message : '未知异常'));
+          const res = await apiFetch('/api/v1/smart/generate-code', {
+            method: 'POST',
+            body: {
+              url: smartUrl.value,
+              site_name: structureResult.value.site_name,
+              site_key: structureResult.value.suggested_key,
+              categories_tree: structureResult.value.categories_tree,
+              detail_fields: structureResult.value.detail_fields,
             }
-          } catch (e) {
-            alert('网络连接错误: ' + e);
-          } finally {
-            generatingCode.value = false;
+          }, { loadingRef: generatingCode, errorPrefix: '代码生成失败' });
+          if (res.ok && res.data) {
+            generatedConfigCode.value = res.data.python_code;
           }
         }
 
@@ -4119,8 +4151,7 @@
 
         function copyGeneratedConfigCode() {
           if (!generatedConfigCode.value) return;
-          navigator.clipboard.writeText(generatedConfigCode.value);
-          alert('采集器代码已成功复制到剪贴板！');
+          copyToClipboard(generatedConfigCode.value, null, '采集器代码已成功复制到剪贴板！');
         }
 
         // 调入工坊体检
@@ -4133,19 +4164,15 @@
           tab.value = 'test_studio';
         }
 
-        function loadSiteToTestStudio(key) {
-          fetch(`/api/v1/rules/script/${key}/code`)
-            .then(r => r.json())
-            .then(json => {
-              if (json.ok) {
-                testScriptCode.value = json.data.code;
-                testCustomKey.value = key;
-                testFileMeta.value = `已载入本地站点库源码 (${key}.py)`;
-                testReport.value = null;
-                tab.value = 'test_studio';
-              }
-            })
-            .catch(err => alert('读取源码失败: ' + err));
+        async function loadSiteToTestStudio(key) {
+          const res = await apiFetch(`/api/v1/rules/script/${key}/code`, {}, { errorPrefix: '读取源码失败' });
+          if (res.ok && res.data) {
+            testScriptCode.value = res.data.code;
+            testCustomKey.value = key;
+            testFileMeta.value = `已载入本地站点库源码 (${key}.py)`;
+            testReport.value = null;
+            tab.value = 'test_studio';
+          }
         }
 
         function triggerScriptFileInput() {
@@ -4229,8 +4256,7 @@
           if (!failedStep) return;
           const siteName = testReport.value.site_name || testCustomKey.value || '目标影视源';
           const prompt = `你之前为【${siteName}】编写的单文件 Python 爬虫在运行冒烟测试时出现错误，请修复：\n\n【失败环节】：${failedStep.name}\n【错误详情】：${failedStep.error || '未按协议输出合规内容'}\n\n【修复要求】：\n1. 严格使用 crawler_kit 规范，只允许 import crawler_kit 与标准库，禁止三方重依赖；\n2. 保持 meta/home/category/search/detail/play 的统一 JSON 信封与子命令调用；\n3. 请分析上述错误原因并重新输出一份修复后的完整单文件 Python 代码。`;
-          navigator.clipboard.writeText(prompt);
-          alert('已复制错误诊断提示词！请直接粘贴发给 AI 让其自愈修复代码。');
+          copyToClipboard(prompt, null, '已复制错误诊断提示词！请直接粘贴发给 AI 让其自愈修复代码。');
         }
 
         function goToTestStudioAfterPrompt() {
@@ -4245,33 +4271,22 @@
             alert('请先导入或上传 Python 脚本源码！');
             return;
           }
-          scriptTesting.value = true;
           testReport.value = null;
-          try {
-            const res = await fetch('/api/v1/smart/test-script', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                code: testScriptCode.value,
-                custom_key: testCustomKey.value || null
-              })
-            });
-            const json = await res.json();
-            if (json.ok) {
-              testReport.value = json.data;
-              setTimeout(() => {
-                const playStep = json.data.steps ? json.data.steps.find(s => s.name && s.name.includes('play')) : null;
-                if (playStep && playStep.passed && playStep.data && playStep.data.url) {
-                  mountVideo(playStep.data.url, 'testSuiteVideoPlayer');
-                }
-              }, 400);
-            } else {
-              alert('测试失败: ' + (json.error ? json.error.message : '未知异常'));
+          const res = await apiFetch('/api/v1/smart/test-script', {
+            method: 'POST',
+            body: {
+              code: testScriptCode.value,
+              custom_key: testCustomKey.value || null
             }
-          } catch (e) {
-            alert('测试连接异常: ' + e);
-          } finally {
-            scriptTesting.value = false;
+          }, { loadingRef: scriptTesting, errorPrefix: '测试失败' });
+          if (res.ok && res.data) {
+            testReport.value = res.data;
+            setTimeout(() => {
+              const playStep = res.data.steps ? res.data.steps.find(s => s.name && s.name.includes('play')) : null;
+              if (playStep && playStep.passed && playStep.data && playStep.data.url) {
+                mountVideo(playStep.data.url, 'testSuiteVideoPlayer');
+              }
+            }, 400);
           }
         }
 
@@ -4286,44 +4301,28 @@
             alert('代码内容不能为空');
             return;
           }
-          try {
-            const res = await fetch('/api/v1/smart/save-script-to-library', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ key, code: testScriptCode.value })
-            });
-            const json = await res.json();
-            if (json.ok) {
-              alert(json.data.message);
-              fetchSites();
-            } else {
-              alert('收录失败: ' + json.error.message);
-            }
-          } catch (e) {
-            alert('网络异常: ' + e);
+          const res = await apiFetch('/api/v1/smart/save-script-to-library', {
+            method: 'POST',
+            body: { key, code: testScriptCode.value }
+          }, { errorPrefix: '收录失败' });
+          if (res.ok && res.data) {
+            alert(res.data.message);
+            fetchSites();
           }
         }
 
         async function saveScriptToLibraryFromSmart() {
           if (!smartResult.value) return;
-          try {
-            const res = await fetch('/api/v1/smart/save-script-to-library', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                key: smartResult.value.suggested_key,
-                code: smartResult.value.generated_python_code
-              })
-            });
-            const json = await res.json();
-            if (json.ok) {
-              alert(json.data.message);
-              fetchSites();
-            } else {
-              alert('保存失败: ' + json.error.message);
+          const res = await apiFetch('/api/v1/smart/save-script-to-library', {
+            method: 'POST',
+            body: {
+              key: smartResult.value.suggested_key,
+              code: smartResult.value.generated_python_code
             }
-          } catch (e) {
-            alert('异常: ' + e);
+          }, { errorPrefix: '保存失败' });
+          if (res.ok && res.data) {
+            alert(res.data.message);
+            fetchSites();
           }
         }
 
@@ -4333,27 +4332,16 @@
         async function viewScriptCodeModal(key) {
           viewSourceKey.value = key;
           copySourceBtnText.value = '复制全部源码';
-          try {
-            const res = await fetch(`/api/v1/rules/script/${key}/code`);
-            const json = await res.json();
-            if (json.ok) {
-              viewSourceCode.value = json.data.code;
-              showSourceModal.value = true;
-            } else {
-              alert('获取源码失败: ' + (json.error ? json.error.message : '未知异常'));
-            }
-          } catch (e) {
-            alert('获取源码失败: ' + e);
+          const res = await apiFetch(`/api/v1/rules/script/${key}/code`, {}, { errorPrefix: '获取源码失败' });
+          if (res.ok && res.data) {
+            viewSourceCode.value = res.data.code;
+            showSourceModal.value = true;
           }
         }
 
         function copySourceCodeModal() {
           if (!viewSourceCode.value) return;
-          navigator.clipboard.writeText(viewSourceCode.value);
-          copySourceBtnText.value = '已成功复制！';
-          setTimeout(() => {
-            copySourceBtnText.value = '复制全部源码';
-          }, 3000);
+          copyToClipboard(viewSourceCode.value, copySourceBtnText, '已成功复制！', '复制全部源码', 3000);
         }
 
         function loadViewSourceToStudio() {
@@ -4379,22 +4367,16 @@
 
         function copyPythonCode() {
           if (!smartResult.value || !smartResult.value.generated_python_code) return;
-          navigator.clipboard.writeText(smartResult.value.generated_python_code);
-          alert('已复制 Python 采集脚本到剪贴板');
+          copyToClipboard(smartResult.value.generated_python_code, null, '已复制 Python 采集脚本到剪贴板');
         }
 
         // 删除站点
         async function deleteSiteItem(site) {
           if (!confirm(`确定从站点库删除 ${site.name} (${site.key}) 吗？`)) return;
-          try {
-            if (site.script_type === 'standalone_python') {
-              await fetch(`/api/v1/rules/script/${site.key}`, { method: 'DELETE' });
-            } else {
-              await fetch(`/api/v1/rules/${site.key}`, { method: 'DELETE' });
-            }
+          const url = site.script_type === 'standalone_python' ? `/api/v1/rules/script/${site.key}` : `/api/v1/rules/${site.key}`;
+          const res = await apiFetch(url, { method: 'DELETE' }, { errorPrefix: '删除失败' });
+          if (res.ok) {
             fetchSites();
-          } catch (e) {
-            alert('删除失败: ' + e);
           }
         }
 
@@ -4407,38 +4389,30 @@
 
         async function refreshPromptContent() {
           generatedPrompt.value = '正在根据目标源特征及定制结构合成专属提示词...';
-          try {
-            const payload = {
-              url: visualPickerUrl.value || smartUrl.value || 'https://example.com',
-              site_name: structureResult.value ? structureResult.value.site_name : (smartResult.value ? smartResult.value.site_name : ''),
-              site_key: structureResult.value ? structureResult.value.suggested_key : (smartResult.value ? smartResult.value.suggested_key : ''),
-              difficulty_note: promptDifficulty.value,
-            };
-            if (structureResult.value) {
-              payload.categories_tree = structureResult.value.categories_tree;
-              payload.detail_fields = structureResult.value.detail_fields;
-            }
-            const res = await fetch('/api/v1/smart/generate-prompt', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(payload)
-            });
-            const json = await res.json();
-            if (json.ok) {
-              generatedPrompt.value = json.data.prompt;
-            }
-          } catch (e) {
-            generatedPrompt.value = '生成提示词失败: ' + e;
+          const payload = {
+            url: visualPickerUrl.value || smartUrl.value || 'https://example.com',
+            site_name: structureResult.value ? structureResult.value.site_name : (smartResult.value ? smartResult.value.site_name : ''),
+            site_key: structureResult.value ? structureResult.value.suggested_key : (smartResult.value ? smartResult.value.suggested_key : ''),
+            difficulty_note: promptDifficulty.value,
+          };
+          if (structureResult.value) {
+            payload.categories_tree = structureResult.value.categories_tree;
+            payload.detail_fields = structureResult.value.detail_fields;
+          }
+          const res = await apiFetch('/api/v1/smart/generate-prompt', {
+            method: 'POST',
+            body: payload
+          }, { silent: true });
+          if (res.ok && res.data) {
+            generatedPrompt.value = res.data.prompt;
+          } else {
+            generatedPrompt.value = '生成提示词失败: ' + res.error;
           }
         }
 
         function copyPromptContent() {
           if (!generatedPrompt.value) return;
-          navigator.clipboard.writeText(generatedPrompt.value);
-          copyPromptBtnText.value = '已成功复制到剪贴板！';
-          setTimeout(() => {
-            copyPromptBtnText.value = '复制完整提示词';
-          }, 3000);
+          copyToClipboard(generatedPrompt.value, copyPromptBtnText, '已成功复制到剪贴板！', '复制完整提示词', 3000);
         }
 
         // 部署弹窗
@@ -4476,31 +4450,22 @@
             return;
           }
 
-          deployLoading.value = true;
           deployStatusMsg.value = '';
-          try {
-            const res = await fetch('/api/v1/smart/deploy-to-backend', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                backend_url: deployForm.value.backend_url,
-                admin_token: deployForm.value.admin_token,
-                key: deployForm.value.key,
-                code: deployCode,
-                overwrite: true
-              })
-            });
-            const json = await res.json();
-            if (json.ok) {
-              deployStatusMsg.value = '[成功] ' + json.data.message;
-              fetchSites();
-            } else {
-              deployStatusMsg.value = '[失败] ' + json.error.message;
+          const res = await apiFetch('/api/v1/smart/deploy-to-backend', {
+            method: 'POST',
+            body: {
+              backend_url: deployForm.value.backend_url,
+              admin_token: deployForm.value.admin_token,
+              key: deployForm.value.key,
+              code: deployCode,
+              overwrite: true
             }
-          } catch (e) {
-            deployStatusMsg.value = '[网络异常] ' + e;
-          } finally {
-            deployLoading.value = false;
+          }, { loadingRef: deployLoading, silent: true });
+          if (res.ok && res.data) {
+            deployStatusMsg.value = '[成功] ' + res.data.message;
+            fetchSites();
+          } else {
+            deployStatusMsg.value = '[失败] ' + res.error;
           }
         }
 
@@ -4516,67 +4481,40 @@
             alert('请先选择目标源');
             return;
           }
-          liveLoading.value = true;
           live.value.recommendList = [];
           live.value.detail = null;
-          try {
-            const res = await fetch(`/api/v1/scrape/${live.value.siteKey}/home`, { method: 'POST' });
-            const json = await res.json();
-            if (json.ok && json.data) {
-              live.value.recommendList = json.data.recommend || [];
-              if (live.value.recommendList.length === 0) {
-                alert('抓取完成，但该站点未提取到首页推荐影片');
-              }
-            } else {
-              const errMsg = json.error ? json.error.message : '未知异常';
-              alert('抓取首页推荐失败: ' + errMsg);
+          const res = await apiFetch(`/api/v1/scrape/${live.value.siteKey}/home`, { method: 'POST' }, {
+            loadingRef: liveLoading,
+            errorPrefix: '抓取首页推荐失败'
+          });
+          if (res.ok && res.data) {
+            live.value.recommendList = res.data.recommend || [];
+            if (live.value.recommendList.length === 0) {
+              alert('抓取完成，但该站点未提取到首页推荐影片');
             }
-          } catch (e) {
-            console.error('抓取首页失败', e);
-            alert('抓取首页网络异常: ' + e);
-          } finally {
-            liveLoading.value = false;
           }
         }
 
         async function fetchLiveDetail(id) {
-          liveLoading.value = true;
-          try {
-            const res = await fetch(`/api/v1/scrape/${live.value.siteKey}/detail?id=${encodeURIComponent(id)}`, { method: 'POST' });
-            const json = await res.json();
-            if (json.ok && json.data) {
-              live.value.detail = json.data;
-              if (live.value.detail.episodes && live.value.detail.episodes.length > 0) {
-                playEpisode(live.value.detail.episodes[0]);
-              }
-            } else {
-              const errMsg = json.error ? json.error.message : '未知错误';
-              alert('获取影片详情失败: ' + errMsg);
+          const res = await apiFetch(`/api/v1/scrape/${live.value.siteKey}/detail?id=${encodeURIComponent(id)}`, { method: 'POST' }, {
+            loadingRef: liveLoading,
+            errorPrefix: '获取影片详情失败'
+          });
+          if (res.ok && res.data) {
+            live.value.detail = res.data;
+            if (live.value.detail.episodes && live.value.detail.episodes.length > 0) {
+              playEpisode(live.value.detail.episodes[0]);
             }
-          } catch (e) {
-            console.error('抓取详情失败', e);
-            alert('抓取详情网络异常: ' + e);
-          } finally {
-            liveLoading.value = false;
           }
         }
 
         async function playEpisode(ep) {
           live.value.currentEp = ep.ep_index;
-          try {
-            const playUrl = `/api/v1/scrape/${live.value.siteKey}/play?id=${encodeURIComponent(live.value.detail.video.vod_id)}&ep=${ep.ep_index}&play_id=${encodeURIComponent(ep.play_id || '')}&line=${encodeURIComponent(ep.line || '')}`;
-            const res = await fetch(playUrl, { method: 'POST' });
-            const json = await res.json();
-            if (json.ok && json.data && json.data.url) {
-              live.value.currentStreamUrl = json.data.url;
-              mountVideo(json.data.url, 'liveVideoPlayer');
-            } else {
-              const errMsg = json.error ? json.error.message : '未能嗅探到播放直链';
-              alert('播放嗅探失败: ' + errMsg);
-            }
-          } catch (e) {
-            console.error('播放嗅探失败', e);
-            alert('播放嗅探异常: ' + e);
+          const playUrl = `/api/v1/scrape/${live.value.siteKey}/play?id=${encodeURIComponent(live.value.detail.video.vod_id)}&ep=${ep.ep_index}&play_id=${encodeURIComponent(ep.play_id || '')}&line=${encodeURIComponent(ep.line || '')}`;
+          const res = await apiFetch(playUrl, { method: 'POST' }, { errorPrefix: '未能嗅探到播放直链' });
+          if (res.ok && res.data && res.data.url) {
+            live.value.currentStreamUrl = res.data.url;
+            mountVideo(res.data.url, 'liveVideoPlayer');
           }
         }
 
@@ -4634,29 +4572,20 @@ if __name__ == "__main__":
 
         // 沙盒单字段提取
         async function runSandboxExtract() {
-          loadingExtract.value = true;
           sandboxResult.value = '正在运算...';
-          try {
-            const res = await fetch('/api/v1/rules/test', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                sample_content: sandbox.value.sample_content,
-                data_type: sandbox.value.data_type,
-                rule: sandbox.value.rule,
-                base_url: sandbox.value.base_url
-              })
-            });
-            const json = await res.json();
-            if (json.ok) {
-              sandboxResult.value = json.data.extracted_value || '(提取结果为空)';
-            } else {
-              sandboxResult.value = '错误: ' + json.error.message;
+          const res = await apiFetch('/api/v1/rules/test', {
+            method: 'POST',
+            body: {
+              sample_content: sandbox.value.sample_content,
+              data_type: sandbox.value.data_type,
+              rule: sandbox.value.rule,
+              base_url: sandbox.value.base_url
             }
-          } catch (e) {
-            sandboxResult.value = '请求失败: ' + e;
-          } finally {
-            loadingExtract.value = false;
+          }, { loadingRef: loadingExtract, silent: true });
+          if (res.ok && res.data) {
+            sandboxResult.value = res.data.extracted_value || '(提取结果为空)';
+          } else {
+            sandboxResult.value = '错误: ' + res.error;
           }
         }
 
@@ -4679,14 +4608,9 @@ if __name__ == "__main__":
 
         // 代理配置交互
         async function fetchProxySettings() {
-          try {
-            const res = await fetch('/api/v1/proxy');
-            const json = await res.json();
-            if (json.ok && json.data) {
-              proxyConfig.value = json.data;
-            }
-          } catch (e) {
-            console.error('获取代理配置失败', e);
+          const res = await apiFetch('/api/v1/proxy', {}, { silent: true });
+          if (res.ok && res.data) {
+            proxyConfig.value = res.data;
           }
         }
 
@@ -4700,15 +4624,10 @@ if __name__ == "__main__":
         }
 
         async function fetchProxyNodes() {
-          try {
-            const res = await fetch('/api/v1/proxy/nodes');
-            const json = await res.json();
-            if (json.ok && json.data) {
-              proxyNodes.value = json.data.nodes || [];
-              proxyBindings.value = json.data.bindings || {};
-            }
-          } catch (e) {
-            console.warn('获取节点列表失败', e);
+          const res = await apiFetch('/api/v1/proxy/nodes', {}, { silent: true });
+          if (res.ok && res.data) {
+            proxyNodes.value = res.data.nodes || [];
+            proxyBindings.value = res.data.bindings || {};
           }
         }
 
@@ -4721,189 +4640,116 @@ if __name__ == "__main__":
 
         async function submitAddNode() {
           if (!newNodeRawUrl.value.trim()) return;
-          addingNode.value = true;
-          try {
-            const res = await fetch('/api/v1/proxy/nodes', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                raw_url: newNodeRawUrl.value.trim(),
-                name: newNodeName.value.trim(),
-                local_port: Number(newNodePort.value) || 10809,
-              })
-            });
-            const json = await res.json();
-            if (json.ok && json.data) {
-              newNodeRawUrl.value = '';
-              newNodeName.value = '';
-              await fetchProxyNodes();
-              alert(`节点 [${json.data.name}] 添加成功！您可以在“采集器指派”栏目中将其指派给特定采集器。`);
-            } else {
-              alert('添加节点失败: ' + (json.error ? json.error.message : '未知错误'));
+          const res = await apiFetch('/api/v1/proxy/nodes', {
+            method: 'POST',
+            body: {
+              raw_url: newNodeRawUrl.value.trim(),
+              name: newNodeName.value.trim(),
+              local_port: Number(newNodePort.value) || 10809,
             }
-          } catch (e) {
-            alert('请求异常: ' + e);
-          } finally {
-            addingNode.value = false;
+          }, { loadingRef: addingNode, errorPrefix: '添加节点失败' });
+          if (res.ok && res.data) {
+            newNodeRawUrl.value = '';
+            newNodeName.value = '';
+            await fetchProxyNodes();
+            alert(`节点 [${res.data.name}] 添加成功！您可以在“采集器指派”栏目中将其指派给特定采集器。`);
           }
         }
 
         async function deleteNode(nodeId) {
           if (!confirm('确定要删除该节点吗？已绑定的采集器将恢复为默认模式。')) return;
-          try {
-            const res = await fetch(`/api/v1/proxy/nodes/${nodeId}`, { method: 'DELETE' });
-            const json = await res.json();
-            if (json.ok) {
-              await fetchProxyNodes();
-            } else {
-              alert('删除失败: ' + (json.error ? json.error.message : '未知错误'));
-            }
-          } catch (e) {
-            alert('删除异常: ' + e);
+          const res = await apiFetch(`/api/v1/proxy/nodes/${nodeId}`, { method: 'DELETE' }, { errorPrefix: '删除失败' });
+          if (res.ok) {
+            await fetchProxyNodes();
           }
         }
 
         async function handleBindingChange(siteKey, targetNode) {
-          try {
-            const res = await fetch('/api/v1/proxy/bind', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                site_key: siteKey,
-                node_id: targetNode,
-              })
-            });
-            const json = await res.json();
-            if (json.ok) {
-              proxyBindings.value[siteKey] = targetNode;
-            } else {
-              alert('指派失败: ' + (json.error ? json.error.message : '未知错误'));
+          const res = await apiFetch('/api/v1/proxy/bind', {
+            method: 'POST',
+            body: {
+              site_key: siteKey,
+              node_id: targetNode,
             }
-          } catch (e) {
-            alert('绑定异常: ' + e);
+          }, { errorPrefix: '指派失败' });
+          if (res.ok) {
+            proxyBindings.value[siteKey] = targetNode;
           }
         }
 
         async function testSiteBinding(siteKey) {
           siteTestingMap.value[siteKey] = true;
           siteTestResultMap.value[siteKey] = null;
-          try {
-            const targetSite = sites.value.find(s => s.key === siteKey);
-            const targetUrl = targetSite ? targetSite.base_url : 'https://www.google.com';
-            const boundNodeId = proxyBindings.value[siteKey];
+          const targetSite = sites.value.find(s => s.key === siteKey);
+          const targetUrl = targetSite ? targetSite.base_url : 'https://www.google.com';
+          const boundNodeId = proxyBindings.value[siteKey];
 
-            const res = await fetch('/api/v1/proxy/test', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                target_url: targetUrl,
-                node_id: (boundNodeId && boundNodeId !== 'default' && boundNodeId !== 'direct') ? boundNodeId : null
-              })
-            });
-            const json = await res.json();
-            if (json.ok && json.data) {
-              siteTestResultMap.value[siteKey] = json.data;
-            } else {
-              siteTestResultMap.value[siteKey] = { ok: false, message: '测速失败: ' + (json.error ? json.error.message : '未知错误') };
+          const res = await apiFetch('/api/v1/proxy/test', {
+            method: 'POST',
+            body: {
+              target_url: targetUrl,
+              node_id: (boundNodeId && boundNodeId !== 'default' && boundNodeId !== 'direct') ? boundNodeId : null
             }
-          } catch (e) {
-            siteTestResultMap.value[siteKey] = { ok: false, message: '网络异常: ' + e };
-          } finally {
-            siteTestingMap.value[siteKey] = false;
+          }, { silent: true });
+          if (res.ok && res.data) {
+            siteTestResultMap.value[siteKey] = res.data;
+          } else {
+            siteTestResultMap.value[siteKey] = { ok: false, message: '测速失败: ' + res.error };
           }
+          siteTestingMap.value[siteKey] = false;
         }
 
         async function testNodeConnectivity(node) {
           testingNodeId.value = node.id;
-          try {
-            const res = await fetch('/api/v1/proxy/test', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                target_url: 'https://www.google.com',
-                node_id: node.id
-              })
-            });
-            const json = await res.json();
-            if (json.ok && json.data) {
-              alert(`节点 [${node.name}] 测试结果:\n${json.data.message}\n使用代理: ${json.data.proxy_used}`);
-            } else {
-              alert(`节点测试失败: ` + (json.error ? json.error.message : '未知错误'));
+          const res = await apiFetch('/api/v1/proxy/test', {
+            method: 'POST',
+            body: {
+              target_url: 'https://www.google.com',
+              node_id: node.id
             }
-          } catch (e) {
-            alert('测速网络异常: ' + e);
-          } finally {
-            testingNodeId.value = null;
+          }, { errorPrefix: '节点测试失败' });
+          if (res.ok && res.data) {
+            alert(`节点 [${node.name}] 测试结果:\n${res.data.message}\n使用代理: ${res.data.proxy_used}`);
           }
+          testingNodeId.value = null;
         }
 
         async function openXrayExport(node) {
-          try {
-            const res = await fetch(`/api/v1/proxy/nodes/${node.id}/xray-config`);
-            const json = await res.json();
-            if (json.ok && json.data) {
-              xrayConfigStr.value = json.data.config_str;
-              copyXrayBtnText.value = '📋 复制配置';
-              showXrayExportModal.value = true;
-            } else {
-              alert('生成 Xray 配置失败: ' + (json.error ? json.error.message : '未知错误'));
-            }
-          } catch (e) {
-            alert('生成异常: ' + e);
+          const res = await apiFetch(`/api/v1/proxy/nodes/${node.id}/xray-config`, {}, { errorPrefix: '生成 Xray 配置失败' });
+          if (res.ok && res.data) {
+            xrayConfigStr.value = res.data.config_str;
+            copyXrayBtnText.value = '📋 复制配置';
+            showXrayExportModal.value = true;
           }
         }
 
         function copyXrayConfig() {
           if (!xrayConfigStr.value) return;
-          navigator.clipboard.writeText(xrayConfigStr.value);
-          copyXrayBtnText.value = '✅ 已复制到剪贴板！';
-          setTimeout(() => {
-            copyXrayBtnText.value = '📋 复制配置';
-          }, 2500);
+          copyToClipboard(xrayConfigStr.value, copyXrayBtnText, '✅ 已复制到剪贴板！', '📋 复制配置', 2500);
         }
 
         async function testProxyConnection() {
-          testingProxy.value = true;
           proxyTestResult.value = null;
-          try {
-            const res = await fetch('/api/v1/proxy/test', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ target_url: 'https://xiaoyakankan.com' })
-            });
-            const json = await res.json();
-            if (json.ok && json.data) {
-              proxyTestResult.value = json.data;
-            } else {
-              proxyTestResult.value = { ok: false, message: '测试请求异常: ' + (json.error ? json.error.message : '未知错误') };
-            }
-          } catch (e) {
-            proxyTestResult.value = { ok: false, message: '网络异常: ' + e };
-          } finally {
-            testingProxy.value = false;
+          const res = await apiFetch('/api/v1/proxy/test', {
+            method: 'POST',
+            body: { target_url: 'https://xiaoyakankan.com' }
+          }, { loadingRef: testingProxy, silent: true });
+          if (res.ok && res.data) {
+            proxyTestResult.value = res.data;
+          } else {
+            proxyTestResult.value = { ok: false, message: '测试请求异常: ' + res.error };
           }
         }
 
         async function saveProxySettings() {
-          savingProxy.value = true;
-          try {
-            const res = await fetch('/api/v1/proxy', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(proxyForm.value)
-            });
-            const json = await res.json();
-            if (json.ok && json.data) {
-              proxyConfig.value = json.data;
-              showProxyModal.value = false;
-              alert(json.data.enabled ? `本地代理已成功开启 (${json.data.proxy_url})` : '已切换为直接连接模式');
-            } else {
-              alert('保存代理设置失败: ' + (json.error ? json.error.message : '未知错误'));
-            }
-          } catch (e) {
-            alert('保存异常: ' + e);
-          } finally {
-            savingProxy.value = false;
+          const res = await apiFetch('/api/v1/proxy', {
+            method: 'POST',
+            body: proxyForm.value
+          }, { loadingRef: savingProxy, errorPrefix: '保存代理设置失败' });
+          if (res.ok && res.data) {
+            proxyConfig.value = res.data;
+            showProxyModal.value = false;
+            alert(res.data.enabled ? `本地代理已成功开启 (${res.data.proxy_url})` : '已切换为直接连接模式');
           }
         }
 
