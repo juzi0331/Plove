@@ -1,0 +1,592 @@
+.modal-site-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding-right: 24px;
+}
+
+.site-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.site-modal-name {
+  font-size: 19px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+html.dark .site-modal-name {
+  color: #f8fafc;
+}
+
+.site-modal-key {
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  font-size: 12px;
+  background: #f1f5f9;
+  color: #475569;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+html.dark .site-modal-key {
+  background: #1e293b;
+  color: #cbd5e1;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.site-modal-sub {
+  font-size: 12.5px;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+html.dark .site-modal-sub {
+  color: #94a3b8;
+}
+
+.modal-tab-container {
+  min-height: 420px;
+}
+
+.tab-pane-content {
+  padding: 8px 4px 16px;
+}
+
+.form-row-2 {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 6px;
+}
+
+@media (max-width: 640px) {
+  .form-row-2 {
+    flex-direction: column;
+  }
+}
+
+.form-item-tip {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 5px;
+  line-height: 1.4;
+}
+
+html.dark .form-item-tip {
+  color: #94a3b8;
+}
+
+.proxy-select-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.node-meta-banner {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-top: 10px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: #334155;
+}
+
+html.dark .node-meta-banner {
+  background: #1e293b;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+}
+
+.xray-badge-text {
+  color: #166534;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+html.dark .xray-badge-text {
+  color: #34d399;
+}
+
+.ttl-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+@media (max-width: 640px) {
+  .ttl-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pane-footer-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #f1f5f9;
+}
+
+html.dark .pane-footer-actions {
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+/* 分类规则卡片 */
+.default-tid-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  background: #f8fafc;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  color: #0f172a;
+}
+
+html.dark .default-tid-bar {
+  background: #1a2236;
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+}
+
+.bar-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+html.dark .bar-label {
+  color: #f8fafc;
+}
+
+.rules-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 480px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.category-rule-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px 16px;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+html.dark .category-rule-card {
+  background: #182238;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.category-rule-card.is-hidden {
+  opacity: 0.6;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.rule-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.rule-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rule-tid-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  background: #f1f5f9;
+  color: #475569;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+}
+
+html.dark .rule-tid-badge {
+  background: #1e293b;
+  color: #cbd5e1;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.rule-orig-name {
+  font-weight: 700;
+  font-size: 14px;
+  color: #0f172a;
+}
+
+html.dark .rule-orig-name {
+  color: #f8fafc;
+}
+
+.rule-preview-name {
+  color: #4f46e5;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+html.dark .rule-preview-name {
+  color: #818cf8;
+}
+
+.rule-switches {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.rule-body {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed #e2e8f0;
+}
+
+html.dark .rule-body {
+  border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+.rule-inputs-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.sub-count-tag {
+  font-size: 12px;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.sub-categories-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.sub-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+html.dark .sub-pill {
+  background: #1f293d;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #e2e8f0;
+}
+
+.sub-pill:hover {
+  border-color: #4f46e5;
+  color: #4f46e5;
+}
+
+.sub-pill--hidden {
+  text-decoration: line-through;
+  opacity: 0.5;
+}
+
+.sub-pill-del {
+  color: #94a3b8;
+  font-weight: bold;
+}
+
+.sub-pill-del:hover {
+  color: #ef4444;
+}
+
+.add-sub-popover {
+  padding: 4px;
+}
+
+.popover-title {
+  font-weight: 700;
+  font-size: 13px;
+  margin-bottom: 8px;
+  color: #0f172a;
+}
+
+/* 广告清洗与线路别名卡片化排版 */
+.policy-clean-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.policy-card-section {
+  background: var(--el-fill-color-light, #f8fafc);
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+html.dark .policy-card-section {
+  background: #1a2236;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.policy-card-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.policy-card-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--a-text, #1e293b);
+}
+
+html.dark .policy-card-title {
+  color: #f8fafc;
+}
+
+.policy-card-desc {
+  font-size: 11.5px;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+html.dark .policy-card-desc {
+  color: #94a3b8;
+}
+
+.policy-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.tags-editor-box,
+.line-overrides-box {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  min-height: 38px;
+  padding: 6px 10px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+html.dark .tags-editor-box,
+html.dark .line-overrides-box {
+  background: #111827;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.empty-policy-hint {
+  font-size: 12px;
+  color: #94a3b8;
+  padding: 4px 2px;
+}
+
+.add-pattern-row,
+.add-override-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.line-override-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #334155;
+}
+
+html.dark .line-override-pill {
+  background: #1e293b;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #e2e8f0;
+}
+
+.orig-code {
+  font-family: 'JetBrains Mono', monospace;
+  color: #475569;
+  font-weight: 600;
+}
+
+html.dark .orig-code {
+  color: #cbd5e1;
+}
+
+.arrow {
+  color: #94a3b8;
+}
+
+.alias-text {
+  font-weight: 700;
+  color: #4f46e5;
+}
+
+html.dark .alias-text {
+  color: #818cf8;
+}
+
+.del-btn {
+  color: #94a3b8;
+  cursor: pointer;
+  font-weight: bold;
+  margin-left: 4px;
+}
+
+.del-btn:hover {
+  color: #ef4444;
+}
+
+/* 源码预览与上传面板 */
+.code-meta-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-size: 12.5px;
+  color: #475569;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+html.dark .code-meta-bar {
+  color: #cbd5e1;
+}
+
+.code-meta-left {
+  display: flex;
+  align-items: center;
+}
+
+.code-upload-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.upload-tools-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.selected-file-text {
+  font-size: 12px;
+  color: #38bdf8;
+}
+
+.version-input-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.version-label {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.upload-code-textarea :deep(.el-textarea__inner) {
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.5;
+  background: #0f172a;
+  color: #f1f5f9;
+  border-color: #334155;
+}
+
+.upload-panel-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.code-pre-box {
+  background: #0f172a;
+  color: #f1f5f9;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  padding: 16px;
+  max-height: 480px;
+  overflow: auto;
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+/* 排序与危险操作 */
+.manage-section {
+  padding: 10px 0;
+}
+
+.manage-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  color: #0f172a;
+}
+
+html.dark .manage-title {
+  color: #f8fafc;
+}
+
+.manage-desc {
+  font-size: 12px;
+  color: #64748b;
+  margin-bottom: 12px;
+}
+
+html.dark .manage-desc {
+  color: #94a3b8;
+}
+
+.manage-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

@@ -1,0 +1,244 @@
+.site-detail-dialog {
+  border-radius: 16px !important;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25) !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+/* 浅色主题（默认） */
+.site-detail-dialog .el-dialog__header {
+  background: #ffffff !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  padding: 18px 24px !important;
+  margin-right: 0 !important;
+}
+
+.site-detail-dialog .el-dialog__body {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  padding: 20px 24px !important;
+}
+
+/* 标签页高对比度 */
+.site-detail-dialog .el-tabs__nav-wrap::after {
+  background-color: #f1f5f9 !important;
+  height: 2px !important;
+}
+
+.site-detail-dialog .el-tabs__item {
+  color: #475569 !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  padding: 0 16px !important;
+  transition: color 0.15s ease;
+}
+
+.site-detail-dialog .el-tabs__item:hover {
+  color: #0f172a !important;
+}
+
+.site-detail-dialog .el-tabs__item.is-active {
+  color: #4f46e5 !important;
+  font-weight: 700 !important;
+}
+
+.site-detail-dialog .el-tabs__active-bar {
+  background-color: #4f46e5 !important;
+  height: 2.5px !important;
+  border-radius: 2px !important;
+}
+
+/* 表单 Label 极致清晰黑字，彻底解决看不清的问题 */
+.site-detail-dialog .el-form-item__label {
+  color: #0f172a !important;
+  font-size: 13.5px !important;
+  font-weight: 600 !important;
+  padding-bottom: 6px !important;
+  line-height: 1.4 !important;
+}
+
+/* 输入框清爽白色背景、清晰边框与深色文字 */
+.site-detail-dialog .el-input__wrapper,
+.site-detail-dialog .el-textarea__inner {
+  background-color: #ffffff !important;
+  box-shadow: 0 0 0 1px #cbd5e1 inset !important;
+  border-radius: 8px !important;
+  transition: all 0.15s ease;
+}
+
+.site-detail-dialog .el-input__wrapper:hover,
+.site-detail-dialog .el-textarea__inner:hover {
+  box-shadow: 0 0 0 1px #94a3b8 inset !important;
+}
+
+.site-detail-dialog .el-input__wrapper.is-focus,
+.site-detail-dialog .el-textarea__inner:focus {
+  box-shadow: 0 0 0 1.5px #4f46e5 inset, 0 0 0 3px rgba(79, 70, 229, 0.12) !important;
+}
+
+.site-detail-dialog .el-input__inner,
+.site-detail-dialog .el-textarea__inner {
+  color: #0f172a !important;
+  font-size: 13.5px !important;
+}
+
+.site-detail-dialog .el-input__inner::placeholder,
+.site-detail-dialog .el-textarea__inner::placeholder {
+  color: #94a3b8 !important;
+}
+
+.site-detail-dialog .el-input-number__decrease,
+.site-detail-dialog .el-input-number__increase {
+  background-color: #f8fafc !important;
+  color: #475569 !important;
+  border-color: #cbd5e1 !important;
+}
+
+.site-detail-dialog .el-input-number__decrease:hover,
+.site-detail-dialog .el-input-number__increase:hover {
+  color: #4f46e5 !important;
+}
+
+.site-detail-dialog .el-select__wrapper {
+  background-color: #ffffff !important;
+  box-shadow: 0 0 0 1px #cbd5e1 inset !important;
+  border-radius: 8px !important;
+}
+
+.site-detail-dialog .el-select__wrapper.is-focused {
+  box-shadow: 0 0 0 1.5px #4f46e5 inset, 0 0 0 3px rgba(79, 70, 229, 0.12) !important;
+}
+
+.site-detail-dialog .el-select__placeholder {
+  color: #94a3b8 !important;
+}
+
+.site-detail-dialog .el-select__selected-item {
+  color: #0f172a !important;
+  font-weight: 500;
+}
+
+/* 分割线标题 */
+.site-detail-dialog .el-divider--horizontal {
+  border-top: 1px solid #e2e8f0 !important;
+  margin: 24px 0 18px !important;
+}
+
+.site-detail-dialog .el-divider__text {
+  background-color: #ffffff !important;
+  color: #4f46e5 !important;
+  font-weight: 700 !important;
+  font-size: 13px !important;
+  padding: 0 12px !important;
+}
+
+/* 开关与单选标签 */
+.site-detail-dialog .el-switch__label {
+  color: #475569 !important;
+  font-size: 13px !important;
+}
+
+.site-detail-dialog .el-switch__label.is-active {
+  color: #4f46e5 !important;
+  font-weight: 600 !important;
+}
+
+.site-detail-dialog .el-radio__label {
+  color: #334155 !important;
+  font-size: 13px !important;
+}
+
+.site-detail-dialog .el-radio.is-checked .el-radio__label {
+  color: #4f46e5 !important;
+  font-weight: 600 !important;
+}
+
+/* ==================== 深色模式适配 ==================== */
+html.dark .site-detail-dialog {
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: #131b2e !important;
+}
+
+html.dark .site-detail-dialog .el-dialog__header {
+  background: #172138 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+html.dark .site-detail-dialog .el-dialog__body {
+  background: #131b2e !important;
+  color: #f1f5f9 !important;
+}
+
+html.dark .site-detail-dialog .el-tabs__nav-wrap::after {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+html.dark .site-detail-dialog .el-tabs__item {
+  color: #94a3b8 !important;
+}
+
+html.dark .site-detail-dialog .el-tabs__item:hover {
+  color: #f8fafc !important;
+}
+
+html.dark .site-detail-dialog .el-tabs__item.is-active {
+  color: #818cf8 !important;
+}
+
+html.dark .site-detail-dialog .el-tabs__active-bar {
+  background-color: #818cf8 !important;
+}
+
+html.dark .site-detail-dialog .el-form-item__label {
+  color: #f1f5f9 !important;
+}
+
+html.dark .site-detail-dialog .el-input__wrapper,
+html.dark .site-detail-dialog .el-textarea__inner,
+html.dark .site-detail-dialog .el-select__wrapper {
+  background-color: #1a2236 !important;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12) inset !important;
+}
+
+html.dark .site-detail-dialog .el-input__wrapper:hover,
+html.dark .site-detail-dialog .el-textarea__inner:hover {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25) inset !important;
+}
+
+html.dark .site-detail-dialog .el-input__inner,
+html.dark .site-detail-dialog .el-textarea__inner,
+html.dark .site-detail-dialog .el-select__selected-item {
+  color: #f8fafc !important;
+}
+
+html.dark .site-detail-dialog .el-input-number__decrease,
+html.dark .site-detail-dialog .el-input-number__increase {
+  background-color: #222d45 !important;
+  color: #cbd5e1 !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+html.dark .site-detail-dialog .el-divider--horizontal {
+  border-top-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+html.dark .site-detail-dialog .el-divider__text {
+  background-color: #131b2e !important;
+  color: #818cf8 !important;
+}
+
+html.dark .site-detail-dialog .el-switch__label {
+  color: #94a3b8 !important;
+}
+
+html.dark .site-detail-dialog .el-switch__label.is-active {
+  color: #818cf8 !important;
+}
+
+html.dark .site-detail-dialog .el-radio__label {
+  color: #cbd5e1 !important;
+}
+
+html.dark .site-detail-dialog .el-radio.is-checked .el-radio__label {
+  color: #818cf8 !important;
+}
