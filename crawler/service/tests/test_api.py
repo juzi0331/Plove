@@ -116,4 +116,19 @@ def test_visual_proxy_injection():
     assert 'PLOVE_PAGE_READY' in injected_browse
 
 
+def test_dashboard_and_static_css_assets():
+    resp = client.get("/")
+    assert resp.status_code == 200
+    assert '<link rel="stylesheet" href="/static/css/tokens.css">' in resp.text
+    assert '<link rel="stylesheet" href="/static/css/base.css">' in resp.text
+    assert '<link rel="stylesheet" href="/static/css/components.css">' in resp.text
+    assert '<link rel="stylesheet" href="/static/css/visual-picker.css">' in resp.text
+
+    for css in ["tokens.css", "base.css", "components.css", "visual-picker.css"]:
+        css_resp = client.get(f"/static/css/{css}")
+        assert css_resp.status_code == 200
+        assert len(css_resp.text) > 100
+
+
+
 

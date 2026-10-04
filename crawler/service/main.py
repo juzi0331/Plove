@@ -109,8 +109,10 @@ async def handle_unexpected_error(request: Request, exc: Exception):
 
 
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 
-STATIC_INDEX = Path(__file__).resolve().parent / "static" / "index.html"
+STATIC_DIR = Path(__file__).resolve().parent / "static"
+STATIC_INDEX = STATIC_DIR / "index.html"
 
 # 挂载路由
 app.include_router(system_router)
@@ -120,6 +122,8 @@ app.include_router(smart_router)
 app.include_router(tasks_router)
 app.include_router(proxy_router)
 
+if STATIC_DIR.is_dir():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 
 @app.get("/", response_class=HTMLResponse)
