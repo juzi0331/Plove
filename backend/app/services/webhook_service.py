@@ -51,8 +51,8 @@ def _resolve_telegram_proxy(cfg_proxy: str | None = None) -> str | None:
 
     # 自动探测项目 proxy_config.json 中的默认代理
     try:
-        from app.services.proxy_node.manager import _get_proxy_config_path
-        cfg_path = _get_proxy_config_path()
+        from app.services.proxy_node import get_proxy_config_path
+        cfg_path = get_proxy_config_path()
         if cfg_path.is_file():
             data = json.loads(cfg_path.read_text(encoding="utf-8"))
             p = data.get("default_proxy_url") or data.get("proxy_url")

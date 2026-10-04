@@ -89,24 +89,7 @@ class SiteSettingsStore:
                 return
 
         rows = session.scalars(select(SiteSetting)).all()
-        items = {
-            row.key: SiteConfig(
-                key=row.key,
-                enabled=bool(row.enabled),
-                sort_order=int(row.sort_order or 0),
-                note=row.note or "",
-                custom_name=getattr(row, "custom_name", "") or "",
-                badge=getattr(row, "badge", "") or "",
-                timeout_seconds=float(getattr(row, "timeout_seconds", 0.0) or 0.0),
-                category_rules_json=getattr(row, "category_rules_json", "{}") or "{}",
-                detail_policy_json=getattr(row, "detail_policy_json", "{}") or "{}",
-                cache_policy_json=getattr(row, "cache_policy_json", "{}") or "{}",
-                proxy_enabled=bool(getattr(row, "proxy_enabled", False)),
-                proxy_url=getattr(row, "proxy_url", "") or "",
-                proxy_node_id=getattr(row, "proxy_node_id", "") or "",
-            )
-            for row in rows
-        }
+        items = {row.key: _to_config(row) for row in rows}
         with self._lock:
             self._items = items
             self._loaded = True

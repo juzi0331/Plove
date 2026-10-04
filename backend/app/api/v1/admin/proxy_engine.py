@@ -12,7 +12,7 @@ from app.schemas.admin_site_control import (
     ProxyEngineStatusPayload,
 )
 from app.schemas.envelope import Envelope, ok
-from app.services.proxy_node_service import proxy_node_service, xray_engine
+from app.services.proxy_node import proxy_node_service, xray_engine
 
 logger = get_logger(__name__)
 

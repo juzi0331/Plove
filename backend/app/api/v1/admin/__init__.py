@@ -45,7 +45,4 @@ admin_router.include_router(proxy_nodes.router)
 admin_router.include_router(proxy_engine.router)
 admin_router.include_router(webhooks.router)
 
-# 保持对旧引用兼容
-router = admin_router
-
-__all__ = ["admin_router", "router"]
+__all__ = ["admin_router"]

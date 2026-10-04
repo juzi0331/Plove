@@ -79,7 +79,7 @@ async def lifespan(app: FastAPI):
 
     # 启动内置 Xray-core 守护进程（如果有已配置的 VLESS 节点且内核已就绪）
     try:
-        from app.services.proxy_node_service import proxy_node_service, xray_engine
+        from app.services.proxy_node import proxy_node_service, xray_engine
         nodes = proxy_node_service.get_nodes()
         if any(n.get("protocol") == "vless" for n in nodes):
             if xray_engine.find_binary():
@@ -98,7 +98,7 @@ async def lifespan(app: FastAPI):
         if job is not None:
             job.stop()
         try:
-            from app.services.proxy_node_service import xray_engine
+            from app.services.proxy_node import xray_engine
             xray_engine.stop_engine()
         except Exception:
             pass

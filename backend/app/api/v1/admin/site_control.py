@@ -23,7 +23,7 @@ from app.schemas.admin_site_control import (
     SiteDetailPolicyUpdateRequest,
 )
 from app.schemas.envelope import Envelope, ok
-from app.services import site_control_service
+from app.services import site_control as site_control_service
 from app.services.site_settings import SiteSettingsStore
 
 router = APIRouter(tags=["后台-站点规则控制"])

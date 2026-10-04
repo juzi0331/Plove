@@ -82,7 +82,7 @@ def _load(model: type[T], registry: SiteRegistry, key: str, command: str, **opti
     )
 
 
-from app.services import site_control_service, site_settings
+from app.services import site_control as site_control_service, site_settings
 from app.services.site_settings import SiteSettingsStore
 
 

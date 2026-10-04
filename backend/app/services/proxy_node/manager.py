@@ -19,7 +19,7 @@ from app.services.proxy_node.vless import generate_xray_config, parse_vless_url
 logger = get_logger("proxy_node_manager")
 
 
-def _get_proxy_config_path() -> Path:
+def get_proxy_config_path() -> Path:
     """自动探测 proxy_config.json 的落盘位置。"""
     if env_p := os.environ.get("PROXY_CONFIG_PATH"):
         return Path(env_p)
@@ -35,11 +35,14 @@ def _get_proxy_config_path() -> Path:
     return fallback
 
 
+_get_proxy_config_path = get_proxy_config_path
+
+
 class ProxyNodeManager:
     """管理节点池与绑定的单例服务。"""
 
     def __init__(self) -> None:
-        self.config_path = _get_proxy_config_path()
+        self.config_path = get_proxy_config_path()
         self._enabled: bool = False
         self._default_proxy_url: str = "http://127.0.0.1:10809"
         self._nodes: list[dict[str, Any]] = []

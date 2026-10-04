@@ -25,7 +25,7 @@ from app.schemas.admin_site_control import (
 )
 from app.schemas.envelope import Envelope, ok
 from app.services import site_settings
-from app.services.proxy_node_service import proxy_node_service
+from app.services.proxy_node import proxy_node_service
 from app.services.site_settings import SiteSettingsStore
 
 logger = get_logger(__name__)

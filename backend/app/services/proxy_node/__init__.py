@@ -1,7 +1,11 @@
 """集中式代理节点池与 VLESS 引擎服务包。"""
 
 from app.services.proxy_node.engine import XrayEngineManager, xray_engine
-from app.services.proxy_node.manager import ProxyNodeManager, proxy_node_service
+from app.services.proxy_node.manager import (
+    ProxyNodeManager,
+    get_proxy_config_path,
+    proxy_node_service,
+)
 from app.services.proxy_node.vless import (
     generate_unified_xray_config,
     generate_xray_config,
@@ -16,4 +20,5 @@ __all__ = [
     "xray_engine",
     "ProxyNodeManager",
     "proxy_node_service",
+    "get_proxy_config_path",
 ]
