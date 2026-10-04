@@ -124,7 +124,8 @@ def redeem(
     _ensure_usable(record)
 
     # 首次激活：把计时起点钉死，之后永远不再改
-    if record.activated_at is None or record.expires_at is None:
+    is_first_activation = record.activated_at is None or record.expires_at is None
+    if is_first_activation:
         record.activated_at = utcnow()
         record.expires_at = record.activated_at + timedelta(hours=record.duration_hours)
 
@@ -156,6 +157,29 @@ def redeem(
     record.active_device_id = device.id
 
     session.flush()
+
+    if is_first_activation:
+        try:
+            from app.services.admin_service import mask_code
+            from app.services.webhook_service import webhook_service
+
+            masked_code = mask_code(record.code)
+            exp_text = record.expires_at.strftime("%Y-%m-%d %H:%M:%S") if record.expires_at else "永久"
+            webhook_service.dispatch_event(
+                event_type="code_activated",
+                title="激活码首次激活通知",
+                content=f"激活码 {masked_code} 已被设备「{device_name or '默认设备'}」首次成功绑定激活。",
+                fields={
+                    "激活码": masked_code,
+                    "绑定设备": device_name or "默认设备",
+                    "有效时长": f"{record.duration_hours} 小时",
+                    "到期时间": exp_text,
+                },
+                sync=False,
+            )
+        except Exception:
+            pass
+
     return ActivationResult(
         device_token=device.token,
         device_name=device.name,

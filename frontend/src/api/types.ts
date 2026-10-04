@@ -6,7 +6,7 @@
 // 重新生成：cd frontend && npm run gen:types
 // 检查是否过期：npm run check:types（退出码非 0 = 契约改过但没重新生成）
 //
-// 契约指纹：b512b46e8bbc
+// 契约指纹：4c66faaaacdf
 /** 命名意图动作描述。由前端映射至受控处理函数，不执行动态代码。 */
 export interface ActionPayload {
   type: string
@@ -289,6 +289,12 @@ export interface CrawlerValidateResult {
   checks?: string[]
 }
 
+export interface CustomHttpConfig {
+  enabled?: boolean
+  url?: string
+  secret_token?: string
+}
+
 export interface DetailPayload {
   video: VodItem
   desc?: string
@@ -347,6 +353,14 @@ export interface ErrorInfo {
   detail?: unknown | null
 }
 
+export interface EventSubscriptions {
+  circuit_break?: boolean
+  code_activated?: boolean
+  proxy_offline?: boolean
+  daily_report?: boolean
+  fail_threshold?: number
+}
+
 /** 管理后台读取的当前草稿完整配置。 */
 export interface ExperienceDraftPayload {
   draft_id?: string
@@ -385,6 +399,12 @@ export interface ExperienceReleaseItem {
 /** 延长时长。**只能加时间，不能减** —— 减时间应该用停用。 */
 export interface ExtendRequest {
   hours: number
+}
+
+export interface FeishuConfig {
+  enabled?: boolean
+  webhook_url?: string
+  secret?: string
 }
 
 /** 健康检查。故意只回最少的字段：它要能在数据库、爬虫全挂时照样返回。 */
@@ -856,6 +876,28 @@ export interface SystemStatusPayload {
   image_decrypt_domains?: string[]
 }
 
+export interface TelegramConfig {
+  enabled?: boolean
+  bot_token?: string
+  chat_id?: string
+  proxy_url?: string
+  bot_username?: string
+  bot_name?: string
+}
+
+export interface TelegramVerifyRequest {
+  bot_token: string
+  proxy_url?: string
+}
+
+export interface TelegramVerifyResult {
+  ok: boolean
+  id?: number
+  username?: string
+  first_name?: string
+  error?: string | null
+}
+
 /** 测试解密请求。 */
 export interface TestDecryptRequest {
   url: string
@@ -932,4 +974,49 @@ export interface WarmupStatus {
   last_finished_at?: string | null
   last_seconds?: number | null
   sites?: WarmupSiteResult[]
+}
+
+export interface WebhookConfigPayload {
+  telegram?: TelegramConfig
+  wechat_work?: WeChatWorkConfig
+  feishu?: FeishuConfig
+  custom_http?: CustomHttpConfig
+  events?: EventSubscriptions
+}
+
+export interface WebhookDeliveryLogItem {
+  id: string
+  channel: string
+  event_type: string
+  title: string
+  status: string
+  status_code?: number
+  duration_ms?: number
+  error?: string | null
+  sent_at: string
+  payload_summary?: string
+}
+
+export interface WebhookLogsPayload {
+  logs?: WebhookDeliveryLogItem[]
+  total?: number
+}
+
+export interface WebhookTestRequest {
+  channel: string
+  custom_text?: string
+}
+
+export interface WebhookTestResult {
+  channel: string
+  ok: boolean
+  status_code?: number
+  duration_ms?: number
+  message?: string
+  error?: string | null
+}
+
+export interface WeChatWorkConfig {
+  enabled?: boolean
+  webhook_url?: string
 }

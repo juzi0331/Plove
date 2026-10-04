@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-webhook-test-request.json",
+  "properties": {
+    "channel": {
+      "description": "测试通道：telegram | wechat_work | feishu | custom_http",
+      "title": "Channel",
+      "type": "string"
+    },
+    "custom_text": {
+      "default": "",
+      "description": "自定义测试消息文本（留空发送标准测试卡片）",
+      "title": "Custom Text",
+      "type": "string"
+    }
+  },
+  "required": [
+    "channel"
+  ],
+  "title": "WebhookTestRequest",
+  "type": "object"
+}

@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-webhook-logs.json",
+  "$defs": {
+    "WebhookDeliveryLogItem": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "channel": {
+          "title": "Channel",
+          "type": "string"
+        },
+        "event_type": {
+          "title": "Event Type",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "status": {
+          "description": "success | failed",
+          "title": "Status",
+          "type": "string"
+        },
+        "status_code": {
+          "default": 0,
+          "title": "Status Code",
+          "type": "integer"
+        },
+        "duration_ms": {
+          "default": 0,
+          "title": "Duration Ms",
+          "type": "integer"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error"
+        },
+        "sent_at": {
+          "title": "Sent At",
+          "type": "string"
+        },
+        "payload_summary": {
+          "default": "",
+          "title": "Payload Summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "channel",
+        "event_type",
+        "title",
+        "status",
+        "sent_at"
+      ],
+      "title": "WebhookDeliveryLogItem",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "logs": {
+      "items": {
+        "$ref": "#/$defs/WebhookDeliveryLogItem"
+      },
+      "title": "Logs",
+      "type": "array"
+    },
+    "total": {
+      "default": 0,
+      "title": "Total",
+      "type": "integer"
+    }
+  },
+  "title": "WebhookLogsPayload",
+  "type": "object"
+}

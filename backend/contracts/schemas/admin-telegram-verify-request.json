@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-telegram-verify-request.json",
+  "properties": {
+    "bot_token": {
+      "description": "Telegram Bot Token",
+      "title": "Bot Token",
+      "type": "string"
+    },
+    "proxy_url": {
+      "default": "",
+      "description": "可选的 HTTP/SOCKS5 代理地址",
+      "title": "Proxy Url",
+      "type": "string"
+    }
+  },
+  "required": [
+    "bot_token"
+  ],
+  "title": "TelegramVerifyRequest",
+  "type": "object"
+}

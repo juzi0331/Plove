@@ -289,6 +289,29 @@ class ProxyNodeManager:
                 last_exc = exc
 
         duration = round((time.monotonic() - start) * 1000, 1)
+
+        if node_id:
+            try:
+                from app.services.webhook_service import webhook_service
+
+                node = self.get_node(node_id) or {}
+                node_name = node.get("name") or node_id
+                protocol = node.get("protocol") or "unknown"
+                webhook_service.dispatch_event(
+                    event_type="proxy_offline",
+                    title="代理节点连通性异常/离线",
+                    content=f"代理节点「{node_name}」测试连通失败或已离线。",
+                    fields={
+                        "节点名称": node_name,
+                        "节点ID": node_id,
+                        "协议类型": protocol,
+                        "失败原因": str(last_exc),
+                    },
+                    sync=False,
+                )
+            except Exception:
+                pass
+
         return {
             "ok": False,
             "status_code": 0,

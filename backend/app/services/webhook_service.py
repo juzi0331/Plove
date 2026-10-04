@@ -1,32 +1,36 @@
 """外部机器人与 Webhook 自动化推送服务。
 
 支持：
-1. Telegram 机器人 (sendMessage API)
-2. 企业微信群机器人 (Markdown 消息)
-3. 飞书自定义群机器人 (支持签名校验或纯文本/卡片)
-4. 自定义 HTTP POST Webhook (带 X-Plove-Token 校验)
-5. 异步/短超时投递，绝不阻塞主业务；
-6. 自动记录投递日志（保留最近 50 条）。
+1. Telegram 机器人 (sendMessage API，含 HTML 转义、4096 字符截断、429 规避与指数重试)
+2. 企业微信群机器人 (Markdown 消息，含 SSRF 校验)
+3. 飞书自定义群机器人 (支持签名校验或纯文本/卡片，含 SSRF 校验)
+4. 自定义 HTTP POST Webhook (带 X-Plove-Token 校验与严格 SSRF 校验)
+5. 异步线程池投递，绝不阻塞主业务与 API 响应；
+6. 自动记录投递日志（内存保留最近 50 条）。
 """
 
 from __future__ import annotations
 
 import base64
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 import hashlib
+import html
 import hmac
 import json
 import logging
 import os
-import time
-import urllib.request
-import urllib.error
-from datetime import datetime
 from pathlib import Path
+import threading
+import time
 from typing import Any
+import urllib.error
+import urllib.request
 import uuid
 
 import httpx
 
+from app.core.security import is_safe_public_url
 from app.schemas.webhook import (
     CustomHttpConfig,
     EventSubscriptions,
@@ -41,7 +45,42 @@ from app.schemas.webhook import (
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_CONFIG_PATH = Path(__file__).resolve().parent.parent.parent / "webhook_config.json"
+
+def _get_default_config_path() -> Path:
+    backend_root = Path(__file__).resolve().parent.parent.parent
+    data_dir = backend_root / "data"
+    data_candidate = data_dir / "webhook_config.json"
+    if data_candidate.is_file():
+        return data_candidate
+    legacy_candidate = backend_root / "webhook_config.json"
+    if legacy_candidate.is_file():
+        return legacy_candidate
+    return data_candidate
+
+
+DEFAULT_CONFIG_PATH = _get_default_config_path()
+
+
+class TelegramRateLimiter:
+    """Telegram 群组消息频率限制令牌桶（约 20 条/分钟）。"""
+
+    def __init__(self, rate: float = 20.0, per: float = 60.0) -> None:
+        self.capacity = rate
+        self.tokens = rate
+        self.rate = rate / per
+        self.last = time.monotonic()
+        self.lock = threading.Lock()
+
+    def acquire(self) -> bool:
+        with self.lock:
+            now = time.monotonic()
+            elapsed = now - self.last
+            self.last = now
+            self.tokens = min(self.capacity, self.tokens + elapsed * self.rate)
+            if self.tokens >= 1.0:
+                self.tokens -= 1.0
+                return True
+            return False
 
 
 def _resolve_telegram_proxy(cfg_proxy: str | None = None) -> str | None:
@@ -52,6 +91,7 @@ def _resolve_telegram_proxy(cfg_proxy: str | None = None) -> str | None:
     # 自动探测项目 proxy_config.json 中的默认代理
     try:
         from app.services.proxy_node import get_proxy_config_path
+
         cfg_path = get_proxy_config_path()
         if cfg_path.is_file():
             data = json.loads(cfg_path.read_text(encoding="utf-8"))
@@ -76,6 +116,8 @@ class WebhookService:
         self._config = WebhookConfigPayload()
         self._logs: list[WebhookDeliveryLogItem] = []
         self._max_logs = 50
+        self._executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="webhook_worker")
+        self._tg_limiter = TelegramRateLimiter(rate=20.0, per=60.0)
         self.load()
 
     def load(self) -> None:
@@ -85,6 +127,24 @@ class WebhookService:
                 self._config = WebhookConfigPayload.model_validate(data)
             except Exception as exc:
                 logger.warning("读取 Webhook 配置文件失败: %s", exc)
+
+        # 环境变量加固覆盖（敏感凭据优先走环境变量）
+        if env_tg_token := os.environ.get("PLOVE_TELEGRAM_BOT_TOKEN"):
+            self._config.telegram.bot_token = env_tg_token.strip()
+        if env_tg_chat := os.environ.get("PLOVE_TELEGRAM_CHAT_ID"):
+            self._config.telegram.chat_id = env_tg_chat.strip()
+        if env_tg_proxy := os.environ.get("PLOVE_TELEGRAM_PROXY_URL"):
+            self._config.telegram.proxy_url = env_tg_proxy.strip()
+        if env_wechat := os.environ.get("PLOVE_WECHAT_WEBHOOK_URL"):
+            self._config.wechat_work.webhook_url = env_wechat.strip()
+        if env_feishu_url := os.environ.get("PLOVE_FEISHU_WEBHOOK_URL"):
+            self._config.feishu.webhook_url = env_feishu_url.strip()
+        if env_feishu_sec := os.environ.get("PLOVE_FEISHU_SECRET"):
+            self._config.feishu.secret = env_feishu_sec.strip()
+        if env_custom_url := os.environ.get("PLOVE_CUSTOM_HTTP_URL"):
+            self._config.custom_http.url = env_custom_url.strip()
+        if env_custom_token := os.environ.get("PLOVE_CUSTOM_HTTP_TOKEN"):
+            self._config.custom_http.secret_token = env_custom_token.strip()
 
     def save(self, payload: WebhookConfigPayload | None = None) -> None:
         if payload is not None:
@@ -251,11 +311,38 @@ class WebhookService:
                 error="MISSING_CREDENTIALS",
             )
 
+        # 频率保护令牌桶
+        if not self._tg_limiter.acquire():
+            return WebhookTestResult(
+                channel="telegram",
+                ok=False,
+                status_code=429,
+                message="触发 Telegram 频率保护限制（上限 20条/分钟），消息已丢弃",
+                error="RATE_LIMITED",
+            )
+
         url = f"https://api.telegram.org/bot{cfg.bot_token.strip()}/sendMessage"
-        text = f"<b>[Plove 监控通知] {title}</b>\n\n{content}\n"
+
+        # HTML 转义防护与格式化构造
+        esc_title = html.escape(title)
+        esc_content = html.escape(content)
+        lines = [f"<b>[Plove 监控通知] {esc_title}</b>", "", esc_content]
         if fields:
-            text += "\n" + "\n".join(f"• <b>{k}</b>: <code>{v}</code>" for k, v in fields.items())
-        text += f"\n<i>时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</i>"
+            lines.append("")
+            for k, v in fields.items():
+                lines.append(f"• <b>{html.escape(str(k))}</b>: <code>{html.escape(str(v))}</code>")
+        lines.append(f"\n<i>时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</i>")
+        text = "\n".join(lines)
+
+        # Telegram 4096 字符上限拦截与截断
+        if len(text) > 4000:
+            budget = 4000 - (len(text) - len(esc_content)) - 35
+            if budget > 50:
+                esc_content = esc_content[:budget] + "...\n<i>(内容已截断)</i>"
+            else:
+                esc_content = esc_content[:50] + "..."
+            lines[2] = esc_content
+            text = "\n".join(lines)[:4090]
 
         payload = {
             "chat_id": cfg.chat_id.strip(),
@@ -266,21 +353,38 @@ class WebhookService:
 
         proxy = _resolve_telegram_proxy(cfg.proxy_url)
         start = time.perf_counter()
-        try:
-            with httpx.Client(proxy=proxy, timeout=8.0) as client:
-                resp = client.post(url, json=payload)
-                duration_ms = int((time.perf_counter() - start) * 1000)
-                data = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else {}
-                ok = resp.status_code == 200 and data.get("ok", False)
-                if ok:
-                    return WebhookTestResult(
-                        channel="telegram",
-                        ok=True,
-                        status_code=resp.status_code,
-                        duration_ms=duration_ms,
-                        message="Telegram 消息投递成功",
-                    )
-                else:
+
+        max_retries = 3
+        retry_delays = [1.0, 2.0]
+
+        for attempt in range(max_retries):
+            try:
+                with httpx.Client(proxy=proxy, timeout=8.0) as client:
+                    resp = client.post(url, json=payload)
+                    duration_ms = int((time.perf_counter() - start) * 1000)
+                    data = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else {}
+
+                    if resp.status_code == 200 and data.get("ok", False):
+                        return WebhookTestResult(
+                            channel="telegram",
+                            ok=True,
+                            status_code=resp.status_code,
+                            duration_ms=duration_ms,
+                            message="Telegram 消息投递成功",
+                        )
+
+                    # 识别 429 速率限制并在安全范围内等待重试
+                    if resp.status_code == 429:
+                        retry_after = data.get("parameters", {}).get("retry_after", 1)
+                        if attempt < max_retries - 1 and retry_after <= 5:
+                            time.sleep(retry_after)
+                            continue
+
+                    # 5xx 服务端错误指数退避重试
+                    if attempt < max_retries - 1 and resp.status_code >= 500:
+                        time.sleep(retry_delays[attempt])
+                        continue
+
                     err_msg = data.get("description") or f"HTTP {resp.status_code}"
                     return WebhookTestResult(
                         channel="telegram",
@@ -290,16 +394,28 @@ class WebhookService:
                         message=f"Telegram 投递失败: {err_msg}",
                         error=err_msg,
                     )
-        except Exception as exc:
-            duration_ms = int((time.perf_counter() - start) * 1000)
-            return WebhookTestResult(
-                channel="telegram",
-                ok=False,
-                status_code=500,
-                duration_ms=duration_ms,
-                message=f"网络连接失败 (代理: {proxy or '直连'}): {exc}",
-                error=str(exc),
-            )
+            except Exception as exc:
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delays[attempt])
+                    continue
+                duration_ms = int((time.perf_counter() - start) * 1000)
+                return WebhookTestResult(
+                    channel="telegram",
+                    ok=False,
+                    status_code=500,
+                    duration_ms=duration_ms,
+                    message=f"网络连接失败 (代理: {proxy or '直连'}): {exc}",
+                    error=str(exc),
+                )
+
+        return WebhookTestResult(
+            channel="telegram",
+            ok=False,
+            status_code=500,
+            duration_ms=int((time.perf_counter() - start) * 1000),
+            message="Telegram 投递重试超限失败",
+            error="MAX_RETRIES_EXCEEDED",
+        )
 
     def _send_wechat(
         self,
@@ -315,6 +431,15 @@ class WebhookService:
                 status_code=400,
                 message="企业微信群机器人 Webhook 地址不合法",
                 error="INVALID_WEBHOOK_URL",
+            )
+
+        if not is_safe_public_url(cfg.webhook_url):
+            return WebhookTestResult(
+                channel="wechat_work",
+                ok=False,
+                status_code=400,
+                message="企业微信 Webhook 目标地址不合法或指向受限内网",
+                error="UNSAFE_URL",
             )
 
         md = f"### [Plove 监控告警] {title}\n>{content}\n\n"
@@ -343,6 +468,15 @@ class WebhookService:
                 status_code=400,
                 message="飞书群机器人 Webhook 地址不合法",
                 error="INVALID_WEBHOOK_URL",
+            )
+
+        if not is_safe_public_url(cfg.webhook_url):
+            return WebhookTestResult(
+                channel="feishu",
+                ok=False,
+                status_code=400,
+                message="飞书 Webhook 目标地址不合法或指向受限内网",
+                error="UNSAFE_URL",
             )
 
         text_lines = [f"【Plove 告警通知】{title}", "", content]
@@ -387,6 +521,16 @@ class WebhookService:
                 error="INVALID_URL",
             )
 
+        # 严格防御针对云元数据、本地回环或内网端口的 SSRF
+        if not is_safe_public_url(cfg.url):
+            return WebhookTestResult(
+                channel="custom_http",
+                ok=False,
+                status_code=400,
+                message="目标地址不合法或指向内网受限网段",
+                error="UNSAFE_URL",
+            )
+
         payload = {
             "event": event_type,
             "title": title,
@@ -420,7 +564,6 @@ class WebhookService:
         try:
             with urllib.request.urlopen(req, timeout=5.0) as resp:
                 status = resp.status
-                body = resp.read().decode("utf-8", errors="replace")
                 ok = 200 <= status < 300
                 return WebhookTestResult(
                     channel=channel,
@@ -448,18 +591,17 @@ class WebhookService:
 
     # ------------------------------------------------------------------ 广播与告警接口
 
-    def dispatch_event(
+    def _do_dispatch(
         self,
         event_type: str,
         title: str,
         content: str,
         fields: dict[str, Any] | None = None,
     ) -> list[WebhookTestResult]:
-        """按订阅规则向所有已启用通道分发事件通知。"""
         cfg = self.get_config()
         events = cfg.events
 
-        # 校验订阅项
+        # 校验各事件类型的订阅开关
         if event_type == "circuit_break" and not events.circuit_break:
             return []
         if event_type == "code_activated" and not events.code_activated:
@@ -479,6 +621,70 @@ class WebhookService:
         if cfg.custom_http.enabled:
             results.append(self.send_to_channel("custom_http", event_type, title, content, fields))
         return results
+
+    def dispatch_event(
+        self,
+        event_type: str,
+        title: str,
+        content: str,
+        fields: dict[str, Any] | None = None,
+        sync: bool = False,
+    ) -> list[WebhookTestResult]:
+        """按订阅规则向所有已启用通道分发事件通知。
+        
+        默认通过内部线程池异步投递，绝对不阻塞业务主线程；显式指定 sync=True 时同步等待结果。
+        """
+        if sync:
+            return self._do_dispatch(event_type, title, content, fields)
+
+        def _async_worker():
+            try:
+                self._do_dispatch(event_type, title, content, fields)
+            except Exception as exc:
+                logger.error("异步投递 Webhook 事件 [%s] 异常: %s", event_type, exc)
+
+        self._executor.submit(_async_worker)
+        return []
+
+    def send_daily_report(self) -> list[WebhookTestResult]:
+        """收集系统统计指标并发送每日运营简报。"""
+        try:
+            from app.db.session import session_scope
+            from app.models.activation import ActivationCode, Device
+            from app.models.site_setting import SiteSetting
+            from sqlalchemy import func, select
+
+            with session_scope() as session:
+                total_codes = session.scalar(select(func.count(ActivationCode.id))) or 0
+                activated_codes = (
+                    session.scalar(
+                        select(func.count(ActivationCode.id)).where(ActivationCode.activated_at.is_not(None))
+                    )
+                    or 0
+                )
+                active_devices = session.scalar(select(func.count(Device.id))) or 0
+                total_sites = session.scalar(select(func.count(SiteSetting.key))) or 0
+                enabled_sites = (
+                    session.scalar(select(func.count(SiteSetting.key)).where(SiteSetting.enabled.is_(True)))
+                    or 0
+                )
+        except Exception as exc:
+            logger.warning("每日简报收集数据库指标失败: %s", exc)
+            total_codes = activated_codes = active_devices = total_sites = enabled_sites = 0
+
+        return self.dispatch_event(
+            event_type="daily_report",
+            title="Plove 每日运行简报",
+            content=f"系统状态正常。激活码累计 {total_codes} 个（已激活 {activated_codes} 个），当前绑定设备 {active_devices} 台，聚合内容源 {enabled_sites}/{total_sites} 已启用。",
+            fields={
+                "激活码总数": total_codes,
+                "已激活数量": activated_codes,
+                "绑定设备数": active_devices,
+                "可用内容源": f"{enabled_sites}/{total_sites}",
+                "简报生成时间": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            },
+            sync=False,
+        )
 
 
 # 单例服务

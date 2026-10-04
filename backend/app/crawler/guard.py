@@ -240,6 +240,7 @@ class SiteGuard:
                 return
             self._failures += 1
             if self._failures >= self.fail_threshold:
+                first_break = (self._opened_at is None)
                 self._opened_at = self._clock()
                 logger.warning(
                     "站点 %s 连续失败 %d 次（%s），熔断 %.0fs",
@@ -248,6 +249,24 @@ class SiteGuard:
                     exc.code.value,
                     self.reset_seconds,
                 )
+                if first_break:
+                    try:
+                        from app.services.webhook_service import webhook_service
+
+                        webhook_service.dispatch_event(
+                            event_type="circuit_break",
+                            title=f"内容源 [{self.site}] 触发熔断保护",
+                            content=f"内容源 [{self.site}] 连续请求失败已达阈值 {self.fail_threshold} 次，已进入熔断冷却状态（冷却时长 {self.reset_seconds:.0f} 秒）。",
+                            fields={
+                                "故障源站": self.site,
+                                "失败原因": exc.code.value,
+                                "失败次数": self._failures,
+                                "冷却时长": f"{self.reset_seconds:.0f}s",
+                            },
+                            sync=False,
+                        )
+                    except Exception:
+                        pass
 
     def _give_up(self, counts_as_health: bool) -> None:
         """没拿到名额就退出：把半开探针的名额还回去（否则这个源会卡在"探测中"）。"""

@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plove.local/schemas/admin-telegram-verify-result.json",
+  "properties": {
+    "ok": {
+      "title": "Ok",
+      "type": "boolean"
+    },
+    "id": {
+      "default": 0,
+      "title": "Id",
+      "type": "integer"
+    },
+    "username": {
+      "default": "",
+      "title": "Username",
+      "type": "string"
+    },
+    "first_name": {
+      "default": "",
+      "title": "First Name",
+      "type": "string"
+    },
+    "error": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Error"
+    }
+  },
+  "required": [
+    "ok"
+  ],
+  "title": "TelegramVerifyResult",
+  "type": "object"
+}

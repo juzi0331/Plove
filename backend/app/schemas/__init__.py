@@ -92,6 +92,15 @@ from app.schemas.playback import Playback
 from app.schemas.site import SiteListPayload, SiteMeta
 from app.schemas.system import HealthPayload
 from app.schemas.vod import SubCategory, VodCategory, VodItem
+from app.schemas.webhook import (
+    TelegramVerifyRequest,
+    TelegramVerifyResult,
+    WebhookConfigPayload,
+    WebhookDeliveryLogItem,
+    WebhookLogsPayload,
+    WebhookTestRequest,
+    WebhookTestResult,
+)
 from app.modules.experience.schemas import (
     ClientBootstrapPayload,
     DraftSaveResult,
@@ -200,6 +209,13 @@ __all__ = [
     "ReleasePublishRequest",
     "ReleasePublishResult",
     "ReleaseRollbackRequest",
+    "WebhookConfigPayload",
+    "WebhookLogsPayload",
+    "WebhookTestRequest",
+    "WebhookTestResult",
+    "TelegramVerifyRequest",
+    "TelegramVerifyResult",
+    "WebhookDeliveryLogItem",
 ]
 
 #: 导出清单：文件名（不含扩展名） -> 模型
@@ -300,4 +316,12 @@ EXPORTS: dict[str, type[BaseModel]] = {
     "admin-release-publish-request": ReleasePublishRequest,
     "admin-release-publish-result": ReleasePublishResult,
     "admin-release-rollback-request": ReleaseRollbackRequest,
+    # 外部通知与 Webhook
+    "admin-webhook-config": WebhookConfigPayload,
+    "admin-webhook-logs": WebhookLogsPayload,
+    "admin-webhook-test-request": WebhookTestRequest,
+    "admin-webhook-test-result": WebhookTestResult,
+    "admin-telegram-verify-request": TelegramVerifyRequest,
+    "admin-telegram-verify-result": TelegramVerifyResult,
+    "admin-webhook-delivery-log-item": WebhookDeliveryLogItem,
 }

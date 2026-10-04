@@ -66,7 +66,7 @@ const verifying = ref(false)
 const clearingLogs = ref(false)
 const configDialogVisible = ref(false)
 
-const config = ref<WebhookConfigPayload>({
+const config = ref<Required<WebhookConfigPayload>>({
   telegram: {
     enabled: false,
     bot_token: '',
@@ -120,7 +120,15 @@ async function loadData(): Promise<void> {
       getWebhookConfig(),
       getWebhookLogs(30),
     ])
-    config.value = cfgRes
+    if (cfgRes) {
+      config.value = {
+        telegram: { ...config.value.telegram, ...(cfgRes.telegram || {}) },
+        wechat_work: { ...config.value.wechat_work, ...(cfgRes.wechat_work || {}) },
+        feishu: { ...config.value.feishu, ...(cfgRes.feishu || {}) },
+        custom_http: { ...config.value.custom_http, ...(cfgRes.custom_http || {}) },
+        events: { ...config.value.events, ...(cfgRes.events || {}) },
+      }
+    }
     logs.value = logsRes.logs || []
   } catch (err: unknown) {
     ElMessage.error(err instanceof Error ? err.message : '加载配置失败')
@@ -133,7 +141,15 @@ async function handleSave(): Promise<void> {
   saving.value = true
   try {
     const res = await saveWebhookConfig(config.value)
-    config.value = res
+    if (res) {
+      config.value = {
+        telegram: { ...config.value.telegram, ...(res.telegram || {}) },
+        wechat_work: { ...config.value.wechat_work, ...(res.wechat_work || {}) },
+        feishu: { ...config.value.feishu, ...(res.feishu || {}) },
+        custom_http: { ...config.value.custom_http, ...(res.custom_http || {}) },
+        events: { ...config.value.events, ...(res.events || {}) },
+      }
+    }
     ElMessage.success('Telegram 机器人配置已成功保存')
   } catch (err: unknown) {
     ElMessage.error(err instanceof Error ? err.message : '保存配置失败')

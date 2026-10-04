@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 
+from app.core.errors import AppError, ErrorCode
 from app.core.middleware import get_request_id
+from app.core.security import is_safe_public_url
 from app.schemas.envelope import Envelope, ok
 from app.schemas.webhook import (
     TelegramVerifyRequest,
@@ -29,6 +31,17 @@ def update_webhook_config(
     payload: WebhookConfigPayload,
     request_id: str = Depends(get_request_id),
 ) -> Envelope[WebhookConfigPayload]:
+    # 防御保存恶意指向内网/云元数据的非公网 Webhook URL (SSRF)
+    if payload.custom_http.url and payload.custom_http.url.strip():
+        if not is_safe_public_url(payload.custom_http.url.strip()):
+            raise AppError(ErrorCode.BAD_REQUEST, "自定义 Webhook 目标地址不合法或指向受限内网")
+    if payload.wechat_work.webhook_url and payload.wechat_work.webhook_url.strip():
+        if not is_safe_public_url(payload.wechat_work.webhook_url.strip()):
+            raise AppError(ErrorCode.BAD_REQUEST, "企业微信 Webhook 目标地址不合法或指向受限内网")
+    if payload.feishu.webhook_url and payload.feishu.webhook_url.strip():
+        if not is_safe_public_url(payload.feishu.webhook_url.strip()):
+            raise AppError(ErrorCode.BAD_REQUEST, "飞书 Webhook 目标地址不合法或指向受限内网")
+
     webhook_service.save(payload)
     return ok(webhook_service.get_config(), request_id)
 

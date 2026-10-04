@@ -60,6 +60,22 @@ async def lifespan(app: FastAPI):
 
     job = _start_warmup_job()
 
+    # 每日运营简报定时推送（若配置开启订阅）
+    report_job = None
+    try:
+        from app.services.webhook_service import webhook_service
+
+        cfg = webhook_service.get_config()
+        if cfg.events.daily_report:
+            report_job = PeriodicJob(
+                name="每日简报",
+                interval=86400.0,
+                work=webhook_service.send_daily_report,
+                initial_delay=3600.0,
+            ).start()
+    except Exception:
+        pass
+
     # 开机异步静默预热：延迟 3 秒避开服务初始化峰值，在后台线程自动把各源首页及前 3 分类温热落盘
     settings = get_settings()
     boot_timer = None
@@ -97,6 +113,8 @@ async def lifespan(app: FastAPI):
             boot_timer.cancel()
         if job is not None:
             job.stop()
+        if report_job is not None:
+            report_job.stop()
         try:
             from app.services.proxy_node import xray_engine
             xray_engine.stop_engine()
