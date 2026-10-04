@@ -31,6 +31,9 @@ def solve_cdndefend_cookie(html: str) -> Optional[dict[str, str]]:
     """
     match = _CDNDEFEND_SECRET_RE.search(html)
     if not match:
+        # 兼容混淆后的数组或字符串形式，例如 ['F29B55ED78A5B67A17DA02BF46950BF7A95CF568', 'cdndefend_js_cookie=']
+        match = re.search(r"""['"]([0-9a-fA-F]{40})['"]""", html)
+    if not match:
         return None
 
     secret = match.group(1)

@@ -1,7 +1,7 @@
 {
-  "enabled": false,
-  "default_proxy_url": "http://127.0.0.1:10809",
-  "proxy_url": "http://127.0.0.1:10809",
+  "enabled": true,
+  "default_proxy_url": "http://127.0.0.1:10808",
+  "proxy_url": "http://127.0.0.1:10808",
   "nodes": [
     {
       "id": "node_a9080869",

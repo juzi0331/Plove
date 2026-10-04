@@ -21,6 +21,13 @@ def build_injected_visual_proxy_html(
         cleaned_html,
         flags=re.IGNORECASE,
     )
+    # 移除 disable-devtool 等防审查脚本
+    cleaned_html = re.sub(
+        r'<script[^>]*disable-devtool[^>]*>.*?</script>',
+        "",
+        cleaned_html,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
 
     # 注入解除防盗链的 no-referrer meta，以及 base 标签
     meta_referrer = '<meta name="referrer" content="no-referrer"/>'

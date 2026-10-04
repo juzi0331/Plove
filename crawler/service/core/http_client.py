@@ -43,7 +43,7 @@ class HttpClient:
 
         self._timeout = timeout or settings.DEFAULT_TIMEOUT
         self._client = httpx.AsyncClient(
-            base_url=self.base_url if self.base_url.startswith("http") else None,
+            base_url=self.base_url if self.base_url.startswith("http") else "",
             headers=req_headers,
             cookies=cookies,
             proxy=proxy_manager.get_proxy_url(),
@@ -97,16 +97,16 @@ class HttpClient:
                 f"网络连接错误: {exc}",
             ) from exc
 
-        # 检查是否命中了反爬闸门
-        if enable_gate_solving and (resp.status_code in (200, 403, 503)):
-            text_preview = resp.text[:4000]
-            if "cdndefend" in text_preview:
-                logger.info("检测到反爬闸门拦截，启动破解机制...")
-                gate_cookies = solve_cdndefend_cookie(text_preview)
+        # 检查是否命中了反爬闸门 (支持 850, 403, 503, 200 以及任何带 cdndefend 的挑战页)
+        if enable_gate_solving and (resp.status_code in (200, 403, 503, 850) or "cdndefend" in resp.text[:10000]):
+            resp_text = resp.text
+            if "cdndefend" in resp_text:
+                logger.info("检测到反爬闸门拦截 (HTTP %d)，启动破解机制...", resp.status_code)
+                gate_cookies = solve_cdndefend_cookie(resp_text)
                 if gate_cookies:
                     # 将求解出来的 Cookie 写入客户端实例并重试一次请求
                     self._client.cookies.update(gate_cookies)
-                    logger.info("携带闸门 Cookie 重试请求...")
+                    logger.info("携带闸门 Cookie (%s) 重试请求...", gate_cookies)
                     return await self.request(
                         method=method,
                         url=url,
