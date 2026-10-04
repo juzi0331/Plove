@@ -34,9 +34,41 @@ class TelegramRateLimiter:
 
 
 def _resolve_telegram_proxy(cfg_proxy: str | None = None) -> str | None:
-    """按优先级解析用于 Telegram API 调用的网络代理。"""
+    """按优先级解析用于 Telegram API 调用的网络代理。
+    
+    支持:
+    1. 用户添加的代理节点 ID (从代理节点池中自动映射其本地代理地址)
+    2. 完整的 HTTP / SOCKS5 代理 URL (如 http://127.0.0.1:10809)
+    3. 特殊标识 direct / none 直连
+    4. 系统全局 proxy_config.json 中的默认代理配置
+    5. 系统环境变量 (HTTPS_PROXY, HTTP_PROXY, ALL_PROXY 等)
+    """
     if cfg_proxy and cfg_proxy.strip():
-        return cfg_proxy.strip()
+        val = cfg_proxy.strip()
+
+        # 特殊直连标识
+        if val.lower() in ("direct", "none", "null", "直连"):
+            return None
+
+        # 尝试匹配代理节点池中的节点 ID
+        try:
+            from app.services.proxy_node import proxy_node_service
+
+            node = proxy_node_service.get_node(val)
+            if node and node.get("proxy_url"):
+                return str(node["proxy_url"]).strip()
+        except Exception:
+            pass
+
+        # 如果已经是标准协议 URL
+        if val.startswith(("http://", "https://", "socks5://", "socks5h://")):
+            return val
+
+        # 针对 127.0.0.1:10809 这种简写补充 http://
+        if ":" in val:
+            return f"http://{val}"
+
+        return val
 
     # 自动探测项目 proxy_config.json 中的默认代理
     try:

@@ -355,9 +355,14 @@ export interface ErrorInfo {
 
 export interface EventSubscriptions {
   circuit_break?: boolean
+  circuit_recover?: boolean
+  site_health_report?: boolean
   code_activated?: boolean
+  device_conflict?: boolean
+  security_alert?: boolean
   proxy_offline?: boolean
   daily_report?: boolean
+  system_startup?: boolean
   fail_threshold?: number
 }
 
@@ -883,6 +888,7 @@ export interface TelegramConfig {
   proxy_url?: string
   bot_username?: string
   bot_name?: string
+  console_url?: string
 }
 
 export interface TelegramVerifyRequest {
@@ -895,6 +901,20 @@ export interface TelegramVerifyResult {
   id?: number
   username?: string
   first_name?: string
+  error?: string | null
+}
+
+export interface TelegramDetectChatRequest {
+  bot_token: string
+  proxy_url?: string
+}
+
+export interface TelegramDetectChatResult {
+  ok: boolean
+  chat_id?: string
+  chat_title?: string
+  username?: string
+  chat_type?: string
   error?: string | null
 }
 
@@ -978,9 +998,6 @@ export interface WarmupStatus {
 
 export interface WebhookConfigPayload {
   telegram?: TelegramConfig
-  wechat_work?: WeChatWorkConfig
-  feishu?: FeishuConfig
-  custom_http?: CustomHttpConfig
   events?: EventSubscriptions
 }
 
@@ -1005,6 +1022,15 @@ export interface WebhookLogsPayload {
 export interface WebhookTestRequest {
   channel: string
   custom_text?: string
+}
+
+export interface WebhookSendEventRequest {
+  channel?: string
+  event_type: string
+  title?: string
+  content?: string
+  fields?: Record<string, unknown>
+  raw_html?: boolean
 }
 
 export interface WebhookTestResult {

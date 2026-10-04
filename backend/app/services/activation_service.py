@@ -189,6 +189,14 @@ def redeem(
         if device_name and device.name != device_name:
             device.name = device_name
 
+        previous_device_id = record.active_device_id
+        is_device_conflict = False
+        kicked_device_name = ""
+        if previous_device_id and previous_device_id != device.id:
+            is_device_conflict = True
+            prev_dev = session.get(Device, previous_device_id)
+            kicked_device_name = (prev_dev.name if prev_dev else "") or f"设备#{previous_device_id}"
+
         device.last_seen_at = utcnow()
         record.active_device_id = device.id
 
@@ -225,6 +233,26 @@ def redeem(
                     "绑定设备": device_name or "默认设备",
                     "有效时长": f"{duration_hours} 小时",
                     "到期时间": exp_text,
+                },
+                sync=False,
+            )
+        except Exception:
+            pass
+    elif is_device_conflict:
+        try:
+            from app.services.admin_service import mask_code
+            from app.services.webhook_service import webhook_service
+
+            masked_code = mask_code(record_code)
+            webhook_service.dispatch_event(
+                event_type="device_conflict",
+                title="同码多设备抢线与冲突下线告警",
+                content=f"激活码 {masked_code} 发生设备抢占，新设备「{device_name or '新设备'}」上线并将原活跃设备「{kicked_device_name or '旧设备'}」顶替下线。",
+                fields={
+                    "激活码": masked_code,
+                    "新上线设备": device_name or "新设备",
+                    "被顶替设备": kicked_device_name or "旧设备",
+                    "安全提示": "如非本人切换设备，激活码可能已被外泄共享",
                 },
                 sync=False,
             )

@@ -89,4 +89,26 @@ class RateLimitGuard:
             return
         ip = get_client_ip(request)
         key = f"{self.limiter.scope}:{ip}"
-        self.limiter.check(key)
+        try:
+            self.limiter.check(key)
+        except AppError as exc:
+            if exc.code == ErrorCode.RATE_LIMITED:
+                try:
+                    from app.services.webhook_service import webhook_service
+
+                    webhook_service.dispatch_event(
+                        event_type="security_alert",
+                        title="接口防刷与高频限流安全告警",
+                        content=f"来源 IP [{ip}] 在接口范围「{self.limiter.scope}」触发高频访问限流拦截，疑似恶意探测或暴力猜解。",
+                        fields={
+                            "拦截范围": self.limiter.scope,
+                            "来源 IP": ip,
+                            "限制策略": f"{self.limiter.limit} 次 / {self.limiter.window} 秒",
+                            "请求路径": request.url.path,
+                            "处置策略": "自动拦截并返回 429 冷却",
+                        },
+                        sync=False,
+                    )
+                except Exception:
+                    pass
+            raise

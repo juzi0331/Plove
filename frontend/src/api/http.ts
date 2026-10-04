@@ -97,7 +97,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     // 中文放在请求体里没问题；**头里不行**（HTTP 头在协议层是 Latin-1，
     // 后端那边为这个踩过两次）。所以设备名这类自由文本一律走 body。
     headers['Content-Type'] = 'application/json'
-    body = JSON.stringify(options.body)
+    body = typeof options.body === 'string' ? options.body : JSON.stringify(options.body)
   }
 
   const controller = new AbortController()

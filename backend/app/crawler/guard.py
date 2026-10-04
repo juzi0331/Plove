@@ -226,7 +226,24 @@ class SiteGuard:
     def _after_success(self) -> None:
         with self._lock:
             if self._opened_at is not None:
-                logger.info("站点 %s 探针成功，熔断解除", self.site)
+                duration_s = max(1, int(self._clock() - self._opened_at))
+                logger.info("站点 %s 探针成功，熔断解除（持续 %ds）", self.site, duration_s)
+                try:
+                    from app.services.webhook_service import webhook_service
+
+                    webhook_service.dispatch_event(
+                        event_type="circuit_recover",
+                        title=f"内容源 [{self.site}] 自愈恢复通知",
+                        content=f"内容源 [{self.site}] 冷却期后探针请求成功，熔断保护已自动解除，节点恢复正常可用。",
+                        fields={
+                            "恢复源站": self.site,
+                            "故障熔断时长": f"{duration_s} 秒",
+                            "当前健康度": "正常 (Healthy)",
+                        },
+                        sync=False,
+                    )
+                except Exception:
+                    pass
             self._failures = 0
             self._opened_at = None
             self._probing = False

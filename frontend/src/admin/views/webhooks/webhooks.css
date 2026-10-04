@@ -449,3 +449,80 @@
   justify-content: flex-end;
   gap: 10px;
 }
+
+/* 代理节点下拉选项卡 */
+.proxy-select-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.proxy-node-option-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  font-size: 13px;
+}
+
+.node-name-text {
+  font-weight: 600;
+  color: var(--a-text, #0f172a);
+}
+
+.node-url-text {
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  font-size: 11.5px;
+  color: var(--a-text-3, #94a3b8);
+  margin-right: auto;
+}
+
+.custom-proxy-wrap {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.proxy-pool-manage-link {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Chat ID 快捷抓取行 */
+.chat-id-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.chat-guidance-card {
+  margin-top: 8px;
+  padding: 10px 14px;
+  background: var(--a-bg-subtle, #f8fafc);
+  border-radius: 8px;
+  border: 1px solid var(--a-border, #e2e8f0);
+}
+
+.guidance-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.guidance-text {
+  color: var(--a-text-2, #475569);
+  flex: 1;
+}
+
+.guidance-text code {
+  background: var(--a-bg-card, #ffffff);
+  border: 1px solid var(--a-border, #cbd5e1);
+  padding: 1px 4px;
+  border-radius: 3px;
+  color: #0284c7;
+  font-family: 'JetBrains Mono', Consolas, monospace;
+}
+

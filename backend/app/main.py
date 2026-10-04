@@ -106,6 +106,25 @@ async def lifespan(app: FastAPI):
         from app.core.logging import get_logger
         get_logger("xray").warning("内置 Xray 引擎开机自启跳过: %s", xray_boot_err)
 
+    # 广播系统启动 / 重启完成通知（若配置开启订阅）
+    try:
+        from datetime import datetime
+        from app.services.webhook_service import webhook_service
+
+        webhook_service.dispatch_event(
+            event_type="system_startup",
+            title="Plove 服务集群已就绪",
+            content="Plove 核心后端服务已成功启动就绪，数据库引擎连接建立，监控看门狗正常运行。",
+            fields={
+                "运行环境": settings.env,
+                "API 版本": "v1",
+                "就绪时间": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            },
+            sync=False,
+        )
+    except Exception:
+        pass
+
     try:
         yield
     finally:

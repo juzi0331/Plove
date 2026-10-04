@@ -22,14 +22,10 @@ from app.services.webhook.dispatch import (
 from app.services.webhook.signing import (
     TelegramRateLimiter,
     _resolve_telegram_proxy,
-    generate_feishu_sign,
 )
 from app.services.webhook.templates import (
     collect_daily_report_metrics,
-    format_custom_http_payload,
-    format_feishu_content,
     format_telegram_message,
-    format_wechat_markdown,
 )
 
 __all__ = [
@@ -39,11 +35,7 @@ __all__ = [
     "_get_default_config_path",
     "_resolve_telegram_proxy",
     "collect_daily_report_metrics",
-    "format_custom_http_payload",
-    "format_feishu_content",
     "format_telegram_message",
-    "format_wechat_markdown",
-    "generate_feishu_sign",
     "load_config",
     "save_config",
     "webhook_service",

@@ -21,27 +21,39 @@ import TelegramBotCard from './webhooks/TelegramBotCard.vue'
 import WebhookEventsCard from './webhooks/WebhookEventsCard.vue'
 import WebhookLogsTable from './webhooks/WebhookLogsTable.vue'
 import TelegramConfigDialog from './webhooks/TelegramConfigDialog.vue'
+import EventRulesDialog from './webhooks/EventRulesDialog.vue'
+import CustomNoticeDialog from './webhooks/CustomNoticeDialog.vue'
 
 const {
   loading,
   saving,
   testing,
   verifying,
+  detectingChat,
   clearingLogs,
   configDialogVisible,
+  rulesDialogVisible,
+  customNoticeDialogVisible,
+  proxyNodes,
   config,
   editDraft,
   verifyResult,
   logs,
   activeEventsCount,
   lastLog,
+  sendingEvent,
+  sendingCustomNotice,
+  customNoticeDraft,
   loadData,
   handleSave,
   openConfigDialog,
   handleVerifyToken,
+  handleDetectChat,
   saveDialogConfig,
   handleTest,
   handleClearLogs,
+  handleSendEvent,
+  handleSendCustomNotice,
 } = useWebhooks()
 </script>
 
@@ -103,17 +115,14 @@ const {
         @test="handleTest"
       />
 
-      <!-- 告警订阅事件规则设置 -->
-      <div class="section-title-bar" style="margin-top: 24px;">
-        <div class="title-with-icon">
-          <ElIcon :size="16"><Promotion /></ElIcon>
-          <span>系统事件与告警触发订阅规则</span>
-        </div>
-      </div>
-
+      <!-- 自动化告警规则与运维推送中心 -->
       <WebhookEventsCard
         :events="config.events"
+        :sending-event="sendingEvent"
         :read-only="ui.readOnly"
+        @send-event="handleSendEvent"
+        @open-rules="rulesDialogVisible = true"
+        @open-custom-notice="customNoticeDialogVisible = true"
       />
 
       <!-- 投递审计日志 -->
@@ -129,14 +138,37 @@ const {
     <TelegramConfigDialog
       v-model="configDialogVisible"
       :draft="editDraft"
+      :proxy-nodes="proxyNodes"
       :verify-result="verifyResult"
       :verifying="verifying"
+      :detecting-chat="detectingChat"
       :saving="saving"
       :testing="testing"
       :read-only="ui.readOnly"
       @verify="handleVerifyToken"
+      @detect-chat="handleDetectChat"
       @test="handleTest"
       @save="saveDialogConfig"
+    />
+
+    <!-- 弹出式告警规则与手动测试模态弹窗 -->
+    <EventRulesDialog
+      v-model="rulesDialogVisible"
+      :events="config.events"
+      :sending-event="sendingEvent"
+      :saving="saving"
+      :read-only="ui.readOnly"
+      @send-event="handleSendEvent"
+      @save="handleSave"
+    />
+
+    <!-- 弹出式自定义即时广播模态弹窗 -->
+    <CustomNoticeDialog
+      v-model="customNoticeDialogVisible"
+      :draft="customNoticeDraft"
+      :sending="sendingCustomNotice"
+      :read-only="ui.readOnly"
+      @send="handleSendCustomNotice"
     />
   </div>
 </template>

@@ -91,11 +91,14 @@ from app.schemas.site import SiteListPayload, SiteMeta
 from app.schemas.system import HealthPayload
 from app.schemas.vod import SubCategory, VodCategory, VodItem
 from app.schemas.webhook import (
+    TelegramDetectChatRequest,
+    TelegramDetectChatResult,
     TelegramVerifyRequest,
     TelegramVerifyResult,
     WebhookConfigPayload,
     WebhookDeliveryLogItem,
     WebhookLogsPayload,
+    WebhookSendEventRequest,
     WebhookTestRequest,
     WebhookTestResult,
 )
@@ -209,9 +212,12 @@ __all__ = [
     "ReleaseRollbackRequest",
     "WebhookConfigPayload",
     "WebhookLogsPayload",
+    "WebhookSendEventRequest",
     "WebhookTestRequest",
     "WebhookTestResult",
     "TelegramVerifyRequest",
     "TelegramVerifyResult",
+    "TelegramDetectChatRequest",
+    "TelegramDetectChatResult",
     "WebhookDeliveryLogItem",
 ]

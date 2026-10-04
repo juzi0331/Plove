@@ -1,23 +1,31 @@
 # 🎬 Plove 影视聚合系统 —— 全栈架构与接手部署指南
 
-> **Plove 1.0** 是一套现代化全端自适应的影视聚合流媒体系统，集成了**终端沉浸观影（Netflix 级视觉）**、**自研流媒体中继与防盗链代理**、**安全运维控制台**以及**纯本地爬虫自动化工坊**。
+> **Plove 1.0** 是一套现代化全端自适应的影视聚合流媒体系统，集成了**终端沉浸观影（Netflix 级视觉）**、**自研流媒体中继与防盗链代理**、**Telegram 官方机器人智能运维中心**、**安全运维控制台**以及**纯本地爬虫自动化工坊**。
 
 ---
 
 ## 🛠️ 技术栈总览
 
 ### 1. 后端技术栈 (Backend)
-- **核心框架**：Python 3.11+ / FastAPI 0.115+ / Uvicorn 0.30+
+- **核心框架**：Python 3.11+ / Python 3.12 / FastAPI 0.115+ / Uvicorn 0.30+
 - **数据与 ORM**：SQLAlchemy 2.0（生产环境推荐 MySQL 8.0，本地/测试环境支持 SQLite 内存库）、PyMySQL、Cryptography
 - **架构契约**：Pydantic v2 强类型约束，全局输出统一 JSON 响应信封（`Envelope[T]`）与单一来源错误码系统（`ErrorCode`）
 - **高并发与可用性**：
   - **SingleFlight 并发合并锁**：相同剧集流地址请求并发时合并为一个子进程，防止击穿源站
-  - **两级动态限流与熔断器 (Circuit Breaker)**：每站并发上限 2，全站并发上限 4，连败 5 次自动触发冷却熔断
+  - **两级动态限流与熔断器 (Circuit Breaker)**：每站并发上限 2，全站并发上限 4，连续失败达阈值自动触发冷却熔断
   - **多层级内存缓存**：首页与分类列表智能 LRU 缓存，播放直链永不缓存保证时效
 - **流媒体与代理引擎**：
   - HLS (`m3u8` 清单 / `ts` 媒体切片 / `AES-128` 密钥) 递归解析改写与中继
   - 动态站点伪装容器解封装（还原标准 MPEG-TS 串流）
-  - 第三方海报图片防盗链欺骗代理与本地持久化缓存（ETag 304 协商）
+  - 第三方海报图片防盗链欺骗代理与本地持久化磁盘缓存（ETag 304 协商，WebP 实时转换）
+- **代理节点池与网络中继**：
+  - 集成 Xray 核心内核，支持 VLESS、VMess、Shadowsocks、Trojan 及 HTTP/SOCKS5 协议节点池
+  - 为爬虫站点采集及外部通知提供智能代理链路穿透
+- **Telegram 官方机器人运维中心 (Webhooks)**：
+  - 专属 Telegram 官方 Bot API 协议，支持国内网络环境 HTTP / SOCKS5 代理穿透与 Bot 自动探测
+  - **9 大核心监控规则矩阵**：站点巡检自检、内容源连续异常与熔断、探针自愈恢复、代理节点离线、激活码首次激活、同码多端冲突踢号、接口防刷限流告警、每日运营大盘、集群启动就绪
+  - **原生 HTML 富文本广播**：支持加粗 `<b>`、等宽代码块 `<code>`、引用块 `<blockquote>`、剧透遮罩 `<tg-spoiler>` 等原生渲染
+  - **站点清单与连通性自检报告**：一键生成全站内容源健康度、熔断保护状态与网络代理清单推送到 Telegram
 - **安全与风控体系**：
   - 纯标准库实现**内存滑动窗口速率限制器**（防激活码暴力破解，超限返回 429）
   - 管理员强令牌校验（使用 `secrets.compare_digest` 防时序侧信道攻击，强校验拦截常见弱口令）
@@ -29,7 +37,7 @@
 - **核心底座**：Vue 3.5+（Composition API / `<script setup>`）/ TypeScript 5.7+ / Vite 6.0+
 - **状态管理与路由**：Pinia 2.3+ / Vue Router 4.5+
 - **UI 组件体系**：
-  - **Element Plus**：安全运维控制台全功能交互
+  - **Element Plus**：安全运维控制台全功能交互与弹窗化中心
   - **Vant 4**：移动端与 H5 响应式组件适配
   - **原生 CSS (Vanilla CSS)**：1:1 像素级复刻 Netflix 沉浸式暗黑极简视觉与流式微动画
 - **播放引擎**：Hls.js 1.5+（支持 AES-128 软解兜底、起播容错自愈、掉线平滑重试与 iOS 原生 HLS 回退）
@@ -49,7 +57,12 @@
 Plove1.0/
 ├── frontend/             # 前端工程（Vue 3 + Vite + Vant + Element Plus + Hls.js）
 │   ├── src/
-│   │   ├── admin/        # 安全运维控制台全套源码（站点编排/缓存中心/发码/节点监控）
+│   │   ├── admin/        # 安全运维控制台（站点编排/缓存中心/发码/节点监控/机器人中心）
+│   │   │   ├── views/
+│   │   │   │   ├── webhooks/    # Telegram 机器人管理、事件弹窗与自定义广播
+│   │   │   │   ├── proxy-nodes/ # 代理节点池管理
+│   │   │   │   ├── cache-center/# 缓存中心与海报中继
+│   │   │   │   └── ...
 │   │   ├── api/          # 跨端客户端 API 与会话凭证管理
 │   │   ├── components/   # Netflix 风格卡片、导航栏等公共组件
 │   │   ├── stores/       # Pinia 状态树（设备激活态、站点源列表等）
@@ -61,23 +74,23 @@ Plove1.0/
 ├── backend/              # 后端核心微服务（FastAPI + SQLAlchemy + Pydantic v2）
 │   ├── app/
 │   │   ├── api/          # 薄路由层（v1/catalog, v1/activation, v1/system, v1/admin/）
-│   │   ├── core/         # 基础内核（配置、安全SSRF、日志、异常处理、限流器、中间件）
+│   │   ├── core/         # 基础内核（配置、安全SSRF、日志、限流器、中间件）
 │   │   ├── crawler/      # 爬虫子进程调度器、并发守卫与注册表
 │   │   ├── db/           # 数据库引擎与会话工厂
 │   │   ├── models/       # SQLAlchemy 数据表模型（ActivationCode, Device, SiteSetting）
 │   │   ├── schemas/      # Pydantic 契约模型（唯一来源）
-│   │   └── services/     # 核心业务服务（媒体代理、爬虫编排、激活码、站点控制）
+│   │   └── services/     # 核心业务服务（媒体代理、爬虫编排、激活码、Webhook服务）
+│   │       └── webhook/  # Telegram 机器人调度、签名限流、消息美化与审计
 │   ├── data/             # 图片代理本地持久化磁盘缓存（img_cache）
-│   ├── tests/            # 308+ 自动化单元、集成与安全回归测试套件
+│   ├── tests/            # 自动化单元、集成与安全回归测试套件
 │   ├── .env              # 后端环境变量（运行环境、密钥、数据库连接）
 │   └── pyproject.toml    # Python 项目配置与标准依赖清单
 │
 ├── crawler/              # 爬虫自动化工坊（SDK + 站点集 + 独立体检控制台）
 │   ├── crawler_kit/      # 纯标准库爬虫工具包（Client, parse, clean, cli）
-│   ├── sites/            # 站点独立采集适配器（如 ai2048.py, ncat21.py 等）
+│   ├── sites/            # 站点独立采集适配器
 │   └── service/          # 本地爬虫 Web 探索与全链路冒烟测试工坊（127.0.0.1:8088）
 │
-├── security_audit_report.md # 安全审计报告（防破解、防绕过、鉴权加固）
 └── README.md             # 本接手指南
 ```
 
@@ -89,7 +102,7 @@ Plove1.0/
 | :--- | :--- | :--- | :--- |
 | **服务总控直达 (Portal)** | `0.0.0.0:4001` | `http://<ip>:4001/` | 一屏聚合导航（带防护密码，便于快速跳转各端） |
 | **前端用户端 (Frontend)** | `0.0.0.0:4000` | `http://<ip>:4000/` | 终端影视浏览与播放；请求由 Vite / 反代服务转发至后端 |
-| **安全运维控制台 (Manage)** | `0.0.0.0:4000` | `http://<ip>:4000/_manage` | 安全混淆入口；用于站点启停、广告清洗、激活码管理 |
+| **安全运维控制台 (Manage)** | `0.0.0.0:4000` | `http://<ip>:4000/_manage` | 安全混淆入口；用于站点启停、发码、Telegram 机器人配置 |
 | **后端 API 网关 (Backend)** | `0.0.0.0:4001` | `http://<ip>:4001/api/v1` | 业务与代理接口；生产环境强制禁用 `/docs` 以防泄露接口形状 |
 | **爬虫体检工坊 (Crawler)** | `127.0.0.1:8088` | `http://127.0.0.1:8088/` | **仅限纯本地访问**；提供站点 AI 提示词生成与全链路体检沙盒 |
 
@@ -129,98 +142,78 @@ npm run dev
 > - 前台用户访问：`http://127.0.0.1:4000/`  
 > - 后台控制台入口：`http://127.0.0.1:4000/_manage/login`（输入 `.env` 中配置的 `PLOVE_ADMIN_TOKEN`）
 
-### 3. 启动爬虫本地工坊（端口 8088，可选）
+### 3. 运行全量测试验证
 
 ```bash
-# 在项目根目录下执行
-python -m uvicorn crawler.service.main:app --host 127.0.0.1 --port 8088 --reload
-```
-> 爬虫 Web 体检工作台：`http://127.0.0.1:8088/`
-
-### 4. 运行全量测试验证
-
-```bash
-# 运行后端单元测试与安全专项测试套件（308+ 测试项全绿）
+# 运行后端单元测试与安全专项测试套件
 cd backend
 pytest
 
-# 运行前端 TypeScript 强类型校验
+# 运行前端 TypeScript 强类型校验与构建
 cd ../frontend
-npm run typecheck
+npm run build
 ```
 
 ---
 
-## 🐧 简易 VPS 生产部署指南
+## 🐧 简易 VPS / 服务器生产部署
 
-推荐使用 **Ubuntu 22.04+ / Debian 11+**，以 **Systemd 守护后端进程 + Nginx 动静分离反代** 方式进行极简生产部署。
+推荐使用 **Ubuntu 22.04+ / Debian 11+** 或 **宝塔 Linux 面板**，以 **Systemd / Supervisor 守护后端进程 + Nginx 动静分离反代** 方式进行极简生产部署。
 
-### 步骤 1：VPS 基础环境安装
+### 1. 部署后端服务 (Systemd 守护)
 
 ```bash
-sudo apt update && sudo apt install -y python3-pip python3-venv nodejs npm nginx git
+cd /var/www/
+git clone <your-repo-url> Plove
+cd /var/www/Plove/backend
+
+python3 -m venv .venv
+./.venv/bin/pip install --upgrade pip
+./.venv/bin/pip install -e .
 ```
 
-### 步骤 2：部署后端服务 (Systemd 守护)
+配置生产环境配置文件 `/var/www/Plove/backend/.env`：
+```ini
+PLOVE_ENV=prod
+PLOVE_LOG_LEVEL=INFO
+PLOVE_HOST=127.0.0.1
+PLOVE_PORT=4001
+# 必须使用生成的强随机管理令牌（至少 32 字符，禁止弱密码）
+PLOVE_ADMIN_TOKEN=换成你的长随机高强度密钥_至少32位
+# 生产环境强制关停 Swagger 交互文档
+PLOVE_DOCS_ENABLED=false
+# 数据库连接（支持 MySQL 或 本地 SQLite）
+PLOVE_DATABASE_URL=sqlite:////var/www/Plove/backend/data/plove.db
+```
 
-1. 克隆代码并安装后端依赖：
-   ```bash
-   cd /var/www/
-   git clone <your-repo-url> Plove
-   cd /var/www/Plove/backend
+创建 Systemd 守护服务文件 `/etc/systemd/system/plove-backend.service`：
+```ini
+[Unit]
+Description=Plove Backend API Service
+After=network.target
 
-   python3 -m venv .venv
-   ./.venv/bin/pip install --upgrade pip
-   ./.venv/bin/pip install -e .
-   ```
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/Plove/backend
+ExecStart=/var/www/Plove/backend/.venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 4001 --workers 2
+Restart=always
+RestartSec=5
+EnvironmentFile=/var/www/Plove/backend/.env
 
-2. 配置生产环境配置文件 `/var/www/Plove/backend/.env`：
-   ```ini
-   PLOVE_ENV=prod
-   PLOVE_LOG_LEVEL=INFO
-   PLOVE_HOST=127.0.0.1
-   PLOVE_PORT=4001
-   # 必须使用生成的强随机管理令牌（至少 32 字符）
-   PLOVE_ADMIN_TOKEN=换成你的长随机高强度密钥_至少32位
-   # 生产环境强制关停 Swagger 交互文档
-   PLOVE_DOCS_ENABLED=false
-   # 数据库连接（支持 MySQL 或 本地 SQLite）
-   PLOVE_DATABASE_URL=sqlite:////var/www/Plove/backend/data/plove.db
-   ```
+[Install]
+WantedBy=multi-user.target
+```
 
-3. 创建 Systemd 守护服务文件：
-   ```bash
-   sudo nano /etc/systemd/system/plove-backend.service
-   ```
-   写入以下内容：
-   ```ini
-   [Unit]
-   Description=Plove Backend API Service
-   After=network.target
+启动并设置开机自启：
+```bash
+sudo chown -R www-data:www-data /var/www/Plove/backend/data
+sudo systemctl daemon-reload
+sudo systemctl enable --now plove-backend
+```
 
-   [Service]
-   Type=simple
-   User=www-data
-   Group=www-data
-   WorkingDirectory=/var/www/Plove/backend
-   ExecStart=/var/www/Plove/backend/.venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 4001 --workers 2
-   Restart=always
-   RestartSec=5
-   EnvironmentFile=/var/www/Plove/backend/.env
-
-   [Install]
-   WantedBy=multi-user.target
-   ```
-
-4. 启动并设置开机自启：
-   ```bash
-   sudo chown -R www-data:www-data /var/www/Plove/backend/data
-   sudo systemctl daemon-reload
-   sudo systemctl enable --now plove-backend
-   sudo systemctl status plove-backend
-   ```
-
-### 步骤 3：编译前端静态包
+### 2. 编译前端静态包
 
 ```bash
 cd /var/www/Plove/frontend
@@ -229,20 +222,14 @@ npm run build
 # 构建产物将生成在 /var/www/Plove/frontend/dist 目录中
 ```
 
-### 步骤 4：配置 Nginx 反向代理与动静分离
+### 3. 配置 Nginx 反向代理与动静分离
 
 编辑 Nginx 站点配置：
-```bash
-sudo nano /etc/nginx/sites-available/plove
-```
-
-写入标准反向代理模板（请将 `your-domain.com` 替换为真实域名）：
 ```nginx
 server {
     listen 80;
     server_name your-domain.com;
 
-    # 客户端上传与缓冲区
     client_max_body_size 50M;
 
     # 前端静态资源托管
@@ -262,34 +249,22 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
 
-        # 流媒体切片长连接与关闭代理缓冲
+        # 流媒体切片长连接与关闭代理缓冲（关键）
         proxy_buffering off;
-        proxy_read_timeout 120s;
-        proxy_send_timeout 120s;
+        proxy_http_version 1.1;
+        proxy_read_timeout 180s;
+        proxy_send_timeout 180s;
     }
 
-    # 安全头
+    # 安全响应头
     add_header X-Frame-Options "DENY" always;
     add_header X-Content-Type-Options "nosniff" always;
 }
 ```
 
-启用站点并启动 Nginx：
-```bash
-sudo ln -s /etc/nginx/sites-available/plove /etc/nginx/sites-enabled/
-sudo nginx -t
-sudo systemctl reload nginx
-```
-
-> 💡 **申请免费 HTTPS 证书（强烈建议）**：
-> ```bash
-> sudo apt install -y certbot python3-certbot-nginx
-> sudo certbot --nginx -d your-domain.com
-> ```
-
 ---
 
-## 🔒 核心安全架构说明
+## 🔒 核心安全与鉴权机制
 
 1. **设备单在线抢占鉴权**：
    - 激活码为时长制，首次激活起算时长；

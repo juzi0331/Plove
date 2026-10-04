@@ -44,16 +44,6 @@ def load_config(config_path: Path) -> WebhookConfigPayload:
         cfg.telegram.chat_id = env_tg_chat.strip()
     if env_tg_proxy := os.environ.get("PLOVE_TELEGRAM_PROXY_URL"):
         cfg.telegram.proxy_url = env_tg_proxy.strip()
-    if env_wechat := os.environ.get("PLOVE_WECHAT_WEBHOOK_URL"):
-        cfg.wechat_work.webhook_url = env_wechat.strip()
-    if env_feishu_url := os.environ.get("PLOVE_FEISHU_WEBHOOK_URL"):
-        cfg.feishu.webhook_url = env_feishu_url.strip()
-    if env_feishu_sec := os.environ.get("PLOVE_FEISHU_SECRET"):
-        cfg.feishu.secret = env_feishu_sec.strip()
-    if env_custom_url := os.environ.get("PLOVE_CUSTOM_HTTP_URL"):
-        cfg.custom_http.url = env_custom_url.strip()
-    if env_custom_token := os.environ.get("PLOVE_CUSTOM_HTTP_TOKEN"):
-        cfg.custom_http.secret_token = env_custom_token.strip()
 
     return cfg
 

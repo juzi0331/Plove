@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
+import html
 import json
 import logging
 from pathlib import Path
@@ -15,13 +16,10 @@ import uuid
 
 import httpx
 
-from app.core.security import is_safe_public_url
 from app.schemas.webhook import (
-    CustomHttpConfig,
-    FeishuConfig,
     TelegramConfig,
+    TelegramDetectChatResult,
     TelegramVerifyResult,
-    WeChatWorkConfig,
     WebhookConfigPayload,
     WebhookDeliveryLogItem,
     WebhookTestResult,
@@ -34,14 +32,11 @@ from app.services.webhook.config import (
 from app.services.webhook.signing import (
     TelegramRateLimiter,
     _resolve_telegram_proxy,
-    generate_feishu_sign,
 )
 from app.services.webhook.templates import (
+    build_telegram_reply_markup,
     collect_daily_report_metrics,
-    format_custom_http_payload,
-    format_feishu_content,
     format_telegram_message,
-    format_wechat_markdown,
 )
 
 logger = logging.getLogger(__name__)
@@ -111,6 +106,7 @@ class WebhookService:
         title: str,
         content: str,
         fields: dict[str, Any] | None = None,
+        raw_html: bool = False,
     ) -> WebhookTestResult:
         """针对指定通道进行单次推送投递。"""
         start = time.perf_counter()
@@ -119,20 +115,14 @@ class WebhookService:
 
         try:
             if channel == "telegram":
-                res = self._send_telegram(cfg.telegram, title, content, fields)
-            elif channel == "wechat_work":
-                res = self._send_wechat(cfg.wechat_work, title, content, fields)
-            elif channel == "feishu":
-                res = self._send_feishu(cfg.feishu, title, content, fields)
-            elif channel == "custom_http":
-                res = self._send_custom_http(cfg.custom_http, event_type, title, content, fields)
+                res = self._send_telegram(cfg.telegram, title, content, fields, event_type=event_type, raw_html=raw_html)
             else:
                 return WebhookTestResult(
                     channel=channel,
                     ok=False,
                     status_code=400,
                     duration_ms=0,
-                    message="未知的推送通道类型",
+                    message="未知的推送通道类型（目前仅支持 Telegram 机器人）",
                     error="INVALID_CHANNEL",
                 )
 
@@ -202,12 +192,62 @@ class WebhookService:
         except Exception as exc:
             return TelegramVerifyResult(ok=False, error=f"网络连接失败 (代理: {proxy or '直连'}): {exc}")
 
+    def detect_telegram_chat(self, bot_token: str, proxy_url: str = "") -> TelegramDetectChatResult:
+        """从 Telegram getUpdates 抓取最新与 Bot 互动的 Chat ID。"""
+        token = bot_token.strip()
+        if not token:
+            return TelegramDetectChatResult(ok=False, error="Bot Token 不能为空")
+
+        url = f"https://api.telegram.org/bot{token}/getUpdates?limit=10&offset=-10"
+        proxy = _resolve_telegram_proxy(proxy_url)
+        try:
+            with httpx.Client(proxy=proxy, timeout=8.0) as client:
+                resp = client.get(url)
+                data = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else {}
+                if resp.status_code == 200 and data.get("ok"):
+                    results = data.get("result", [])
+                    if not results:
+                        return TelegramDetectChatResult(
+                            ok=False,
+                            error="未检测到近期对话。请先在 Telegram 搜索该机器人并点击【Start】或发送一条任意消息（如 hi），稍等 2 秒后重试！",
+                        )
+                    for item in reversed(results):
+                        chat = (
+                            item.get("message")
+                            or item.get("channel_post")
+                            or item.get("my_chat_member")
+                            or item.get("edited_message")
+                            or {}
+                        ).get("chat")
+                        if chat and "id" in chat:
+                            cid = str(chat["id"])
+                            ctype = chat.get("type", "private")
+                            title = chat.get("title") or chat.get("first_name") or chat.get("username") or ""
+                            uname = chat.get("username") or ""
+                            return TelegramDetectChatResult(
+                                ok=True,
+                                chat_id=cid,
+                                chat_title=title,
+                                username=uname,
+                                chat_type=ctype,
+                            )
+                    return TelegramDetectChatResult(
+                        ok=False,
+                        error="对话记录中未解析到有效 Chat ID，请向机器人发送一条文本消息后重试",
+                    )
+                err_desc = data.get("description") or f"HTTP {resp.status_code}"
+                return TelegramDetectChatResult(ok=False, error=f"Telegram API 拒绝: {err_desc}")
+        except Exception as exc:
+            return TelegramDetectChatResult(ok=False, error=f"网络连接失败 (代理: {proxy or '直连'}): {exc}")
+
     def _send_telegram(
         self,
         cfg: TelegramConfig,
         title: str,
         content: str,
         fields: dict[str, Any] | None = None,
+        event_type: str = "",
+        raw_html: bool = False,
     ) -> WebhookTestResult:
         if not cfg.bot_token or not cfg.chat_id:
             return WebhookTestResult(
@@ -229,14 +269,28 @@ class WebhookService:
             )
 
         url = f"https://api.telegram.org/bot{cfg.bot_token.strip()}/sendMessage"
-        text = format_telegram_message(title, content, fields)
+        is_html = raw_html or (event_type == "custom" and any(tag in content for tag in ("<b>", "<code>", "<i>", "<blockquote>", "<pre>", "<tg-spoiler>")))
+        if is_html:
+            text = content.strip()
+            if fields:
+                field_lines = [""]
+                for k, v in fields.items():
+                    field_lines.append(f"▫️ <b>{html.escape(str(k))}：</b> <code>{html.escape(str(v))}</code>")
+                text += "\n" + "\n".join(field_lines)
+        else:
+            text = format_telegram_message(title, content, fields, event_type=event_type)
 
-        payload = {
+        payload: dict[str, Any] = {
             "chat_id": cfg.chat_id.strip(),
             "text": text,
             "parse_mode": "HTML",
             "disable_web_page_preview": True,
         }
+
+        # 挂载快捷控制台 Inline 按钮
+        reply_markup = build_telegram_reply_markup(event_type, cfg.console_url)
+        if reply_markup:
+            payload["reply_markup"] = reply_markup
 
         proxy = _resolve_telegram_proxy(cfg.proxy_url)
         start = time.perf_counter()
@@ -273,6 +327,27 @@ class WebhookService:
                         continue
 
                     err_msg = data.get("description") or f"HTTP {resp.status_code}"
+
+                    # 若由于 HTML 格式解析异常（如特殊符号未闭合），自动降级为普通纯文本投递
+                    if resp.status_code == 400 and "can't parse entities" in err_msg.lower():
+                        logger.warning("Telegram HTML 解析异常，自动降级为纯文本重试: %s", err_msg)
+                        try:
+                            fallback_payload = dict(payload)
+                            fallback_payload.pop("parse_mode", None)
+                            fb_resp = client.post(url, json=fallback_payload)
+                            if fb_resp.status_code == 200:
+                                fb_data = fb_resp.json() if fb_resp.headers.get("content-type", "").startswith("application/json") else {}
+                                if fb_data.get("ok", False):
+                                    return WebhookTestResult(
+                                        channel="telegram",
+                                        ok=True,
+                                        status_code=200,
+                                        duration_ms=int((time.perf_counter() - start) * 1000),
+                                        message="Telegram 消息投递成功（HTML降级纯文本）",
+                                    )
+                        except Exception as fb_exc:
+                            logger.error("Telegram 纯文本降级投递异常: %s", fb_exc)
+
                     return WebhookTestResult(
                         channel="telegram",
                         ok=False,
@@ -304,155 +379,6 @@ class WebhookService:
             error="MAX_RETRIES_EXCEEDED",
         )
 
-    def _send_wechat(
-        self,
-        cfg: WeChatWorkConfig,
-        title: str,
-        content: str,
-        fields: dict[str, Any] | None = None,
-    ) -> WebhookTestResult:
-        if not cfg.webhook_url or not cfg.webhook_url.startswith("http"):
-            return WebhookTestResult(
-                channel="wechat_work",
-                ok=False,
-                status_code=400,
-                message="企业微信群机器人 Webhook 地址不合法",
-                error="INVALID_WEBHOOK_URL",
-            )
-
-        if not is_safe_public_url(cfg.webhook_url):
-            return WebhookTestResult(
-                channel="wechat_work",
-                ok=False,
-                status_code=400,
-                message="企业微信 Webhook 目标地址不合法或指向受限内网",
-                error="UNSAFE_URL",
-            )
-
-        md = format_wechat_markdown(title, content, fields)
-        payload = {
-            "msgtype": "markdown",
-            "markdown": {"content": md},
-        }
-        return self._http_post(cfg.webhook_url, payload, channel="wechat_work")
-
-    def _send_feishu(
-        self,
-        cfg: FeishuConfig,
-        title: str,
-        content: str,
-        fields: dict[str, Any] | None = None,
-    ) -> WebhookTestResult:
-        if not cfg.webhook_url or not cfg.webhook_url.startswith("http"):
-            return WebhookTestResult(
-                channel="feishu",
-                ok=False,
-                status_code=400,
-                message="飞书群机器人 Webhook 地址不合法",
-                error="INVALID_WEBHOOK_URL",
-            )
-
-        if not is_safe_public_url(cfg.webhook_url):
-            return WebhookTestResult(
-                channel="feishu",
-                ok=False,
-                status_code=400,
-                message="飞书 Webhook 目标地址不合法或指向受限内网",
-                error="UNSAFE_URL",
-            )
-
-        text = format_feishu_content(title, content, fields)
-        payload: dict[str, Any] = {
-            "msg_type": "text",
-            "content": {"text": text},
-        }
-
-        # 飞书签名校验
-        if cfg.secret:
-            timestamp, sign = generate_feishu_sign(cfg.secret)
-            payload["timestamp"] = timestamp
-            payload["sign"] = sign
-
-        return self._http_post(cfg.webhook_url, payload, channel="feishu")
-
-    def _send_custom_http(
-        self,
-        cfg: CustomHttpConfig,
-        event_type: str,
-        title: str,
-        content: str,
-        fields: dict[str, Any] | None = None,
-    ) -> WebhookTestResult:
-        if not cfg.url or not cfg.url.startswith("http"):
-            return WebhookTestResult(
-                channel="custom_http",
-                ok=False,
-                status_code=400,
-                message="自定义 HTTP Webhook 地址未配置或不合法",
-                error="INVALID_URL",
-            )
-
-        # 严格防御针对云元数据、本地回环或内网端口的 SSRF
-        if not is_safe_public_url(cfg.url):
-            return WebhookTestResult(
-                channel="custom_http",
-                ok=False,
-                status_code=400,
-                message="目标地址不合法或指向内网受限网段",
-                error="UNSAFE_URL",
-            )
-
-        payload = format_custom_http_payload(event_type, title, content, fields)
-        headers = {
-            "Content-Type": "application/json",
-            "User-Agent": "Plove-Webhook-Dispatcher/1.0",
-        }
-        if cfg.secret_token:
-            headers["X-Plove-Token"] = cfg.secret_token
-
-        return self._http_post(cfg.url, payload, headers=headers, channel="custom_http")
-
-    def _http_post(
-        self,
-        url: str,
-        payload: dict[str, Any],
-        headers: dict[str, str] | None = None,
-        channel: str = "",
-    ) -> WebhookTestResult:
-        data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-        req_headers = {"Content-Type": "application/json"}
-        if headers:
-            req_headers.update(headers)
-
-        req = urllib.request.Request(url, data=data, headers=req_headers, method="POST")
-        try:
-            with urllib.request.urlopen(req, timeout=5.0) as resp:
-                status = resp.status
-                ok = 200 <= status < 300
-                return WebhookTestResult(
-                    channel=channel,
-                    ok=ok,
-                    status_code=status,
-                    message="投递成功" if ok else f"远端响应状态码 {status}",
-                )
-        except urllib.error.HTTPError as exc:
-            err_body = exc.read().decode("utf-8", errors="replace") if exc.fp else ""
-            return WebhookTestResult(
-                channel=channel,
-                ok=False,
-                status_code=exc.code,
-                message=f"HTTP 错误 {exc.code}: {exc.reason}",
-                error=err_body[:200] or str(exc),
-            )
-        except Exception as exc:
-            return WebhookTestResult(
-                channel=channel,
-                ok=False,
-                status_code=0,
-                message=f"网络请求失败: {exc}",
-                error=str(exc),
-            )
-
     # ------------------------------------------------------------------ 广播与告警接口
 
     def _do_dispatch(
@@ -465,25 +391,29 @@ class WebhookService:
         cfg = self.get_config()
         events = cfg.events
 
-        # 校验各事件类型的订阅开关
+        # 校验 8 大事件类型的订阅开关
         if event_type == "circuit_break" and not events.circuit_break:
             return []
+        if event_type == "circuit_recover" and not events.circuit_recover:
+            return []
+        if event_type == "site_health_report" and not events.site_health_report:
+            return []
         if event_type == "code_activated" and not events.code_activated:
+            return []
+        if event_type == "device_conflict" and not events.device_conflict:
+            return []
+        if event_type == "security_alert" and not events.security_alert:
             return []
         if event_type == "proxy_offline" and not events.proxy_offline:
             return []
         if event_type == "daily_report" and not events.daily_report:
             return []
+        if event_type == "system_startup" and not events.system_startup:
+            return []
 
         results = []
         if cfg.telegram.enabled:
             results.append(self.send_to_channel("telegram", event_type, title, content, fields))
-        if cfg.wechat_work.enabled:
-            results.append(self.send_to_channel("wechat_work", event_type, title, content, fields))
-        if cfg.feishu.enabled:
-            results.append(self.send_to_channel("feishu", event_type, title, content, fields))
-        if cfg.custom_http.enabled:
-            results.append(self.send_to_channel("custom_http", event_type, title, content, fields))
         return results
 
     def dispatch_event(

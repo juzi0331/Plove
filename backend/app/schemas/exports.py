@@ -103,6 +103,8 @@ from app.schemas.site import SiteListPayload, SiteMeta
 from app.schemas.system import HealthPayload
 from app.schemas.vod import SubCategory, VodCategory, VodItem
 from app.schemas.webhook import (
+    TelegramDetectChatRequest,
+    TelegramDetectChatResult,
     TelegramVerifyRequest,
     TelegramVerifyResult,
     WebhookConfigPayload,
@@ -217,5 +219,7 @@ EXPORTS: dict[str, type[BaseModel]] = {
     "admin-webhook-test-result": WebhookTestResult,
     "admin-telegram-verify-request": TelegramVerifyRequest,
     "admin-telegram-verify-result": TelegramVerifyResult,
+    "admin-telegram-detect-chat-request": TelegramDetectChatRequest,
+    "admin-telegram-detect-chat-result": TelegramDetectChatResult,
     "admin-webhook-delivery-log-item": WebhookDeliveryLogItem,
 }

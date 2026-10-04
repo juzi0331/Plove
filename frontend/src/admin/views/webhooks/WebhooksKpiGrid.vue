@@ -49,9 +49,9 @@ defineProps<{
       <div class="kpi-title">已订阅告警事件</div>
       <div class="kpi-main">
         <span class="kpi-num">{{ activeEventsCount }}</span>
-        <span class="kpi-unit">/ 4 项</span>
+        <span class="kpi-unit">/ 9 项</span>
       </div>
-      <div class="kpi-desc">熔断报警、节点离线、激活发码</div>
+      <div class="kpi-desc">覆盖站点巡检、熔断自愈、抢线防刷等</div>
     </div>
   </div>
 </template>

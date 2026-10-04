@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   ElButton,
   ElDialog,
@@ -6,39 +8,128 @@ import {
   ElFormItem,
   ElIcon,
   ElInput,
+  ElOption,
+  ElOptionGroup,
+  ElSelect,
   ElSwitch,
+  ElTag,
 } from 'element-plus'
-import { CircleCheck, WarningFilled } from '@element-plus/icons-vue'
-import type { TelegramVerifyResult } from '@/api/types'
+import { CircleCheck, Refresh, TopRight, WarningFilled } from '@element-plus/icons-vue'
+import type { ProxyNodeItem, TelegramVerifyResult } from '@/api/types'
+import { adminPath } from '../../config'
 
-const props = defineProps<{
-  modelValue: boolean
-  draft: {
-    bot_token: string
-    chat_id: string
-    proxy_url: string
-    enabled: boolean
-  }
-  verifyResult: TelegramVerifyResult | null
-  verifying: boolean
-  saving: boolean
-  testing: boolean
-  readOnly: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    modelValue: boolean
+    draft: {
+      bot_token: string
+      chat_id: string
+      proxy_url: string
+      console_url?: string
+      enabled: boolean
+    }
+    proxyNodes?: ProxyNodeItem[]
+    verifyResult: TelegramVerifyResult | null
+    verifying: boolean
+    detectingChat?: boolean
+    saving: boolean
+    testing: boolean
+    readOnly: boolean
+  }>(),
+  {
+    proxyNodes: () => [],
+    detectingChat: false,
+  },
+)
 
 const emit = defineEmits<{
   'update:modelValue': [val: boolean]
   verify: []
+  detectChat: []
   test: []
   save: []
 }>()
+
+const router = useRouter()
+
+function fillCurrentOrigin(): void {
+  if (typeof window !== 'undefined') {
+    props.draft.console_url = window.location.origin
+  }
+}
+
+// 代理模式选择
+const proxyChoice = ref('')
+const customProxyInput = ref('')
+
+function syncProxyFromDraft(): void {
+  const current = (props.draft.proxy_url || '').trim()
+  if (!current) {
+    proxyChoice.value = ''
+    customProxyInput.value = ''
+    return
+  }
+  if (current.toLowerCase() === 'direct') {
+    proxyChoice.value = 'direct'
+    customProxyInput.value = ''
+    return
+  }
+  const matchedNode = (props.proxyNodes || []).find(
+    (n) => n.proxy_url === current || n.id === current,
+  )
+  if (matchedNode) {
+    proxyChoice.value = matchedNode.proxy_url
+    customProxyInput.value = ''
+  } else {
+    proxyChoice.value = '__custom__'
+    customProxyInput.value = current
+  }
+}
+
+watch(
+  () => [props.modelValue, props.draft.proxy_url, props.proxyNodes],
+  () => {
+    if (props.modelValue) {
+      syncProxyFromDraft()
+    }
+  },
+  { immediate: true },
+)
+
+function onProxyChoiceChange(val: string): void {
+  if (val === '__custom__') {
+    props.draft.proxy_url = customProxyInput.value.trim()
+  } else {
+    props.draft.proxy_url = val
+  }
+}
+
+function onCustomProxyInput(val: string): void {
+  customProxyInput.value = val
+  if (proxyChoice.value === '__custom__') {
+    props.draft.proxy_url = val.trim()
+  }
+}
+
+function goToProxyNodes(): void {
+  emit('update:modelValue', false)
+  void router.push(adminPath('/proxy-nodes'))
+}
+
+function formatNodeLabel(node: ProxyNodeItem): string {
+  const proto = (node.protocol || 'TCP').toUpperCase()
+  const port = node.port ? `:${node.port}` : ''
+  const srv = node.server ? ` (${node.server}${port})` : ''
+  const ping = node.ping_ms ? ` - ${node.ping_ms}ms` : ''
+  return `${node.name || '未命名节点'} [${proto}${srv}${ping}]`
+}
 </script>
 
 <template>
   <ElDialog
     :model-value="props.modelValue"
     title="Telegram 机器人参数配置"
-    width="560px"
+    width="600px"
     append-to-body
     destroy-on-close
     class="bot-config-dialog"
@@ -67,7 +158,7 @@ const emit = defineEmits<{
             </ElButton>
           </div>
           <div class="form-hint">
-            向 Telegram 中的 <strong>@BotFather</strong> 发起 <code>/newbot</code> 即可免费获取 API Token
+            在 Telegram 中向 <strong>@BotFather</strong> 发送 <code>/newbot</code> 即可免费获取 API Token。
           </div>
 
           <!-- Token 校验回显卡片 -->
@@ -90,31 +181,140 @@ const emit = defineEmits<{
           </div>
         </ElFormItem>
 
-        <!-- 2. Chat ID -->
+        <!-- 2. 网络代理选择 -->
+        <ElFormItem label="网络连接代理 (Proxy)">
+          <div class="proxy-select-container">
+            <ElSelect
+              :model-value="proxyChoice"
+              placeholder="选择网络代理连接方式"
+              style="width: 100%"
+              :disabled="props.readOnly"
+              @change="onProxyChoiceChange"
+            >
+              <ElOption label="🌐 自动继承本地默认代理池 (http://127.0.0.1:10809)" value="" />
+              <ElOption label="⚡ 直连 (不通过任何代理，适用于海外服务器)" value="direct" />
+              <ElOptionGroup
+                v-if="props.proxyNodes && props.proxyNodes.length > 0"
+                label="已添加的代理节点池"
+              >
+                <ElOption
+                  v-for="node in props.proxyNodes"
+                  :key="node.id"
+                  :label="formatNodeLabel(node)"
+                  :value="node.proxy_url"
+                >
+                  <div class="proxy-node-option-item">
+                    <ElTag
+                      size="small"
+                      :type="node.protocol === 'vless' ? 'warning' : 'primary'"
+                      effect="plain"
+                    >
+                      {{ (node.protocol || 'TCP').toUpperCase() }}
+                    </ElTag>
+                    <span class="node-name-text">{{ node.name }}</span>
+                    <span class="node-url-text">{{ node.server }}:{{ node.port }}</span>
+                    <ElTag v-if="node.ping_ms" size="small" type="success" effect="light">
+                      {{ node.ping_ms }}ms
+                    </ElTag>
+                  </div>
+                </ElOption>
+              </ElOptionGroup>
+              <ElOption label="✏️ 自定义代理地址（手动输入 HTTP / SOCKS5）" value="__custom__" />
+            </ElSelect>
+
+            <!-- 手动输入自定义代理输入框 -->
+            <transition name="el-fade-in-linear">
+              <div v-if="proxyChoice === '__custom__'" class="custom-proxy-wrap">
+                <ElInput
+                  :model-value="customProxyInput"
+                  placeholder="例如：http://127.0.0.1:10809 或 socks5://127.0.0.1:10808"
+                  :disabled="props.readOnly"
+                  @input="onCustomProxyInput"
+                />
+              </div>
+            </transition>
+
+            <div class="proxy-pool-manage-link">
+              <ElButton
+                type="primary"
+                link
+                size="small"
+                :icon="TopRight"
+                @click="goToProxyNodes"
+              >
+                前往代理节点池管理（添加多个 VLESS 节点 / 测速 / 导出）
+              </ElButton>
+            </div>
+          </div>
+          <div class="form-hint">
+            国内服务器访问 Telegram 必须通过代理。支持直接下拉选择已配置的代理节点或手动填入。
+          </div>
+        </ElFormItem>
+
+        <!-- 3. Chat ID -->
         <ElFormItem label="目标 Chat ID / Group ID">
-          <ElInput
-            v-model="props.draft.chat_id"
-            placeholder="例如：-1001234567890 或管理员个人 ID"
-            :disabled="props.readOnly"
-          />
-          <div class="form-hint">
-            接收告警的管理员个人 ID 或 Telegram 群组的负数 ID（需先将机器人拉入群中并设为管理员）
+          <div class="chat-id-row">
+            <ElInput
+              v-model="props.draft.chat_id"
+              placeholder="例如：123456789 (个人 ID) 或 -1001234567890 (群组 ID)"
+              :disabled="props.readOnly"
+            />
+            <ElButton
+              type="primary"
+              plain
+              :icon="Refresh"
+              :loading="props.detectingChat"
+              :disabled="!props.draft.bot_token || props.readOnly"
+              @click="emit('detectChat')"
+            >
+              自动获取最新 Chat ID
+            </ElButton>
+          </div>
+
+          <!-- 贴心的新手指引卡片 -->
+          <div class="chat-guidance-card">
+            <div class="guidance-line">
+              <ElTag size="small" type="success" effect="light">💡 测试阶段无需建群</ElTag>
+              <span class="guidance-text">
+                在 Telegram 中搜索你的机器人用户名
+                <strong v-if="props.verifyResult?.username">(@{{ props.verifyResult.username }})</strong>，
+                点击 <strong>【Start】</strong> 或给它发送任意一条消息（如 <code>hi</code>），然后点击上方
+                <strong>【自动获取最新 Chat ID】</strong> 即可一键填入管理员个人私聊 ID；亦可向官方 <code>@userinfobot</code> 发送消息直接查看个人 ID。
+              </span>
+            </div>
+            <div class="guidance-line" style="margin-top: 8px;">
+              <ElTag size="small" type="info" effect="plain">👥 运维群组推送</ElTag>
+              <span class="guidance-text">
+                若需推送到群组，将机器人拉入群并设为管理员，在群里发一条消息后再点击 <strong>【自动获取最新 Chat ID】</strong> 即可抓取负数群组 ID。
+              </span>
+            </div>
           </div>
         </ElFormItem>
 
-        <!-- 3. 网络代理 -->
-        <ElFormItem label="网络连接代理 (Proxy URL，可选)">
-          <ElInput
-            v-model="props.draft.proxy_url"
-            placeholder="例如：http://127.0.0.1:10809 或留空自动继承代理池"
-            :disabled="props.readOnly"
-          />
+        <!-- 4. 控制台直达地址 -->
+        <ElFormItem label="控制台直达地址 (可选)">
+          <div class="chat-id-row">
+            <ElInput
+              v-model="props.draft.console_url"
+              placeholder="例如：http://localhost:4000 或 https://ops.yourdomain.com"
+              :disabled="props.readOnly"
+            />
+            <ElButton
+              type="primary"
+              plain
+              size="small"
+              :disabled="props.readOnly"
+              @click="fillCurrentOrigin"
+            >
+              填充当前网址
+            </ElButton>
+          </div>
           <div class="form-hint">
-            在国内服务器环境下必须通过 HTTP / SOCKS5 代理方可访问 Telegram。留空将自动继承本地代理节点池。
+            配置后，Telegram 推送卡片下方将自动挂载【🎬 内容源管理】【🌐 代理节点池】等快捷直达按钮。
           </div>
         </ElFormItem>
 
-        <!-- 4. 启用开关 -->
+        <!-- 5. 启用开关 -->
         <ElFormItem label="启用状态">
           <div class="switch-line">
             <span class="switch-hint">开启后当系统事件发生时将自动向此 Telegram 发送告警</span>
