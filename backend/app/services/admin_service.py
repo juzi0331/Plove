@@ -25,7 +25,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
@@ -57,12 +57,23 @@ class CodePage:
 # ------------------------------------------------------------------ 读
 
 
+def _diff_seconds(dt1: datetime | None, dt2: datetime | None) -> float:
+    """计算两个 datetimes 的秒差绝对值，统一抹除时区防止 naive/aware 相减抛出异常。"""
+    if dt1 is None or dt2 is None:
+        return 999999.0
+    if dt1.tzinfo is not None:
+        dt1 = dt1.astimezone(timezone.utc).replace(tzinfo=None)
+    if dt2.tzinfo is not None:
+        dt2 = dt2.astimezone(timezone.utc).replace(tzinfo=None)
+    return abs((dt1 - dt2).total_seconds())
+
+
 def to_code_item(record: ActivationCode) -> CodeListItem:
     """把一个 ``ActivationCode`` 行转成载荷。**所有出口都走这里**，字段口径才一致。"""
     devices = list(record.devices or [])
     active = next((d for d in devices if d.id == record.active_device_id), None)
 
-    # 监控用户实时状态：120秒内心跳算在线，心跳+正在播放且播放上报在120秒内算使用中
+    # 监控用户实时状态：180秒内心跳算在线，心跳+正在播放且播放上报在180秒内算使用中
     now = utcnow()
     is_online = False
     is_playing = False
@@ -71,12 +82,13 @@ def to_code_item(record: ActivationCode) -> CodeListItem:
     for d in devices:
         last_seen = d.last_seen_at
         if last_seen:
-            diff_seen = (now - last_seen).total_seconds()
-            if diff_seen <= 120.0:
+            diff_seen = _diff_seconds(now, last_seen)
+            if diff_seen <= 180.0:
                 is_online = True
                 d_playing = getattr(d, "is_playing", False)
                 d_last_pb = getattr(d, "last_playback_at", None)
-                if d_playing and d_last_pb and (now - d_last_pb).total_seconds() <= 120.0:
+                diff_pb = _diff_seconds(now, d_last_pb) if d_last_pb else 999999.0
+                if d_playing and (diff_pb <= 180.0 or diff_seen <= 180.0):
                     is_playing = True
                     current_playback = getattr(d, "current_vod_title", "") or None
                     break
@@ -160,9 +172,13 @@ def list_devices(session: Session, code_id: int) -> tuple[ActivationCode, list[D
     device_items = []
     for device in devices:
         last_pb = getattr(device, "last_playback_at", None)
+        last_sn = getattr(device, "last_seen_at", None)
         is_p = bool(getattr(device, "is_playing", False))
-        if is_p and last_pb and (now - last_pb).total_seconds() > 120.0:
-            is_p = False
+        if is_p:
+            diff_pb = _diff_seconds(now, last_pb) if last_pb else 999999.0
+            diff_sn = _diff_seconds(now, last_sn) if last_sn else 999999.0
+            if diff_pb > 180.0 and diff_sn > 180.0:
+                is_p = False
 
         device_items.append(
             DeviceItem(
@@ -201,7 +217,7 @@ def get_device_playback_history(
     items = []
     for r in records:
         is_p = bool(r.is_playing)
-        if is_p and (now - r.updated_at).total_seconds() > 120.0:
+        if is_p and _diff_seconds(now, r.updated_at) > 180.0:
             is_p = False
         items.append(
             DevicePlaybackHistoryItem(

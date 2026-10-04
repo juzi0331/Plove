@@ -125,6 +125,7 @@ export function useDetail(vodIdRef: Ref<string>) {
         line: episode.line ?? activeLine.value,
         play_id: episode.play_id || undefined,
         title: video.value?.vod_name || undefined,
+        pic: video.value?.vod_pic || undefined,
         name: label === `第 ${episode.ep_index} 集` ? undefined : label,
       },
     })

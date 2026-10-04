@@ -4,6 +4,7 @@
  */
 
 import { ref } from 'vue'
+import './player.css'
 import { formatTime } from './usePlayerState'
 
 const props = defineProps<{

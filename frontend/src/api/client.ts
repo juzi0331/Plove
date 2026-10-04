@@ -8,6 +8,7 @@
  */
 
 import { request } from './http'
+import { getDeviceToken } from './session'
 import type {
   ActivationResult,
   DetailPayload,
@@ -65,8 +66,10 @@ export function heartbeat(): Promise<SessionState> {
 export function reportPlaybackHeartbeat(
   payload: PlaybackHeartbeatRequest,
 ): Promise<PlaybackHeartbeatResult> {
+  const token = getDeviceToken()
   return request('/activation/playback-heartbeat', {
     method: 'POST',
+    query: token ? { token } : undefined,
     body: payload,
   })
 }

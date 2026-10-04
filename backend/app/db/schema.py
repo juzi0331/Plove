@@ -73,6 +73,56 @@ def _align_columns(engine: Engine) -> None:
                     except Exception:
                         pass
 
+    if "playback_records" not in insp.get_table_names():
+        with engine.begin() as conn:
+            # 兼容 SQLite 与 MySQL 的轻量建表保底
+            try:
+                if engine.dialect.name == "sqlite":
+                    conn.execute(text("""
+                        CREATE TABLE IF NOT EXISTS playback_records (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            device_id INTEGER NOT NULL,
+                            activation_id INTEGER NOT NULL,
+                            vod_id VARCHAR(64) NOT NULL,
+                            vod_name VARCHAR(255) DEFAULT '',
+                            vod_pic VARCHAR(512) DEFAULT '',
+                            ep_name VARCHAR(120) DEFAULT '',
+                            site_key VARCHAR(64) DEFAULT '',
+                            position FLOAT DEFAULT 0.0,
+                            duration FLOAT DEFAULT 0.0,
+                            progress_percent INTEGER DEFAULT 0,
+                            is_playing BOOLEAN DEFAULT 1,
+                            created_at DATETIME,
+                            updated_at DATETIME,
+                            CONSTRAINT uq_device_vod UNIQUE (device_id, vod_id)
+                        )
+                    """))
+                else:
+                    conn.execute(text("""
+                        CREATE TABLE IF NOT EXISTS playback_records (
+                            id INT AUTO_INCREMENT PRIMARY KEY,
+                            device_id INT NOT NULL,
+                            activation_id INT NOT NULL,
+                            vod_id VARCHAR(64) NOT NULL,
+                            vod_name VARCHAR(255) DEFAULT '',
+                            vod_pic VARCHAR(512) DEFAULT '',
+                            ep_name VARCHAR(120) DEFAULT '',
+                            site_key VARCHAR(64) DEFAULT '',
+                            position FLOAT DEFAULT 0.0,
+                            duration FLOAT DEFAULT 0.0,
+                            progress_percent INT DEFAULT 0,
+                            is_playing BOOLEAN DEFAULT 1,
+                            created_at DATETIME,
+                            updated_at DATETIME,
+                            UNIQUE KEY uq_device_vod (device_id, vod_id),
+                            INDEX ix_playback_records_device_id (device_id),
+                            INDEX ix_playback_records_activation_id (activation_id),
+                            INDEX ix_playback_records_vod_id (vod_id)
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                    """))
+            except Exception:
+                pass
+
 
 def table_names(engine: Engine) -> list[str]:
     return sorted(inspect(engine).get_table_names())

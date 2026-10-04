@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Request, Security
+from fastapi import APIRouter, Depends, Query, Request, Security
 from sqlalchemy.orm import Session
 
 from app.api.deps import commit_now, device_token_header, get_content_cache, get_db, get_registry
@@ -86,9 +86,11 @@ def playback_heartbeat(
     request_id: str = Depends(get_request_id),
     db: Session = Depends(get_db),
     token: str | None = Security(device_token_header),
+    token_query: str | None = Query(None, alias="token"),
 ) -> Envelope[PlaybackHeartbeatResult]:
     """播放器每 20~30 秒或暂停/换集时上报。更新设备观看中状态并持久化观看历史。"""
-    device = activation_service.require_active(db, token)
+    active_token = token or token_query
+    device = activation_service.require_active(db, active_token)
     result = playback_service.record_playback_heartbeat(db, device, payload)
     commit_now(db)
     return ok(result, request_id)

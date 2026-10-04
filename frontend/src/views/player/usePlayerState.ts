@@ -57,7 +57,7 @@ export function usePlayerState(videoEl: Ref<HTMLVideoElement | null>, containerE
     return Math.min(100, Math.max(0, (bufferedEnd.value / duration.value) * 100))
   })
 
-  function showHud(duration = 3500): void {
+  function showHud(duration = 2000): void {
     isHudVisible.value = true
     if (hudTimer) clearTimeout(hudTimer)
     hudTimer = window.setTimeout(() => {
@@ -85,7 +85,7 @@ export function usePlayerState(videoEl: Ref<HTMLVideoElement | null>, containerE
     const video = videoEl.value
     if (!video) return
 
-    showHud(3500)
+    showHud(2000)
 
     if (video.paused || video.ended) {
       void video.play().then(() => {

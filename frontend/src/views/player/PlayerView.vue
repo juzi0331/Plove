@@ -13,6 +13,7 @@ import { useSitesStore } from '@/stores/sites'
 import { formatPosterUrl } from '@/utils/format'
 import EpisodeDrawer from './EpisodeDrawer.vue'
 import PlayerHUD from './PlayerHUD.vue'
+import './player.css'
 import { useHls } from './useHls'
 import { useKeyboard } from './useKeyboard'
 import { usePlayerState } from './usePlayerState'
@@ -44,6 +45,7 @@ const hlsEngine = useHls(videoEl, vodIdRef, epRef, {
       state.currentTime.value = curr
     }
     state.bufferedEnd.value = buf
+    triggerPlaybackTick(curr)
   },
   onDurationChange: (dur) => {
     state.duration.value = dur
@@ -57,6 +59,9 @@ const hlsEngine = useHls(videoEl, vodIdRef, epRef, {
   },
   onPlayStateChange: (playing) => {
     state.isPlaying.value = playing
+    if (playing) {
+      triggerPlaybackTick(state.currentTime.value || 1)
+    }
   },
   onBufferingChange: (_buffering) => {
     // handled in state if needed
@@ -193,6 +198,8 @@ let lastTouchTime = 0
 let touchStartX = 0
 let touchStartY = 0
 let touchStartTime = 0
+let hudVisibleAtTouchStart = false
+let singleTapTimer: ReturnType<typeof setTimeout> | null = null
 
 function handleStageTouchStart(e: TouchEvent): void {
   const target = e.target as HTMLElement
@@ -208,6 +215,7 @@ function handleStageTouchStart(e: TouchEvent): void {
     return
   }
   if (e.touches.length !== 1) return
+  hudVisibleAtTouchStart = state.isHudVisible.value
   touchStartX = e.touches[0].clientX
   touchStartY = e.touches[0].clientY
   touchStartTime = Date.now()
@@ -242,6 +250,10 @@ function handleStageTouchEnd(e: TouchEvent): void {
   // 双击判定 (< 300ms)
   if (now - lastTouchTime < 300) {
     lastTouchTime = 0
+    if (singleTapTimer) {
+      clearTimeout(singleTapTimer)
+      singleTapTimer = null
+    }
     if (clickX < width * 0.35) {
       state.seekRelative(-10)
       state.triggerCenterAction('seek-bwd')
@@ -257,13 +269,19 @@ function handleStageTouchEnd(e: TouchEvent): void {
   }
   lastTouchTime = now
 
-  // 单触：切换暂停和播放，控制台同步唤起并在无操作2秒后自动隐藏
-  setTimeout(() => {
-    if (lastTouchTime !== 0 && Date.now() - lastTouchTime >= 280) {
-      state.togglePlay()
-      lastTouchTime = 0
+  // 单击判定：等待 280ms 确认不是双击后执行
+  if (singleTapTimer) clearTimeout(singleTapTimer)
+  singleTapTimer = setTimeout(() => {
+    if (hudVisibleAtTouchStart) {
+      // 若触摸开始时已显示，单触意图为立即隐藏收起
+      state.isHudVisible.value = false
+    } else {
+      // 若触摸开始时处于隐藏状态，唤起并保持无操作 2 秒后自动隐藏
+      state.showHud(2000)
     }
-  }, 290)
+    lastTouchTime = 0
+    singleTapTimer = null
+  }, 280)
 }
 
 function handleStagePointerDown(e: MouseEvent): void {
@@ -325,6 +343,22 @@ useKeyboard({
 // 播放状态与观看足迹心跳上报
 // ==========================================
 let heartbeatTimer: ReturnType<typeof setInterval> | null = null
+let lastHeartbeatTime = 0
+let hasSentInitialPlayHeartbeat = false
+
+function triggerPlaybackTick(curr: number): void {
+  if (curr > 0) {
+    if (!state.isPlaying.value) {
+      state.isPlaying.value = true
+    }
+    const now = Date.now()
+    if (!hasSentInitialPlayHeartbeat || now - lastHeartbeatTime >= 20000) {
+      hasSentInitialPlayHeartbeat = true
+      lastHeartbeatTime = now
+      sendHeartbeat(true)
+    }
+  }
+}
 
 function sendHeartbeat(isPlaying: boolean): void {
   if (!props.vodId) return
@@ -332,17 +366,28 @@ function sendHeartbeat(isPlaying: boolean): void {
   const pos = Math.round(state.currentTime.value || 0)
   const pct = dur > 0 ? Math.min(100, Math.max(0, Math.round((pos / dur) * 100))) : 0
 
-  void reportPlaybackHeartbeat({
+  const pic = videoMeta.value?.vod_pic || (route.query.pic as string) || ''
+  const name = vodTitle.value || (route.query.title as string) || (route.query.name as string) || '影視大廳'
+  const ep = displayEpText.value || (route.query.name as string) || `第 ${props.ep} 集`
+  const site = (route.query.site as string) || sitesStore.currentKey || ''
+
+  reportPlaybackHeartbeat({
     vod_id: String(props.vodId),
-    vod_name: vodTitle.value || '未知影片',
-    vod_pic: videoMeta.value?.vod_pic || '',
-    ep_name: displayEpText.value || `第 ${props.ep} 集`,
-    site: (route.query.site as string) || sitesStore.currentKey || '',
+    vod_name: name,
+    vod_pic: pic,
+    ep_name: ep,
+    site,
     position: pos,
     duration: dur,
     progress: pct,
     is_playing: isPlaying,
-  }).catch(() => undefined)
+  })
+    .then(() => {
+      // 心跳与观看历史记录上报成功
+    })
+    .catch((err) => {
+      console.warn('[PlayerHeartbeat] 播放心跳上报失败:', err)
+    })
 }
 
 function startHeartbeatLoop(): void {
@@ -352,7 +397,7 @@ function startHeartbeatLoop(): void {
     if (state.isPlaying.value) {
       sendHeartbeat(true)
     }
-  }, 25000)
+  }, 20000)
 }
 
 function stopHeartbeatLoop(): void {
@@ -371,6 +416,14 @@ watch(
       stopHeartbeatLoop()
       sendHeartbeat(false)
     }
+  },
+)
+
+watch(
+  () => [props.vodId, props.ep],
+  () => {
+    hasSentInitialPlayHeartbeat = false
+    lastHeartbeatTime = 0
   },
 )
 
@@ -412,7 +465,6 @@ watch(() => device.restoredAt, () => void hlsEngine.load())
       'is-fill': state.aspectMode.value === 'fill',
     }"
     @mousemove="state.showHud(2000)"
-    @touchstart.passive="state.showHud(2000)"
   >
     <!-- 背景流光氛围灯 (Ambient Glow) -->
     <div
