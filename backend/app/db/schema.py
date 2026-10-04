@@ -50,6 +50,13 @@ def _align_columns(engine: Engine) -> None:
                     conn.execute(text("ALTER TABLE activation_codes ADD COLUMN max_devices INT NOT NULL DEFAULT 1"))
                 except Exception:
                     conn.execute(text("ALTER TABLE activation_codes ADD COLUMN max_devices INTEGER DEFAULT 1"))
+        if "code_hash" not in existing_cols:
+            with engine.begin() as conn:
+                try:
+                    conn.execute(text("ALTER TABLE activation_codes ADD COLUMN code_hash VARCHAR(64) NULL"))
+                    conn.execute(text("CREATE INDEX ix_activation_codes_code_hash ON activation_codes(code_hash)"))
+                except Exception:
+                    pass
 
 
 def table_names(engine: Engine) -> list[str]:

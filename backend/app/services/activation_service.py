@@ -14,13 +14,17 @@
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import secrets
+import threading
 from datetime import timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.clock import as_aware, utcnow
+from app.core.config import get_settings
 from app.core.errors import AppError, ErrorCode
 from app.models.activation import ActivationCode
 from app.models.device import Device
@@ -54,6 +58,13 @@ def normalize_code(code: str) -> str:
     return cleaned
 
 
+def hash_code(code: str) -> str:
+    """使用全局配置密钥计算激活码的 HMAC-SHA256 哈希值，防止彩虹表反查。"""
+    cleaned = normalize_code(code)
+    secret = getattr(get_settings(), "secret_key", "plove-activation-hmac-secret-default")
+    return hmac.new(secret.encode("utf-8"), cleaned.encode("utf-8"), hashlib.sha256).hexdigest()
+
+
 # ------------------------------------------------------------------ 发码
 
 
@@ -64,16 +75,22 @@ def issue_code(
     note: str = "",
     max_devices: int | None = None,
 ) -> ActivationCode:
-    """签发一个新码。支持设定该激活码最多允许绑定的设备数（None 为不设上限）。"""
+    """签发一个新码。同时生成 HMAC-SHA256 哈希索引。"""
     if duration_hours <= 0:
         raise AppError(ErrorCode.BAD_REQUEST, "时长必须大于 0 小时")
 
     for _ in range(20):  # 撞了就换一个，实际不可能连续撞 20 次
         code = generate_code()
-        exists = session.scalar(select(ActivationCode.id).where(ActivationCode.code == code))
+        c_hash = hash_code(code)
+        exists = session.scalar(
+            select(ActivationCode.id).where(
+                (ActivationCode.code == code) | (ActivationCode.code_hash == c_hash)
+            )
+        )
         if exists is None:
             record = ActivationCode(
                 code=code,
+                code_hash=c_hash,
                 duration_hours=duration_hours,
                 note=note,
                 max_devices=max_devices if (max_devices and max_devices > 0) else 0,
@@ -86,6 +103,8 @@ def issue_code(
 
 # ------------------------------------------------------------------ 激活
 
+_redeem_lock = threading.RLock()
+
 
 def redeem(
     session: Session,
@@ -93,78 +112,110 @@ def redeem(
     code: str | None,
     device_token: str | None = None,
     device_name: str = "",
+    auto_commit: bool = True,
 ) -> ActivationResult:
     """激活 / 抢回活跃位。
 
-    两条路径最终都会**把活跃位指到这台上**：
-    拿码来或拿 token 来，都行。
+    优先通过 HMAC-SHA256 哈希比对查库，未命中时回退明文查库并补齐哈希（零停机平滑迁移）。
+    通过进程级锁与事务提交防止并发超限接入设备。
     """
-    record: ActivationCode | None = None
-    device: Device | None = None
+    with _redeem_lock:
+        record: ActivationCode | None = None
+        device: Device | None = None
 
-    # 有 token 就先用 token 找回这台设备（"在此设备继续"走这条路）
-    if device_token:
-        device = session.scalar(select(Device).where(Device.token == device_token))
-        if device is not None:
-            record = device.activation
+        # 有 token 就先用 token 找回这台设备（"在此设备继续"走这条路）
+        if device_token:
+            device = session.scalar(select(Device).where(Device.token == device_token))
+            if device is not None:
+                record = device.activation
 
-    # 找不到就用码
-    if record is None:
-        if not code:
-            raise AppError(ErrorCode.ACTIVATION_INVALID, "请输入激活码")
-        stmt = select(ActivationCode).where(ActivationCode.code == normalize_code(code))
-        if session.bind and session.bind.dialect.name != "sqlite":
-            stmt = stmt.with_for_update()
-        record = session.scalar(stmt)
+        # 找不到就用码
         if record is None:
-            raise AppError(ErrorCode.ACTIVATION_INVALID, "激活码无效或已到期")
-        # 拿别的码来，且这码被停用/过期 → 拦掉
+            if not code:
+                raise AppError(ErrorCode.ACTIVATION_INVALID, "请输入激活码")
+            clean_code = normalize_code(code)
+            target_hash = hash_code(clean_code)
+
+            # 1. 优先按 HMAC-SHA256 哈希查找
+            stmt = select(ActivationCode).where(ActivationCode.code_hash == target_hash)
+            if session.bind and session.bind.dialect.name != "sqlite":
+                stmt = stmt.with_for_update()
+            record = session.scalar(stmt)
+
+            # 2. 兼容回退：老码可能尚未写入 hash，按明文查找并在首次命中时补齐 hash
+            if record is None:
+                fallback_stmt = select(ActivationCode).where(ActivationCode.code == clean_code)
+                if session.bind and session.bind.dialect.name != "sqlite":
+                    fallback_stmt = fallback_stmt.with_for_update()
+                record = session.scalar(fallback_stmt)
+                if record is not None and record.code_hash is None:
+                    record.code_hash = target_hash
+                    session.flush()
+
+            if record is None:
+                raise AppError(ErrorCode.ACTIVATION_INVALID, "激活码无效或已到期")
+            # 拿别的码来，且这码被停用/过期 → 拦掉
+            _ensure_usable(record)
+
         _ensure_usable(record)
 
-    _ensure_usable(record)
+        # 首次激活：把计时起点钉死，之后永远不再改
+        is_first_activation = record.activated_at is None or record.expires_at is None
+        if is_first_activation:
+            record.activated_at = utcnow()
+            record.expires_at = record.activated_at + timedelta(hours=record.duration_hours)
 
-    # 首次激活：把计时起点钉死，之后永远不再改
-    is_first_activation = record.activated_at is None or record.expires_at is None
-    if is_first_activation:
-        record.activated_at = utcnow()
-        record.expires_at = record.activated_at + timedelta(hours=record.duration_hours)
+        if device is None:
+            # 设备上限检查（使用数据库聚合 count 保证跨进程事务一致性，报错文案通用化保密）
+            max_dev = getattr(record, "max_devices", None)
+            if max_dev is not None and max_dev > 0:
+                dev_count = session.scalar(
+                    select(func.count(Device.id)).where(Device.activation_id == record.id)
+                ) or 0
+                if dev_count >= max_dev:
+                    raise AppError(
+                        ErrorCode.ACTIVATION_INVALID,
+                        "激活码无效或无法接入新设备，请联系管理员",
+                    )
 
-    if device is None:
-        # 设备上限检查（使用数据库聚合 count 保证跨进程事务一致性，并对前台普通用户保密具体策略数字）
-        max_dev = getattr(record, "max_devices", None)
-        if max_dev is not None and max_dev > 0:
-            dev_count = session.scalar(
-                select(func.count(Device.id)).where(Device.activation_id == record.id)
-            ) or 0
-            if dev_count >= max_dev:
-                raise AppError(
-                    ErrorCode.ACTIVATION_INVALID,
-                    "该激活码已达设备绑定上限，无法接入新设备。请联系管理员进行设备解绑。",
-                )
+            device = Device(
+                activation_id=record.id,
+                token=secrets.token_urlsafe(32),
+                name=device_name,
+            )
+            session.add(device)
+            session.flush()
 
-        device = Device(
-            activation_id=record.id,
-            token=secrets.token_urlsafe(32),
-            name=device_name,
-        )
-        session.add(device)
+        if device_name and device.name != device_name:
+            device.name = device_name
+
+        device.last_seen_at = utcnow()
+        record.active_device_id = device.id
+
         session.flush()
 
-    if device_name and device.name != device_name:
-        device.name = device_name
+        # 提前提取响应属性，避免 commit 后延迟属性加载失败
+        result = ActivationResult(
+            device_token=device.token,
+            device_name=device.name,
+            expires_at=as_aware(record.expires_at),
+            remaining_seconds=_remaining_seconds(record),
+            heartbeat_interval_seconds=_heartbeat_interval(),
+        )
+        record_code = record.code
+        duration_hours = record.duration_hours
+        exp_time = record.expires_at
 
-    device.last_seen_at = utcnow()
-    record.active_device_id = device.id
-
-    session.flush()
+        if auto_commit:
+            session.commit()
 
     if is_first_activation:
         try:
             from app.services.admin_service import mask_code
             from app.services.webhook_service import webhook_service
 
-            masked_code = mask_code(record.code)
-            exp_text = record.expires_at.strftime("%Y-%m-%d %H:%M:%S") if record.expires_at else "永久"
+            masked_code = mask_code(record_code)
+            exp_text = exp_time.strftime("%Y-%m-%d %H:%M:%S") if exp_time else "永久"
             webhook_service.dispatch_event(
                 event_type="code_activated",
                 title="激活码首次激活通知",
@@ -172,7 +223,7 @@ def redeem(
                 fields={
                     "激活码": masked_code,
                     "绑定设备": device_name or "默认设备",
-                    "有效时长": f"{record.duration_hours} 小时",
+                    "有效时长": f"{duration_hours} 小时",
                     "到期时间": exp_text,
                 },
                 sync=False,
@@ -180,13 +231,7 @@ def redeem(
         except Exception:
             pass
 
-    return ActivationResult(
-        device_token=device.token,
-        device_name=device.name,
-        expires_at=as_aware(record.expires_at),
-        remaining_seconds=_remaining_seconds(record),
-        heartbeat_interval_seconds=_heartbeat_interval(),
-    )
+    return result
 
 
 # ------------------------------------------------------------------ 心跳与守卫
@@ -231,10 +276,11 @@ def require_active(session: Session, device_token: str | None) -> Device:
     if record.active_device_id != device.id:
         raise AppError(ErrorCode.SESSION_KICKED, "该激活码已在其他设备登录")
 
-    # 顺带刷新一下"最后出现时间"，后台要靠它看谁在线。
-    # 只写这一列，代价很低；但它让后台的"活跃会话"有意义。
-    device.last_seen_at = utcnow()
-    session.flush()
+    # 顺带刷新一下"最后出现时间"（带 60s 写节流，消除高频内容/播放请求写放大）
+    now = utcnow()
+    if device.last_seen_at is None or (now - device.last_seen_at).total_seconds() >= 60.0:
+        device.last_seen_at = now
+        session.flush()
     return device
 
 

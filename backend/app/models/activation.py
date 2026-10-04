@@ -27,6 +27,7 @@ class ActivationCode(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     code: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    code_hash: Mapped[str | None] = mapped_column(String(64), unique=True, index=True, nullable=True)
 
     #: 这个码给多长的时长（小时）。天数换算在发码时做，库里只存小时，避免单位歧义。
     duration_hours: Mapped[int] = mapped_column(Integer, default=24)

@@ -40,6 +40,8 @@ class Settings(BaseSettings):
     docs_enabled: bool = True
     #: 是否开启接口速率限制
     rate_limit_enabled: bool = True
+    #: 全局安全 HMAC 密钥（用于激活码哈希存储与安全签名）
+    secret_key: str = "plove-activation-hmac-secret-default"
 
     #: 爬虫目录（默认仓库根下的 ``crawler/``）
     crawler_dir: Path = PROJECT_DIR / "crawler"
