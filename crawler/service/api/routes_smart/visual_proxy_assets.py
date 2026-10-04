@@ -118,6 +118,22 @@ def build_injected_visual_proxy_html(
         }}
       }}
 
+      var tipEl = document.createElement('div');
+      tipEl.id = '__plove_tip';
+      tipEl.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#0f172a;color:#f8fafc;padding:10px 20px;border-radius:30px;font-size:12px;z-index:2147483647;box-shadow:0 12px 30px rgba(0,0,0,0.6);display:none;pointer-events:none;font-family:system-ui,sans-serif;border:1px solid #38bdf8;transition:all 0.2s ease;';
+      var tipTimer = null;
+
+      function showPickerTip(msg) {{
+        ensureMount();
+        if (!document.getElementById('__plove_tip') && document.body) {{
+          document.body.appendChild(tipEl);
+        }}
+        tipEl.innerText = msg;
+        tipEl.style.display = 'block';
+        clearTimeout(tipTimer);
+        tipTimer = setTimeout(function() {{ tipEl.style.display = 'none'; }}, 3500);
+      }}
+
       function notifyPageReady() {{
         ensureMount();
         unrollLazyImages();
@@ -385,6 +401,9 @@ def build_injected_visual_proxy_html(
             type: 'PLOVE_ELEMENT_CLICKED',
             data: data
           }}, '*');
+          if (anchor && anchor.getAttribute('href')) {{
+            showPickerTip('🎯 已捕获该链接元素。如需直接跳转进入分类/详情页，请切换顶部【🌐 自由浏览模式】，或按住 Ctrl 键点击链接！');
+          }}
         }} else {{
           // 自由浏览模式下拦截站内 a 标签并重写走代理，同时保持当前 browse 模式不变
           if (anchor && anchor.getAttribute('href')) {{

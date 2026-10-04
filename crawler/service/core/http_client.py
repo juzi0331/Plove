@@ -17,7 +17,33 @@ from .gates import solve_cdndefend_cookie
 from .log import get_logger
 from ..config import settings
 
+import time
+import urllib.parse
+
 logger = get_logger("http_client")
+
+# 全局 Host 级别闸门 Cookie 缓存池：复用已解出的 Cookie (如 cdndefend_js_cookie)，避免跨页面跳转重复拦截
+_GATE_COOKIE_CACHE: dict[str, tuple[dict[str, str], float]] = {}
+
+
+def _get_cached_gate_cookies(host: str) -> dict[str, str]:
+    if not host:
+        return {}
+    clean_host = host.split(":")[0].lower()
+    entry = _GATE_COOKIE_CACHE.get(clean_host)
+    if entry:
+        cookies, expires_at = entry
+        if time.monotonic() < expires_at:
+            return cookies
+        _GATE_COOKIE_CACHE.pop(clean_host, None)
+    return {}
+
+
+def _save_cached_gate_cookies(host: str, cookies: dict[str, str], ttl: float = 1800.0) -> None:
+    if not host or not cookies:
+        return
+    clean_host = host.split(":")[0].lower()
+    _GATE_COOKIE_CACHE[clean_host] = (dict(cookies), time.monotonic() + ttl)
 
 
 class HttpClient:
@@ -41,12 +67,26 @@ class HttpClient:
 
         from ..engine.proxy_manager import proxy_manager
 
+        effective_proxy = proxy_manager.get_proxy_url()
+        client_cookies = dict(cookies or {})
+
+        # 尝试注入宿主机已缓存的放行 Cookie
+        if self.base_url.startswith("http"):
+            try:
+                host = urllib.parse.urlparse(self.base_url).netloc
+                cached = _get_cached_gate_cookies(host)
+                if cached:
+                    client_cookies.update(cached)
+            except Exception:
+                pass
+
         self._timeout = timeout or settings.DEFAULT_TIMEOUT
         self._client = httpx.AsyncClient(
             base_url=self.base_url if self.base_url.startswith("http") else "",
             headers=req_headers,
-            cookies=cookies,
-            proxy=proxy_manager.get_proxy_url(),
+            cookies=client_cookies,
+            proxy=effective_proxy,
+            trust_env=bool(effective_proxy),  # 未显式配置代理时强制直连，不受 Windows 系统全局代理劫持
             timeout=httpx.Timeout(self._timeout, connect=5.0),
             follow_redirects=True,
             verify=False,  # 目标源站经常有证书过期或自签情况，避免因 SSL 阻断抓取
@@ -74,6 +114,15 @@ class HttpClient:
     ) -> httpx.Response:
         """发起异步 HTTP 请求并自动拦截处理闸门。"""
         timeout = custom_timeout or self._timeout
+        # 发送请求前，尝试预注入 Host 缓存的 Cookie
+        try:
+            req_host = urllib.parse.urlparse(url).netloc or urllib.parse.urlparse(self.base_url).netloc
+            cached_cookies = _get_cached_gate_cookies(req_host)
+            if cached_cookies:
+                self._client.cookies.update(cached_cookies)
+        except Exception:
+            pass
+
         try:
             resp = await self._client.request(
                 method=method,
@@ -104,6 +153,12 @@ class HttpClient:
                 logger.info("检测到反爬闸门拦截 (HTTP %d)，启动破解机制...", resp.status_code)
                 gate_cookies = solve_cdndefend_cookie(resp_text)
                 if gate_cookies:
+                    # 缓存已破解的 Cookie，方便后续页面跳转直接放行
+                    try:
+                        req_host = urllib.parse.urlparse(url).netloc or urllib.parse.urlparse(self.base_url).netloc
+                        _save_cached_gate_cookies(req_host, gate_cookies)
+                    except Exception:
+                        pass
                     # 将求解出来的 Cookie 写入客户端实例并重试一次请求
                     self._client.cookies.update(gate_cookies)
                     logger.info("携带闸门 Cookie (%s) 重试请求...", gate_cookies)

@@ -1,5 +1,5 @@
 {
-  "enabled": true,
+  "enabled": false,
   "default_proxy_url": "http://127.0.0.1:10808",
   "proxy_url": "http://127.0.0.1:10808",
   "nodes": [
@@ -38,6 +38,6 @@
     }
   ],
   "bindings": {
-    "huangguoai_com": "node_a9080869"
+    "huangguoai_com": "default"
   }
 }
