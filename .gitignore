@@ -69,3 +69,12 @@ docs/
 crawler/sites/*
 !crawler/sites/__init__.py
 !crawler/sites/.gitkeep
+
+# 本地一键启动与快捷运维脚本 (仅限本地使用，禁止上传)
+*.bat
+*.cmd
+*launcher*.py
+*stop_services*.py
+backend/tools/stop_services.py
+backend/tools/make_launchers.py
+
