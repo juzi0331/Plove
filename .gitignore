@@ -34,3 +34,4 @@ Thumbs.db
 # Plove4 iOS local build artifacts
 ios/build/
 ios/releases/*.ipa
+ios/build-xcode.log
