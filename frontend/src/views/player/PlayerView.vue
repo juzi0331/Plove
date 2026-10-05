@@ -156,10 +156,12 @@ function switchLine(lineId: number): void {
 }
 
 function playPrev(): void {
+  state.cancelAutoNext()
   if (prevEpisode.value) switchEpisode(prevEpisode.value)
 }
 
 function playNext(): void {
+  state.cancelAutoNext()
   if (nextEpisode.value) switchEpisode(nextEpisode.value)
 }
 
@@ -192,45 +194,60 @@ function seekTo(time: number): void {
 }
 
 // ==========================================
-// 点击与手势 (支持桌面端双击与移动端单/双触控切换播放与暂停)
+// 触控与鼠标手势引擎 (全面支持 iOS Safari / 安卓 / PC Web 双击与单击)
 // ==========================================
-let singleClickTimer: ReturnType<typeof setTimeout> | null = null
-let lastTouchTapEndTime = 0
-let lastTouchTapX = 0
-let lastTouchTapY = 0
-let touchStartX = 0
-let touchStartY = 0
+let touchTapCount = 0
+let touchSingleTimer: ReturnType<typeof setTimeout> | null = null
+let touchTap1Pos = { x: 0, y: 0, time: 0 }
+let touchStartPos = { x: 0, y: 0 }
 let lastTouchEndTime = 0
-let hudVisibleAtTouchStart = false
+
+let desktopClickTimer: ReturnType<typeof setTimeout> | null = null
+let lastDesktopDblClickTime = 0
 
 function resetGestureState(): void {
-  if (singleClickTimer) {
-    clearTimeout(singleClickTimer)
-    singleClickTimer = null
+  touchTapCount = 0
+  if (touchSingleTimer) {
+    clearTimeout(touchSingleTimer)
+    touchSingleTimer = null
   }
-  lastTouchTapEndTime = 0
+  if (desktopClickTimer) {
+    clearTimeout(desktopClickTimer)
+    desktopClickTimer = null
+  }
+  touchTap1Pos = { x: 0, y: 0, time: 0 }
+  touchStartPos = { x: 0, y: 0 }
   lastTouchEndTime = 0
-  lastTouchTapX = 0
-  lastTouchTapY = 0
+  lastDesktopDblClickTime = 0
 }
 
-/** 统一双击处理：双击屏幕中央及主体区域一律触发 播放 / 暂停 */
-function handleStageDoubleAction(clickX?: number, width?: number): void {
-  if (singleClickTimer) {
-    clearTimeout(singleClickTimer)
-    singleClickTimer = null
-  }
+function isInteractiveTarget(target: HTMLElement | null): boolean {
+  if (!target) return false
+  return !!(
+    target.closest('.nf-ctrl-bar') ||
+    target.closest('.nf-theater-nav') ||
+    target.closest('.nf-episodes-drawer') ||
+    target.closest('.nf-muted-toast') ||
+    target.closest('.nf-auto-next-card') ||
+    target.closest('.nf-blocked-gate') ||
+    target.closest('.nf-error-modal')
+  )
+}
 
-  // 宽屏模式下两侧极边缘（各 15%）支持快退快进，中央 70% 无论如何都是双击播放/暂停
+/** 统一双击处理：双击屏幕中央及主体区域一律触发 播放 / 暂停，左右两侧触发快进/快退 */
+function handleStageDoubleAction(clickX?: number, width?: number): void {
+  resetGestureState()
+
+  // 宽屏模式下两侧（各 25%）支持快退快进，中央 50% 无论如何都是双击播放/暂停
   if (clickX !== undefined && width && width > 0) {
     const isVertical = state.isVideoVertical.value || state.aspectMode.value === 'vertical'
     if (!isVertical) {
-      if (clickX < width * 0.15) {
+      if (clickX < width * 0.25) {
         state.seekRelative(-10)
         state.triggerCenterAction('seek-bwd')
         state.showHud(2000)
         return
-      } else if (clickX > width * 0.85) {
+      } else if (clickX > width * 0.75) {
         state.seekRelative(10)
         state.triggerCenterAction('seek-fwd')
         state.showHud(2000)
@@ -253,94 +270,93 @@ function handleStageSingleAction(): void {
 
 function handleStageTouchStart(e: TouchEvent): void {
   const target = e.target as HTMLElement
-  if (
-    target.closest('.nf-ctrl-bar') ||
-    target.closest('.nf-theater-nav') ||
-    target.closest('.nf-episodes-drawer') ||
-    target.closest('.nf-auto-next-card') ||
-    target.closest('.nf-blocked-gate') ||
-    target.closest('.nf-muted-toast')
-  ) {
+  if (isInteractiveTarget(target)) {
     state.showHud(2500)
     return
   }
-  if (e.touches.length !== 1) return
-  hudVisibleAtTouchStart = state.isHudVisible.value
-  touchStartX = e.touches[0].clientX
-  touchStartY = e.touches[0].clientY
+  if (e.touches.length !== 1) {
+    resetGestureState()
+    return
+  }
+
+  const touch = e.touches[0]
+  touchStartPos = { x: touch.clientX, y: touch.clientY }
+
+  // 关键核心：如果当前已经处于第 1 次轻触等待窗（touchTapCount === 1），
+  // 说明用户正在进行第 2 次触控按压！
+  // 必须立即挂起/清除单触定时器，绝对不能让单触定时器在手指按在屏幕上时提前触发 HUD 收起并清空计数！
+  if (touchTapCount === 1) {
+    if (touchSingleTimer) {
+      clearTimeout(touchSingleTimer)
+      touchSingleTimer = null
+    }
+  }
 }
 
 function handleStageTouchEnd(e: TouchEvent): void {
   const target = e.target as HTMLElement
-  if (
-    target.closest('.nf-ctrl-bar') ||
-    target.closest('.nf-theater-nav') ||
-    target.closest('.nf-episodes-drawer') ||
-    target.closest('.nf-auto-next-card') ||
-    target.closest('.nf-blocked-gate') ||
-    target.closest('.nf-muted-toast')
-  ) {
+  if (isInteractiveTarget(target)) {
     state.showHud(2500)
     return
   }
   const touch = e.changedTouches[0]
   if (!touch) return
-  const dx = Math.abs(touch.clientX - touchStartX)
-  const dy = Math.abs(touch.clientY - touchStartY)
-  if (dx > 15 || dy > 15) return // 过滤手指滑动
+
+  // 过滤明显的滑动（如划屏切集或调节手势）
+  const dx = Math.abs(touch.clientX - touchStartPos.x)
+  const dy = Math.abs(touch.clientY - touchStartPos.y)
+  if (dx > 30 || dy > 30) {
+    resetGestureState()
+    return
+  }
 
   const now = Date.now()
   lastTouchEndTime = now
   const stage = playerContainerRef.value
   const rect = stage?.getBoundingClientRect()
   const clickX = rect ? touch.clientX - rect.left : undefined
-  const width = rect?.width
+  const width = rect?.width || (typeof window !== 'undefined' ? window.innerWidth : 390)
 
-  const timeSinceLastTap = now - lastTouchTapEndTime
-  const distDiff = Math.hypot(touch.clientX - lastTouchTapX, touch.clientY - lastTouchTapY)
+  // 判定是否是第 2 次轻触（双击触发）
+  if (touchTapCount === 1) {
+    const timeDiff = now - touchTap1Pos.time
+    const distDiff = Math.hypot(touch.clientX - touchTap1Pos.x, touch.clientY - touchTap1Pos.y)
 
-  // 触屏双击判定：两次轻触间隔 50ms ~ 380ms 且位移相近 (< 50px)
-  if (timeSinceLastTap > 50 && timeSinceLastTap < 380 && distDiff < 50) {
-    if (singleClickTimer) {
-      clearTimeout(singleClickTimer)
-      singleClickTimer = null
+    // 两次触击在 420ms 内完成，且位移在 85px 范围内（完全覆盖人机拇指双击正常容差）
+    if (timeDiff > 40 && timeDiff < 420 && distDiff < 85) {
+      resetGestureState()
+      handleStageDoubleAction(clickX, width)
+      return
+    } else {
+      // 超时或位移过远，重置重新识别
+      resetGestureState()
     }
-    lastTouchTapEndTime = 0
-    handleStageDoubleAction(clickX, width)
-    return
   }
 
-  // 记录第一次轻触，等待 260ms 确认不是双击后再执行单触唤起/收起 HUD
-  lastTouchTapEndTime = now
-  lastTouchTapX = touch.clientX
-  lastTouchTapY = touch.clientY
+  // 记录第 1 次轻触
+  touchTapCount = 1
+  touchTap1Pos = { x: touch.clientX, y: touch.clientY, time: now }
+  const hudWasVisible = state.isHudVisible.value
 
-  if (singleClickTimer) clearTimeout(singleClickTimer)
-  singleClickTimer = setTimeout(() => {
-    if (hudVisibleAtTouchStart) {
+  if (touchSingleTimer) clearTimeout(touchSingleTimer)
+  touchSingleTimer = setTimeout(() => {
+    // 360ms 内没有第二击，确认为单击：切换 HUD 唤起/隐藏
+    if (hudWasVisible) {
       state.isHudVisible.value = false
     } else {
       state.showHud(2500)
     }
-    singleClickTimer = null
-    lastTouchTapEndTime = 0
-  }, 260)
+    resetGestureState()
+  }, 360)
 }
 
 function handleStageClick(event: MouseEvent): void {
-  const target = event.target as HTMLElement
-  if (
-    target.closest('.nf-ctrl-bar') ||
-    target.closest('.nf-theater-nav') ||
-    target.closest('.nf-episodes-drawer') ||
-    target.closest('.nf-muted-toast') ||
-    target.closest('.nf-auto-next-card') ||
-    target.closest('.nf-blocked-gate')
-  ) {
-    return
-  }
   // 严格屏蔽触屏合成点击，防止与 touchEnd 重复冲突
   if (Date.now() - lastTouchEndTime < 800) {
+    return
+  }
+  const target = event.target as HTMLElement
+  if (isInteractiveTarget(target)) {
     return
   }
 
@@ -351,39 +367,49 @@ function handleStageClick(event: MouseEvent): void {
 
   // 1. 如果浏览器直接派发原生双击事件 (event.detail >= 2)
   if (event.detail >= 2) {
+    if (desktopClickTimer) {
+      clearTimeout(desktopClickTimer)
+      desktopClickTimer = null
+    }
+    lastDesktopDblClickTime = Date.now()
     handleStageDoubleAction(clickX, width)
     return
   }
 
-  // 2. 软件防抖判定：两次点击在 260ms 内接连发生 -> 触发双击
-  if (singleClickTimer) {
-    clearTimeout(singleClickTimer)
-    singleClickTimer = null
+  // 2. 软件防抖判定：两次点击在 280ms 内接连发生 -> 触发双击
+  if (desktopClickTimer) {
+    clearTimeout(desktopClickTimer)
+    desktopClickTimer = null
+    lastDesktopDblClickTime = Date.now()
     handleStageDoubleAction(clickX, width)
     return
   }
 
-  singleClickTimer = setTimeout(() => {
+  desktopClickTimer = setTimeout(() => {
     handleStageSingleAction()
-    singleClickTimer = null
-  }, 260)
+    desktopClickTimer = null
+  }, 280)
 }
 
 function handleStageDblClick(event: MouseEvent): void {
-  const target = event.target as HTMLElement
-  if (
-    target.closest('.nf-ctrl-bar') ||
-    target.closest('.nf-theater-nav') ||
-    target.closest('.nf-episodes-drawer') ||
-    target.closest('.nf-muted-toast') ||
-    target.closest('.nf-auto-next-card') ||
-    target.closest('.nf-blocked-gate')
-  ) {
-    return
-  }
   if (Date.now() - lastTouchEndTime < 800) {
     return
   }
+  const target = event.target as HTMLElement
+  if (isInteractiveTarget(target)) {
+    return
+  }
+
+  // 若 handleStageClick 已经通过 detail >= 2 或连续点击执行过双击，避免重复触发导致一关一开
+  if (Date.now() - lastDesktopDblClickTime < 350) {
+    return
+  }
+
+  if (desktopClickTimer) {
+    clearTimeout(desktopClickTimer)
+    desktopClickTimer = null
+  }
+  lastDesktopDblClickTime = Date.now()
 
   const stage = playerContainerRef.value
   const rect = stage?.getBoundingClientRect()
@@ -518,6 +544,7 @@ onBeforeUnmount(() => {
 watch(
   () => [props.vodId, props.ep, route.query.site, route.query.line, route.query.play_id],
   (newVal, oldVal) => {
+    state.cancelAutoNext()
     resetGestureState()
     if (oldVal && (newVal[0] !== oldVal[0] || newVal[2] !== oldVal[2])) {
       hlsEngine.detail.value = null
@@ -553,6 +580,7 @@ watch(() => device.restoredAt, () => void hlsEngine.load())
       @dblclick="handleStageDblClick"
       @touchstart.passive="handleStageTouchStart"
       @touchend.passive="handleStageTouchEnd"
+      @touchcancel="resetGestureState"
     >
       <div
         class="nf-video-wrapper"
