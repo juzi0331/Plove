@@ -29,6 +29,9 @@ const emit = defineEmits<{
     :title="`Xray-core 配置文件 (备用) · ${props.currentExportNode?.name || ''}`"
     width="680px"
     align-center
+    append-to-body
+    destroy-on-close
+    class="submodal-dialog"
     @update:model-value="emit('update:modelValue', $event)"
   >
     <div v-loading="props.exporting">

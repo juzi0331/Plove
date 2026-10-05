@@ -4,6 +4,7 @@ import {
   ElButton,
   ElDialog,
   ElFormItem,
+  ElIcon,
   ElInput,
 } from 'element-plus'
 import { VideoPlay } from '@element-plus/icons-vue'
@@ -27,10 +28,24 @@ const emit = defineEmits<{
 <template>
   <ElDialog
     :model-value="props.modelValue"
-    :title="`解密验证: ${props.rule?.name || props.rule?.id || ''}`"
-    width="600px"
+    width="640px"
+    align-center
+    append-to-body
+    destroy-on-close
+    class="submodal-dialog"
     @update:model-value="emit('update:modelValue', $event)"
   >
+    <template #header>
+      <div class="submodal-header">
+        <div class="submodal-icon-badge" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+          <ElIcon :size="18"><VideoPlay /></ElIcon>
+        </div>
+        <div>
+          <div class="submodal-title">图片解密效果实时验证</div>
+          <div class="submodal-subtitle">{{ props.rule?.name || props.rule?.id || '目标解密规则沙盒' }}</div>
+        </div>
+      </div>
+    </template>
     <div v-if="props.rule" class="modal-rule-info">
       <div class="info-row">
         <span>所属站点:</span>

@@ -11,9 +11,8 @@
  * 6. 一键连通性测试与投递日志审计
  */
 import { Check, Promotion, Refresh } from '@element-plus/icons-vue'
-import { ElButton, ElIcon, ElSkeleton } from 'element-plus'
+import { ElButton, ElIcon, ElSkeleton, ElTag } from 'element-plus'
 
-import PageHeader from '../components/PageHeader.vue'
 import { ui } from '../ui'
 import { useWebhooks } from './webhooks/useWebhooks'
 import WebhooksKpiGrid from './webhooks/WebhooksKpiGrid.vue'
@@ -59,11 +58,23 @@ const {
 
 <template>
   <div class="a-page webhooks-page">
-    <PageHeader
-      title="Telegram 机器人"
-      desc="配置 Telegram 官方告警机器人通道。当源站采集熔断、代理离线或激活码兑换时，实时向 Telegram 频道或运维群组推送告警。"
-    >
-      <template #actions>
+    <!-- 顶部状态大屏 (统一样式标准) -->
+    <div class="dash-hero">
+      <div class="dash-hero-info">
+        <div class="hero-badge">
+          <span class="hero-pulse" :class="{ 'is-maint': !config.telegram.enabled }" />
+          <span>{{ config.telegram.enabled ? 'Telegram 机器人推送生效中' : '机器人通道已停用' }}</span>
+        </div>
+        <h1 class="hero-title">Telegram 机器人告警中心</h1>
+        <p class="hero-desc">
+          配置 Telegram 官方告警机器人通道。当源站采集熔断、代理离线或激活码兑换时，实时向 Telegram 频道或运维群组推送告警。
+        </p>
+      </div>
+
+      <div class="dash-hero-actions">
+        <ElTag :type="config.telegram.enabled ? 'success' : 'info'" effect="light" size="default" style="font-weight: 600;">
+          {{ config.telegram.enabled ? '● 机器人已在线' : '● 通道待启动' }}
+        </ElTag>
         <ElButton
           :icon="Refresh"
           :loading="loading"
@@ -80,8 +91,8 @@ const {
         >
           保存全部配置
         </ElButton>
-      </template>
-    </PageHeader>
+      </div>
+    </div>
 
     <!-- 骨架屏加载状态 -->
     <div v-if="loading && !config.telegram.chat_id && logs.length === 0" class="a-card skeleton">

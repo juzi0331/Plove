@@ -29,6 +29,9 @@ const emit = defineEmits<{
     :title="`指派采集器到「${props.currentBindTargetNode?.name || ''}」`"
     width="480px"
     align-center
+    append-to-body
+    destroy-on-close
+    class="submodal-dialog"
     @update:model-value="emit('update:modelValue', $event)"
   >
     <div style="margin-bottom: 14px; font-size: 13.5px; color: var(--el-text-color-primary);">

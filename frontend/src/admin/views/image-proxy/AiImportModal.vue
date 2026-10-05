@@ -3,6 +3,7 @@ import {
   ElAlert,
   ElButton,
   ElDialog,
+  ElIcon,
   ElInput,
 } from 'element-plus'
 import { MagicStick } from '@element-plus/icons-vue'
@@ -22,10 +23,24 @@ const emit = defineEmits<{
 <template>
   <ElDialog
     :model-value="props.modelValue"
-    title="粘贴导入 AI 逆向输出的解密配置"
-    width="600px"
+    width="620px"
+    align-center
+    append-to-body
+    destroy-on-close
+    class="submodal-dialog"
     @update:model-value="emit('update:modelValue', $event)"
   >
+    <template #header>
+      <div class="submodal-header">
+        <div class="submodal-icon-badge" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+          <ElIcon :size="18"><MagicStick /></ElIcon>
+        </div>
+        <div>
+          <div class="submodal-title">导入 AI 逆向输出的解密配置</div>
+          <div class="submodal-subtitle">智能提取 JSON 块或自然语言中的 Key、IV 与算法</div>
+        </div>
+      </div>
+    </template>
     <ElAlert
       type="info"
       :closable="false"

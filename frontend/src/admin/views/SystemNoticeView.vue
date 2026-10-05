@@ -53,16 +53,26 @@ const {
 
 <template>
   <div class="system-notice-page">
-    <!-- 顶栏标题 -->
-    <div class="header-section">
-      <div>
-        <h2 class="title">全站公告与维护广播中心</h2>
-        <p class="subtitle">
+    <!-- 顶部状态大屏 (统一样式标准) -->
+    <div class="dash-hero">
+      <div class="dash-hero-info">
+        <div class="hero-badge">
+          <span class="hero-pulse" :class="{ 'is-maint': maintForm.enabled }" />
+          <span>{{ maintForm.enabled ? '紧急维护状态' : '广播中枢运行中' }}</span>
+        </div>
+        <h1 class="hero-title">全站公告与维护广播中心</h1>
+        <p class="hero-desc">
           统筹管理前台全站运行闸门。可一键开启全站停机维护，或发布前台大厅弹窗、顶部滚动跑马灯、静态通告横幅、右下角悬浮通知等多渠道广播。
         </p>
       </div>
-      <div class="header-actions">
-        <ElButton :icon="Refresh" :loading="loading" @click="loadData">刷新状态</ElButton>
+
+      <div class="dash-hero-actions">
+        <ElTag :type="maintForm.enabled ? 'danger' : 'success'" effect="light" size="default" style="font-weight: 600;">
+          {{ maintForm.enabled ? '● 全站维护已阻断' : '● 前台服务畅通' }}
+        </ElTag>
+        <ElButton size="default" :icon="Refresh" :loading="loading" @click="loadData">
+          刷新状态
+        </ElButton>
       </div>
     </div>
 

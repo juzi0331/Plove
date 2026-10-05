@@ -38,7 +38,10 @@ const emit = defineEmits<{
     :model-value="props.modelValue"
     title="发行新激活码"
     width="520px"
+    align-center
+    append-to-body
     destroy-on-close
+    class="submodal-dialog"
     @update:model-value="emit('update:modelValue', $event)"
   >
     <ElForm label-position="top">

@@ -80,7 +80,10 @@ function handlePosterError(event: Event) {
     :model-value="props.modelValue"
     :title="`绑定设备管控 · ${props.currentDeviceCode?.code || ''}`"
     width="740px"
+    align-center
+    append-to-body
     destroy-on-close
+    class="submodal-dialog"
     @update:model-value="emit('update:modelValue', $event)"
   >
     <div v-loading="props.loadingDevices" class="device-modal-content">

@@ -55,7 +55,9 @@ const router = useRouter()
     :title="`单站高级控制 · ${currentAdvanced.key}`"
     width="560px"
     align-center
+    append-to-body
     destroy-on-close
+    class="submodal-dialog"
     @update:model-value="(val) => emit('update:modelValue', val)"
   >
     <div v-loading="advancedLoading">

@@ -31,7 +31,10 @@ const emit = defineEmits<{
     :model-value="props.modelValue"
     title="全局海报防盗链中继总控详情"
     width="640px"
+    align-center
+    append-to-body
     destroy-on-close
+    class="submodal-dialog"
     @update:model-value="emit('update:modelValue', $event)"
   >
     <ElAlert

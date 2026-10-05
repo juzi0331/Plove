@@ -155,13 +155,25 @@ const activeCount = computed(() => {
 <template>
   <ElDialog
     :model-value="props.modelValue"
-    title="告警事件触发与订阅规则配置"
     width="920px"
-    class="event-rules-modal"
+    align-center
+    class="event-rules-modal submodal-dialog"
     destroy-on-close
     append-to-body
     @update:model-value="emit('update:modelValue', $event)"
   >
+    <template #header>
+      <div class="submodal-header">
+        <div class="submodal-icon-badge" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+          <ElIcon :size="18"><Setting /></ElIcon>
+        </div>
+        <div>
+          <div class="submodal-title">告警事件触发与订阅规则配置</div>
+          <div class="submodal-subtitle">配置 9 大核心监控规则的自动推送开关与熔断阈值</div>
+        </div>
+      </div>
+    </template>
+
     <div class="rules-dialog-content">
       <!-- 顶部说明与筛选胶囊 -->
       <div class="dialog-banner">

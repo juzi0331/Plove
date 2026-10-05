@@ -119,13 +119,25 @@ const hasHtmlTags = computed(() => {
 <template>
   <ElDialog
     :model-value="props.modelValue"
-    title="自定义即时消息推送与全网广播"
     width="740px"
-    class="custom-notice-modal"
+    align-center
+    class="custom-notice-modal submodal-dialog"
     destroy-on-close
     append-to-body
     @update:model-value="emit('update:modelValue', $event)"
   >
+    <template #header>
+      <div class="submodal-header">
+        <div class="submodal-icon-badge" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+          <ElIcon :size="18"><Promotion /></ElIcon>
+        </div>
+        <div>
+          <div class="submodal-title">自定义即时消息推送与全网广播</div>
+          <div class="submodal-subtitle">自由排版并实时向 Telegram 频道或运维群组推送即时广播</div>
+        </div>
+      </div>
+    </template>
+
     <div class="custom-notice-form">
       <!-- 快速模板胶囊 -->
       <div class="quick-templates-bar">

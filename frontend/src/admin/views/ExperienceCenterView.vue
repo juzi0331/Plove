@@ -598,7 +598,10 @@ onMounted(() => {
       v-model="previewVisible"
       title="草稿沙箱实时渲染预览 (Preview Sandbox)"
       width="800px"
+      align-center
+      append-to-body
       destroy-on-close
+      class="submodal-dialog"
     >
       <div v-loading="previewLoading" class="preview-dialog-content">
         <div

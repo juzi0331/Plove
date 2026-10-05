@@ -6,6 +6,7 @@ import {
   ElDialog,
   ElForm,
   ElFormItem,
+  ElIcon,
   ElInput,
   ElOption,
   ElRadio,
@@ -14,6 +15,7 @@ import {
   ElSelect,
   ElSwitch,
 } from 'element-plus'
+import { Lock } from '@element-plus/icons-vue'
 import { ui } from '@/admin/ui'
 import { useSitesStore } from '@/stores/sites'
 import type { ImageDecryptionRule, TestDecryptResult } from '@/api/types'
@@ -43,11 +45,24 @@ const emit = defineEmits<{
 <template>
   <ElDialog
     :model-value="props.modelValue"
-    :title="props.isEditing ? '编辑图片解密规则' : '添加站点图片解密规则'"
     width="680px"
+    align-center
+    append-to-body
     destroy-on-close
+    class="submodal-dialog"
     @update:model-value="emit('update:modelValue', $event)"
   >
+    <template #header>
+      <div class="submodal-header">
+        <div class="submodal-icon-badge" :class="props.isEditing ? 'is-edit' : 'is-add'">
+          <ElIcon :size="18"><Lock /></ElIcon>
+        </div>
+        <div>
+          <div class="submodal-title">{{ props.isEditing ? '编辑图片解密规则' : '添加站点图片解密规则' }}</div>
+          <div class="submodal-subtitle">配置 AES 等加密图床的密钥算法并支持实时解密验证</div>
+        </div>
+      </div>
+    </template>
     <ElForm :model="props.ruleForm" label-position="top">
       <ElRow :gutter="16">
         <ElCol :span="14">

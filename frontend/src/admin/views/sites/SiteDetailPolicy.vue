@@ -44,7 +44,10 @@ const emit = defineEmits<{
     :model-value="modelValue"
     :title="`详情页展示与清洗策略 · ${detailPolicy.site_key}`"
     width="680px"
+    align-center
+    append-to-body
     destroy-on-close
+    class="submodal-dialog"
     @update:model-value="(val) => emit('update:modelValue', val)"
   >
     <div v-loading="detailPolicyLoading">

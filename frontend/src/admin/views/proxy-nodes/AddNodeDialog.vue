@@ -43,7 +43,9 @@ const emit = defineEmits<{
     title="添加代理节点"
     width="640px"
     align-center
+    append-to-body
     destroy-on-close
+    class="submodal-dialog"
     @update:model-value="emit('update:modelValue', $event)"
   >
     <ElTabs

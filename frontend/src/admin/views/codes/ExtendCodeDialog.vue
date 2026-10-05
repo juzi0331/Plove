@@ -26,7 +26,10 @@ const emit = defineEmits<{
     :model-value="props.modelValue"
     :title="`延长激活码有效期 · ${props.extendTarget?.code || ''}`"
     width="440px"
+    align-center
+    append-to-body
     destroy-on-close
+    class="submodal-dialog"
     @update:model-value="emit('update:modelValue', $event)"
   >
     <ElForm label-position="top">

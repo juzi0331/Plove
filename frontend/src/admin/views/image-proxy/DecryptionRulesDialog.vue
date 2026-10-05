@@ -80,6 +80,8 @@ function maskSecret(val?: string): string {
     :model-value="props.modelValue"
     title="第三方源站加密海报动态解密配置"
     width="1180px"
+    align-center
+    append-to-body
     destroy-on-close
     @update:model-value="emit('update:modelValue', $event)"
   >

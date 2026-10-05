@@ -72,7 +72,9 @@ watch(isUploadVisible, (val) => {
     title="部署 / 上传 Python 采集器脚本"
     width="780px"
     align-center
+    append-to-body
     destroy-on-close
+    class="submodal-dialog"
   >
     <ElForm label-position="top">
       <div

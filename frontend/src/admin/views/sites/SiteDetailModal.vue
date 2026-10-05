@@ -110,6 +110,7 @@ watch(
     width="820px"
     class="site-detail-dialog"
     align-center
+    append-to-body
     destroy-on-close
     @update:model-value="(val) => emit('update:modelValue', val)"
   >

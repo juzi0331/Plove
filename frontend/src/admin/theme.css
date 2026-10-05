@@ -308,35 +308,215 @@ html.dark .admin-root {
   }
 }
 
-/* 弹窗与抽屉 */
-.admin-root .el-dialog {
-  border-radius: var(--a-radius-lg);
-  box-shadow: var(--a-shadow-2);
-  border: 1px solid var(--a-border);
-  overflow: hidden;
+/* ========================================================
+   全局弹窗与遮罩视口居中系统 (Global Dialog Centering Engine)
+   彻底解决 Element Plus 默认 15vh 边距导致弹窗贴底、需要向下滑动的 Bug
+   ======================================================== */
+.el-overlay:has(.el-dialog),
+.el-overlay-dialog {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  padding: 24px 16px !important;
+  box-sizing: border-box !important;
+  overflow-y: auto !important;
 }
 
-.admin-root .el-dialog__header {
-  padding: 20px 24px;
-  margin-right: 0;
-  border-bottom: 1px solid var(--a-border);
+/* 全局所有弹窗容器（包括挂载在 body 和挂载在 admin-root 内的） */
+.el-dialog {
+  margin: 0 !important;
+  max-height: min(90vh, calc(100vh - 48px)) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  position: relative !important;
+  top: auto !important;
+  border-radius: var(--a-radius-lg, 12px) !important;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.22), 0 4px 16px rgba(0, 0, 0, 0.1) !important;
+  border: 1px solid var(--el-border-color-light, #e2e8f0) !important;
+  overflow: hidden !important;
 }
 
-.admin-root .el-dialog__title {
+/* 弹窗头部固定置顶 */
+.el-dialog .el-dialog__header {
+  flex-shrink: 0 !important;
+  padding: 18px 24px 14px !important;
+  margin-right: 0 !important;
+  border-bottom: 1px solid var(--el-border-color-lighter, #f1f5f9) !important;
+  box-sizing: border-box !important;
+}
+
+.el-dialog .el-dialog__title {
   font-weight: 700;
   font-size: 16px;
+  color: var(--el-text-color-primary, #0f172a);
 }
 
-.admin-root .el-dialog__body {
-  padding: 24px;
+/* 弹窗内容主体，始终自带独立平滑滚动条，彻底杜绝撑大视口 */
+.el-dialog .el-dialog__body {
+  padding: 20px 24px !important;
+  overflow-y: auto !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  max-height: calc(90vh - 135px) !important;
+  box-sizing: border-box !important;
 }
 
-.admin-root .el-dialog__footer {
-  padding: 16px 24px;
-  border-top: 1px solid var(--a-border);
+/* 弹窗底部操作条固定贴底，永远可见，杜绝滚动整页去点保存按钮 */
+.el-dialog .el-dialog__footer {
+  flex-shrink: 0 !important;
+  padding: 14px 24px !important;
+  border-top: 1px solid var(--el-border-color-lighter, #f1f5f9) !important;
+  background: var(--el-fill-color-blank) !important;
+  box-sizing: border-box !important;
 }
 
 .admin-root .el-message {
   border-radius: var(--a-radius);
   box-shadow: var(--a-shadow-1);
 }
+
+/* ========================================================
+   全局二级弹窗现代化卡片系统 (Global Submodal Dialogs)
+   ======================================================== */
+.el-dialog.submodal-dialog,
+.submodal-dialog {
+  border-radius: 12px !important;
+  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.28), 0 6px 20px rgba(0, 0, 0, 0.12) !important;
+  border: 1px solid var(--el-border-color-light, #cbd5e1) !important;
+  overflow: hidden !important;
+  margin: 0 !important;
+  max-height: min(90vh, calc(100vh - 48px)) !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.el-dialog.submodal-dialog .el-dialog__header,
+.submodal-dialog .el-dialog__header {
+  padding: 18px 24px 14px !important;
+  margin-right: 0 !important;
+  border-bottom: 1px solid var(--el-border-color-lighter, #f1f5f9) !important;
+  flex-shrink: 0 !important;
+}
+
+.el-dialog.submodal-dialog .el-dialog__body,
+.submodal-dialog .el-dialog__body {
+  padding: 18px 24px !important;
+  overflow-y: auto !important;
+  min-height: 0 !important;
+  max-height: calc(90vh - 135px) !important;
+}
+
+.el-dialog.submodal-dialog .el-dialog__footer,
+.submodal-dialog .el-dialog__footer {
+  padding: 14px 24px !important;
+  border-top: 1px solid var(--el-border-color-lighter, #f1f5f9) !important;
+  background: var(--el-fill-color-blank) !important;
+  flex-shrink: 0 !important;
+}
+
+.submodal-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.submodal-icon-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+  flex-shrink: 0;
+}
+
+.submodal-icon-badge.is-edit {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+}
+
+.submodal-icon-badge.is-danger {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+}
+
+.submodal-icon-badge.is-success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.submodal-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--el-text-color-primary, #0f172a);
+}
+
+.submodal-subtitle {
+  font-size: 12px;
+  color: var(--el-text-color-secondary, #64748b);
+  margin-top: 2px;
+}
+
+.form-card-block {
+  background: var(--el-fill-color-light, #f8fafc);
+  border: 1px solid var(--el-border-color-lighter, #e2e8f0);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+
+.block-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--el-text-color-regular, #475569);
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.submodal-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.footer-switch-box {
+  display: flex;
+  align-items: center;
+}
+
+.footer-actions-box,
+.dialog-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 暗黑模式弹窗对齐 */
+html.dark .el-dialog {
+  background: var(--el-bg-color, #1e293b) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 24px 55px rgba(0, 0, 0, 0.6) !important;
+}
+
+html.dark .el-dialog .el-dialog__header,
+html.dark .el-dialog .el-dialog__footer {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  background: var(--el-bg-color, #1e293b) !important;
+}
+
+html.dark .submodal-dialog {
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  box-shadow: 0 28px 60px rgba(0, 0, 0, 0.75) !important;
+}
+
+html.dark .form-card-block {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+
