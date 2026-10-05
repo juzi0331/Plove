@@ -6,7 +6,9 @@ IOS="$ROOT/ios"
 FRONTEND="$ROOT/frontend"
 BUILD="$IOS/build"
 APP="$BUILD/Derived/Build/Products/Release-iphoneos/Plove.app"
-OUT="$IOS/releases/Plove_4.0.0_build1_iOS15-27_TrollStore_unsigned.ipa"
+VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$IOS/App/Info.plist")
+BUILD_NO=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$IOS/App/Info.plist")
+OUT="$IOS/releases/Plove_${VERSION}_build${BUILD_NO}_iOS15-27_TrollStore_unsigned.ipa"
 
 export PATH="/Users/plove/.nvm/versions/node/v22.22.0/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin"
 
@@ -38,5 +40,6 @@ rm -f "$OUT"
 )
 
 test -f "$OUT"
+/usr/bin/unzip -t "$OUT" >/dev/null
 echo "IPA: $OUT"
 shasum -a 256 "$OUT"
