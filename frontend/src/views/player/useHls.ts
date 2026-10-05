@@ -115,8 +115,9 @@ export function useHls(
 
     // 1. 直链 MP4 / WebM
     if (result.format === 'mp4' || result.url.includes('.mp4')) {
+      loading.value = false
       video.src = result.url
-      void callbacks.startPlay(false)
+      void callbacks.startPlay()
       return
     }
 
@@ -133,12 +134,13 @@ export function useHls(
         },
         onManifestParsed: () => {
           loading.value = false
-          void callbacks.startPlay(false)
+          void callbacks.startPlay()
         },
         onFallbackNativeHls: () => {
+          loading.value = false
           destroyPlayer()
           video.src = result.url
-          void callbacks.startPlay(false)
+          void callbacks.startPlay()
         },
         onLastErrorDetail: (det) => {
           lastErrorDetail.value = det
@@ -149,8 +151,9 @@ export function useHls(
 
     // 3. 原生 HLS (Safari / iOS)
     if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      loading.value = false
       video.src = result.url
-      void callbacks.startPlay(false)
+      void callbacks.startPlay()
       return
     }
 

@@ -7,6 +7,7 @@ import {
   updateImageProxyConfig,
 } from '@/admin/api'
 import type {
+  ImageCdnPrefixRule,
   ImageDecryptionRule,
   ImageProxyConfig,
   TestDecryptResult,
@@ -23,13 +24,16 @@ export function useImageProxy() {
     custom_referer: '',
     cache_max_mb: 1024,
     decryption_rules: [],
+    cdn_prefix_rules: [],
   })
 
   const rulesList = computed(() => config.value.decryption_rules || [])
+  const cdnRulesList = computed(() => config.value.cdn_prefix_rules || [])
 
   // 弹窗控制
   const showGlobalProxyDialog = ref(false)
   const showDecryptionDialog = ref(false)
+  const showCdnPrefixDialog = ref(false)
 
   // 密码显示/隐藏状态
   const showSecret = reactive<Record<string, boolean>>({})
@@ -319,6 +323,80 @@ export function useImageProxy() {
     }
   }
 
+  // CDN 前缀规则编辑/管理状态
+  const showCdnRuleEditDialog = ref(false)
+  const isEditingCdnRule = ref(false)
+  const editingCdnRuleIndex = ref(-1)
+  const cdnRuleForm = ref<ImageCdnPrefixRule>({
+    id: '',
+    name: '',
+    site_key: '',
+    match_domain: '',
+    prefix: 'https://wsrv.nl/?url=',
+    enabled: true,
+  })
+
+  function openAddCdnRule(): void {
+    isEditingCdnRule.value = false
+    editingCdnRuleIndex.value = -1
+    cdnRuleForm.value = {
+      id: `prefix_${Date.now().toString(36)}`,
+      name: '',
+      site_key: '',
+      match_domain: '',
+      prefix: 'https://wsrv.nl/?url=',
+      enabled: true,
+    }
+    showCdnRuleEditDialog.value = true
+  }
+
+  function openEditCdnRule(row: ImageCdnPrefixRule, idx: number): void {
+    isEditingCdnRule.value = true
+    editingCdnRuleIndex.value = idx
+    cdnRuleForm.value = { ...row }
+    showCdnRuleEditDialog.value = true
+  }
+
+  async function handleSaveCdnRule(): Promise<void> {
+    if (!cdnRuleForm.value.name.trim()) {
+      ElMessage.warning('请输入规则名称')
+      return
+    }
+    if (!cdnRuleForm.value.prefix.trim()) {
+      ElMessage.warning('请输入代理前缀（如 https://wsrv.nl/?url=）')
+      return
+    }
+    const rules = [...(config.value.cdn_prefix_rules || [])]
+    if (isEditingCdnRule.value && editingCdnRuleIndex.value >= 0) {
+      rules[editingCdnRuleIndex.value] = { ...cdnRuleForm.value }
+    } else {
+      rules.push({ ...cdnRuleForm.value })
+    }
+    config.value.cdn_prefix_rules = rules
+    await handleSaveConfig()
+    showCdnRuleEditDialog.value = false
+    ElMessage.success('图床加速前缀规则已保存')
+  }
+
+  async function handleDeleteCdnRule(idx: number): Promise<void> {
+    try {
+      await ElMessageBox.confirm('确定要删除该条图床加速规则吗？', '提示', {
+        type: 'warning',
+      })
+      const rules = [...(config.value.cdn_prefix_rules || [])]
+      rules.splice(idx, 1)
+      config.value.cdn_prefix_rules = rules
+      await handleSaveConfig()
+      ElMessage.success('已删除规则')
+    } catch {
+      // 用户取消
+    }
+  }
+
+  async function handleToggleCdnRule(): Promise<void> {
+    await handleSaveConfig()
+  }
+
   async function loadData(): Promise<void> {
     loading.value = true
     try {
@@ -330,6 +408,16 @@ export function useImageProxy() {
         custom_referer: cfg.custom_referer || '',
         cache_max_mb: cfg.cache_max_mb || 1024,
         decryption_rules: cfg.decryption_rules || [],
+        cdn_prefix_rules: cfg.cdn_prefix_rules || [
+          {
+            id: 'rule_ncat21',
+            name: '网飞猫图床加速',
+            site_key: 'www_ncat21_com',
+            match_domain: 'vres.cyscyy.com',
+            prefix: 'https://wsrv.nl/?url=',
+            enabled: true,
+          },
+        ],
         updated_at: cfg.updated_at,
       }
     } catch (err) {
@@ -349,6 +437,7 @@ export function useImageProxy() {
         custom_referer: config.value.custom_referer?.trim() || '',
         cache_max_mb: config.value.cache_max_mb || 1024,
         decryption_rules: config.value.decryption_rules || [],
+        cdn_prefix_rules: config.value.cdn_prefix_rules || [],
       }
       const updated = await updateImageProxyConfig(payload)
       config.value = { ...config.value, ...updated }
@@ -406,6 +495,18 @@ export function useImageProxy() {
     testModalResult,
     openTestRuleModal,
     runModalTest,
+    // CDN 前缀规则
+    cdnRulesList,
+    showCdnPrefixDialog,
+    showCdnRuleEditDialog,
+    isEditingCdnRule,
+    editingCdnRuleIndex,
+    cdnRuleForm,
+    openAddCdnRule,
+    openEditCdnRule,
+    handleSaveCdnRule,
+    handleDeleteCdnRule,
+    handleToggleCdnRule,
     loadData,
     handleSaveConfig,
     handleSaveConfigAndCloseDialog,

@@ -216,7 +216,7 @@ class ProxyNodeManager:
             raise ValueError("site_key 不能为空")
 
         if not clean_node or clean_node in ("direct", "none", "default"):
-            self._bindings.pop(clean_key, None)
+            self._bindings[clean_key] = "direct"
             self.save()
             return {
                 "site_key": clean_key,

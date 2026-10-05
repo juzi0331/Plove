@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 from typing import Any, Literal
+import uuid
 
 from pydantic import BaseModel, Field
 
@@ -96,6 +97,17 @@ class TestDecryptResult(BaseModel):
     preview_data_url: str | None = Field(default=None, description="解密成功后的 Base64 Data URL 预览图片")
 
 
+class ImageCdnPrefixRule(BaseModel):
+    """图床加速与代理前缀规则（如 wsrv.nl 等公共边缘 CDN 反代）。"""
+
+    id: str = Field(default_factory=lambda: f"prefix_{uuid.uuid4().hex[:8]}")
+    name: str = Field(default="", description="规则名称，例如：网飞猫图床加速")
+    site_key: str = Field(default="", description="适用的站点 Key（例如：www_ncat21_com，留空则匹配所有站点）")
+    match_domain: str = Field(default="", description="匹配的域名或 URL 关键词（例如：vres.cyscyy.com）")
+    prefix: str = Field(default="https://wsrv.nl/?url=", description="代理前缀，例如：https://wsrv.nl/?url=")
+    enabled: bool = Field(default=True, description="是否启用该规则")
+
+
 class ImageProxyConfig(BaseModel):
     """全局图片防盗链代理总控配置。"""
 
@@ -122,6 +134,19 @@ class ImageProxyConfig(BaseModel):
     decryption_rules: list[ImageDecryptionRule] = Field(
         default_factory=list,
         description="各站点自定义图片解密密钥规则库（支持动态配置 AES-128-CBC 等算法，解密各源站加密海报）",
+    )
+    cdn_prefix_rules: list[ImageCdnPrefixRule] = Field(
+        default_factory=lambda: [
+            ImageCdnPrefixRule(
+                id="rule_ncat21",
+                name="网飞猫图床加速",
+                site_key="www_ncat21_com",
+                match_domain="vres.cyscyy.com",
+                prefix="https://wsrv.nl/?url=",
+                enabled=True,
+            )
+        ],
+        description="各站点/域名的外部 CDN 代理加速前缀规则列表",
     )
     updated_at: str = Field(
         default="",
@@ -182,6 +207,10 @@ class SystemStatusPayload(BaseModel):
     notice: SystemNoticePayload | None = Field(default=None, description="当前生效的公告信息")
     image_proxy_enabled: bool = Field(default=False, description="是否全局开启图片防盗链代理")
     image_decrypt_domains: list[str] = Field(default_factory=list, description="需要中继解密的图床域名特征列表")
+    image_cdn_prefix_rules: list[ImageCdnPrefixRule] = Field(
+        default_factory=list,
+        description="需要添加外部 CDN 前缀代理的图床规则",
+    )
 
 
 # ------------------------------------------------------------------ 跨源聚合搜索增强

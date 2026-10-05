@@ -5,9 +5,12 @@
 import { computed, ref, type Ref } from 'vue'
 
 export function usePlayerState(videoEl: Ref<HTMLVideoElement | null>, containerEl: Ref<HTMLElement | null>) {
-  /** 播放控制核心状态 */
+  /** 播放控制核心状态 (移动端默认静音起播保障自播畅通，桌面端默认有声) */
+  const isMobileClient = typeof window !== 'undefined' && (
+    window.innerWidth <= 768 || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)
+  )
   const isPlaying = ref(false)
-  const isMuted = ref(false)
+  const isMuted = ref(isMobileClient)
   const volume = ref(1) // 0 ~ 1
   const currentTime = ref(0)
   const duration = ref(0)
@@ -18,7 +21,7 @@ export function usePlayerState(videoEl: Ref<HTMLVideoElement | null>, containerE
 
   /** 自动播放受限与静音起播提示 */
   const isAutoplayBlocked = ref(false)
-  const isMutedAutoplay = ref(false)
+  const isMutedAutoplay = ref(isMobileClient)
 
   /** 画面比例模式: 'auto' | 'vertical' (9:16) | 'widescreen' (16:9) | 'fill' */
   const aspectMode = ref<'auto' | 'vertical' | 'widescreen' | 'fill'>('auto')
@@ -102,21 +105,25 @@ export function usePlayerState(videoEl: Ref<HTMLVideoElement | null>, containerE
     }
   }
 
-  async function startPlay(muted = false): Promise<void> {
+  async function startPlay(muted?: boolean): Promise<void> {
     const video = videoEl.value
     if (!video) return
 
-    video.muted = muted
-    isMuted.value = muted
+    // 如果未显式传入布尔值，则尊重当前 isMuted.value（跨集切换时延续用户选择，杜绝第2集突发取消静音）
+    const shouldMute = typeof muted === 'boolean' ? muted : isMuted.value
+
+    video.muted = shouldMute
+    isMuted.value = shouldMute
 
     try {
       await video.play()
       isPlaying.value = true
       isAutoplayBlocked.value = false
-      isMutedAutoplay.value = muted
+      isMutedAutoplay.value = shouldMute
     } catch (playErr) {
       console.warn('播放器主动起播受限:', playErr)
-      if (!muted) {
+      if (!shouldMute) {
+        // 如果有声播放被浏览器拦截，自动降级为静音起播
         await startPlay(true)
       } else {
         isAutoplayBlocked.value = true
@@ -130,7 +137,10 @@ export function usePlayerState(videoEl: Ref<HTMLVideoElement | null>, containerE
       video.muted = false
       isMuted.value = false
       isMutedAutoplay.value = false
-      volume.value = video.volume > 0 ? video.volume : 0.8
+      const cur = video.volume
+      const targetVol = cur > 0 ? cur : 0.8
+      video.volume = targetVol
+      volume.value = targetVol
     }
   }
 
@@ -139,11 +149,13 @@ export function usePlayerState(videoEl: Ref<HTMLVideoElement | null>, containerE
     if (!video) return
     video.muted = !video.muted
     isMuted.value = video.muted
-    if (!video.muted && video.volume === 0) {
-      video.volume = 0.5
-      volume.value = 0.5
+    if (!video.muted) {
+      isMutedAutoplay.value = false
+      if (video.volume === 0) {
+        video.volume = 0.8
+        volume.value = 0.8
+      }
     }
-    isMutedAutoplay.value = false
   }
 
   function setVolume(val: number): void {

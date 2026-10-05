@@ -109,6 +109,18 @@ class SiteSettingsStore:
             found = self._items.get(key)
         return found if found is not None else SiteConfig(key=key)
 
+    def get_explicit(self, key: str) -> SiteConfig | None:
+        """返回数据库中显式配置的站点设置；若快照未就绪，自动尝试连接数据库加载。"""
+        if not self._loaded:
+            try:
+                from app.db.session import get_session_factory
+                with get_session_factory()() as session:
+                    self.refresh(session)
+            except Exception:
+                pass
+        with self._lock:
+            return self._items.get(key)
+
     def is_enabled(self, key: str) -> bool:
         return self.config(key).enabled
 

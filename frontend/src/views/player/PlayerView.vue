@@ -125,6 +125,7 @@ const displayEpText = computed(() => {
 // 换集与跳转
 // ==========================================
 function switchEpisode(episode: Episode): void {
+  resetGestureState()
   state.cancelAutoNext()
   state.isDrawerOpen.value = false
   void router.replace({
@@ -191,15 +192,64 @@ function seekTo(time: number): void {
 }
 
 // ==========================================
-// 点击与手势 (支持桌面端双击与移动端单/双触控)
+// 点击与手势 (支持桌面端双击与移动端单/双触控切换播放与暂停)
 // ==========================================
-let lastClickTime = 0
-let lastTouchTime = 0
+let singleClickTimer: ReturnType<typeof setTimeout> | null = null
+let lastTouchTapEndTime = 0
+let lastTouchTapX = 0
+let lastTouchTapY = 0
 let touchStartX = 0
 let touchStartY = 0
-let touchStartTime = 0
+let lastTouchEndTime = 0
 let hudVisibleAtTouchStart = false
-let singleTapTimer: ReturnType<typeof setTimeout> | null = null
+
+function resetGestureState(): void {
+  if (singleClickTimer) {
+    clearTimeout(singleClickTimer)
+    singleClickTimer = null
+  }
+  lastTouchTapEndTime = 0
+  lastTouchEndTime = 0
+  lastTouchTapX = 0
+  lastTouchTapY = 0
+}
+
+/** 统一双击处理：双击屏幕中央及主体区域一律触发 播放 / 暂停 */
+function handleStageDoubleAction(clickX?: number, width?: number): void {
+  if (singleClickTimer) {
+    clearTimeout(singleClickTimer)
+    singleClickTimer = null
+  }
+
+  // 宽屏模式下两侧极边缘（各 15%）支持快退快进，中央 70% 无论如何都是双击播放/暂停
+  if (clickX !== undefined && width && width > 0) {
+    const isVertical = state.isVideoVertical.value || state.aspectMode.value === 'vertical'
+    if (!isVertical) {
+      if (clickX < width * 0.15) {
+        state.seekRelative(-10)
+        state.triggerCenterAction('seek-bwd')
+        state.showHud(2000)
+        return
+      } else if (clickX > width * 0.85) {
+        state.seekRelative(10)
+        state.triggerCenterAction('seek-fwd')
+        state.showHud(2000)
+        return
+      }
+    }
+  }
+
+  state.togglePlay()
+}
+
+/** 统一单击处理：唤起或隐藏控制台 HUD，不打断播放 */
+function handleStageSingleAction(): void {
+  if (state.isHudVisible.value) {
+    state.isHudVisible.value = false
+  } else {
+    state.showHud(2500)
+  }
+}
 
 function handleStageTouchStart(e: TouchEvent): void {
   const target = e.target as HTMLElement
@@ -211,14 +261,13 @@ function handleStageTouchStart(e: TouchEvent): void {
     target.closest('.nf-blocked-gate') ||
     target.closest('.nf-muted-toast')
   ) {
-    state.showHud(2000)
+    state.showHud(2500)
     return
   }
   if (e.touches.length !== 1) return
   hudVisibleAtTouchStart = state.isHudVisible.value
   touchStartX = e.touches[0].clientX
   touchStartY = e.touches[0].clientY
-  touchStartTime = Date.now()
 }
 
 function handleStageTouchEnd(e: TouchEvent): void {
@@ -231,95 +280,117 @@ function handleStageTouchEnd(e: TouchEvent): void {
     target.closest('.nf-blocked-gate') ||
     target.closest('.nf-muted-toast')
   ) {
-    state.showHud(2000)
+    state.showHud(2500)
     return
   }
   const touch = e.changedTouches[0]
   if (!touch) return
   const dx = Math.abs(touch.clientX - touchStartX)
   const dy = Math.abs(touch.clientY - touchStartY)
-  if (dx > 12 || dy > 12) return
+  if (dx > 15 || dy > 15) return // 过滤手指滑动
 
   const now = Date.now()
+  lastTouchEndTime = now
   const stage = playerContainerRef.value
-  if (!stage) return
-  const rect = stage.getBoundingClientRect()
-  const clickX = touch.clientX - rect.left
-  const width = rect.width
+  const rect = stage?.getBoundingClientRect()
+  const clickX = rect ? touch.clientX - rect.left : undefined
+  const width = rect?.width
 
-  // 双击判定 (< 300ms)
-  if (now - lastTouchTime < 300) {
-    lastTouchTime = 0
-    if (singleTapTimer) {
-      clearTimeout(singleTapTimer)
-      singleTapTimer = null
+  const timeSinceLastTap = now - lastTouchTapEndTime
+  const distDiff = Math.hypot(touch.clientX - lastTouchTapX, touch.clientY - lastTouchTapY)
+
+  // 触屏双击判定：两次轻触间隔 50ms ~ 380ms 且位移相近 (< 50px)
+  if (timeSinceLastTap > 50 && timeSinceLastTap < 380 && distDiff < 50) {
+    if (singleClickTimer) {
+      clearTimeout(singleClickTimer)
+      singleClickTimer = null
     }
-    if (clickX < width * 0.35) {
-      state.seekRelative(-10)
-      state.triggerCenterAction('seek-bwd')
-      state.showHud(2000)
-    } else if (clickX > width * 0.65) {
-      state.seekRelative(10)
-      state.triggerCenterAction('seek-fwd')
-      state.showHud(2000)
-    } else {
-      state.togglePlay()
-    }
+    lastTouchTapEndTime = 0
+    handleStageDoubleAction(clickX, width)
     return
   }
-  lastTouchTime = now
 
-  // 单击判定：等待 280ms 确认不是双击后执行
-  if (singleTapTimer) clearTimeout(singleTapTimer)
-  singleTapTimer = setTimeout(() => {
+  // 记录第一次轻触，等待 260ms 确认不是双击后再执行单触唤起/收起 HUD
+  lastTouchTapEndTime = now
+  lastTouchTapX = touch.clientX
+  lastTouchTapY = touch.clientY
+
+  if (singleClickTimer) clearTimeout(singleClickTimer)
+  singleClickTimer = setTimeout(() => {
     if (hudVisibleAtTouchStart) {
-      // 若触摸开始时已显示，单触意图为立即隐藏收起
       state.isHudVisible.value = false
     } else {
-      // 若触摸开始时处于隐藏状态，唤起并保持无操作 2 秒后自动隐藏
-      state.showHud(2000)
+      state.showHud(2500)
     }
-    lastTouchTime = 0
-    singleTapTimer = null
-  }, 280)
-}
-
-function handleStagePointerDown(e: MouseEvent): void {
-  const now = Date.now()
-  const stage = playerContainerRef.value
-  if (!stage) return
-
-  const rect = stage.getBoundingClientRect()
-  const clickX = e.clientX - rect.left
-  const width = rect.width
-
-  if (now - lastClickTime < 300) {
-    if (clickX < width * 0.35) {
-      state.seekRelative(-10)
-      state.triggerCenterAction('seek-bwd')
-    } else if (clickX > width * 0.65) {
-      state.seekRelative(10)
-      state.triggerCenterAction('seek-fwd')
-    } else {
-      state.toggleFullscreen()
-    }
-    lastClickTime = 0
-    return
-  }
-  lastClickTime = now
+    singleClickTimer = null
+    lastTouchTapEndTime = 0
+  }, 260)
 }
 
 function handleStageClick(event: MouseEvent): void {
   const target = event.target as HTMLElement
-  if (target.closest('.nf-ctrl-bar') || target.closest('.nf-theater-nav') || target.closest('.nf-episodes-drawer')) {
+  if (
+    target.closest('.nf-ctrl-bar') ||
+    target.closest('.nf-theater-nav') ||
+    target.closest('.nf-episodes-drawer') ||
+    target.closest('.nf-muted-toast') ||
+    target.closest('.nf-auto-next-card') ||
+    target.closest('.nf-blocked-gate')
+  ) {
     return
   }
-  // 屏蔽触屏触发的合成点击，防止与 touchEnd 重复冲突
-  if (Date.now() - touchStartTime < 450) {
+  // 严格屏蔽触屏合成点击，防止与 touchEnd 重复冲突
+  if (Date.now() - lastTouchEndTime < 800) {
     return
   }
-  state.showHud()
-  state.togglePlay()
+
+  const stage = playerContainerRef.value
+  const rect = stage?.getBoundingClientRect()
+  const clickX = rect ? event.clientX - rect.left : undefined
+  const width = rect?.width
+
+  // 1. 如果浏览器直接派发原生双击事件 (event.detail >= 2)
+  if (event.detail >= 2) {
+    handleStageDoubleAction(clickX, width)
+    return
+  }
+
+  // 2. 软件防抖判定：两次点击在 260ms 内接连发生 -> 触发双击
+  if (singleClickTimer) {
+    clearTimeout(singleClickTimer)
+    singleClickTimer = null
+    handleStageDoubleAction(clickX, width)
+    return
+  }
+
+  singleClickTimer = setTimeout(() => {
+    handleStageSingleAction()
+    singleClickTimer = null
+  }, 260)
+}
+
+function handleStageDblClick(event: MouseEvent): void {
+  const target = event.target as HTMLElement
+  if (
+    target.closest('.nf-ctrl-bar') ||
+    target.closest('.nf-theater-nav') ||
+    target.closest('.nf-episodes-drawer') ||
+    target.closest('.nf-muted-toast') ||
+    target.closest('.nf-auto-next-card') ||
+    target.closest('.nf-blocked-gate')
+  ) {
+    return
+  }
+  if (Date.now() - lastTouchEndTime < 800) {
+    return
+  }
+
+  const stage = playerContainerRef.value
+  const rect = stage?.getBoundingClientRect()
+  const clickX = rect ? event.clientX - rect.left : undefined
+  const width = rect?.width
+
+  handleStageDoubleAction(clickX, width)
 }
 
 // 绑定全局快捷键
@@ -435,6 +506,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  resetGestureState()
   stopHeartbeatLoop()
   sendHeartbeat(false)
   hlsEngine.setUnmounted(true)
@@ -446,6 +518,7 @@ onBeforeUnmount(() => {
 watch(
   () => [props.vodId, props.ep, route.query.site, route.query.line, route.query.play_id],
   (newVal, oldVal) => {
+    resetGestureState()
     if (oldVal && (newVal[0] !== oldVal[0] || newVal[2] !== oldVal[2])) {
       hlsEngine.detail.value = null
     }
@@ -477,7 +550,7 @@ watch(() => device.restoredAt, () => void hlsEngine.load())
     <div
       class="nf-theater-stage nf-video-stage"
       @click="handleStageClick"
-      @mousedown="handleStagePointerDown"
+      @dblclick="handleStageDblClick"
       @touchstart.passive="handleStageTouchStart"
       @touchend.passive="handleStageTouchEnd"
     >

@@ -80,6 +80,33 @@ def _decode_media_content(content: bytes, site: str | None = None) -> bytes:
     return content
 
 
+def _get_proxy_url_for_site(site: str | None) -> str | None:
+    """获取站点代理，若无站点专属代理则回退全局代理配置或环境变量。"""
+    site_proxy = None
+    if site:
+        try:
+            from app.crawler.runner import _get_proxy_for_site
+            site_proxy = _get_proxy_for_site(_crawler_dir, site)
+        except Exception as exc:
+            logger.debug("获取站点代理异常 (%s): %s", site, exc)
+    if not site_proxy:
+        import os
+        site_proxy = (
+            os.environ.get("HTTPS_PROXY")
+            or os.environ.get("HTTP_PROXY")
+            or os.environ.get("https_proxy")
+            or os.environ.get("http_proxy")
+            or os.environ.get("ALL_PROXY")
+            or os.environ.get("all_proxy")
+        )
+    return site_proxy or None
+
+
+def _create_http_client(site: str | None, timeout: float) -> httpx.Client:
+    proxy = _get_proxy_url_for_site(site)
+    return httpx.Client(proxy=proxy, follow_redirects=True, timeout=timeout)
+
+
 def _build_upstream_headers(url: str, custom_referer: str | None = None) -> dict[str, str]:
     """为上游源站请求构造合法伪造头。"""
     parsed = urlparse(url)
@@ -103,17 +130,19 @@ def fetch_and_rewrite_m3u8(
 
     返回: (rewritten_m3u8_text, content_type)
     """
-    if not is_safe_public_url(upstream_url):
+    proxy_url = _get_proxy_url_for_site(site)
+    resolve_dns = False if proxy_url else True
+    if not is_safe_public_url(upstream_url, resolve_dns=resolve_dns):
         raise ValueError(f"不合规或受保护的流媒体地址: {upstream_url}")
 
     headers = _build_upstream_headers(upstream_url, custom_referer)
-    with httpx.Client(follow_redirects=True, timeout=15.0) as client:
+    with _create_http_client(site=site, timeout=20.0) as client:
         resp = client.get(upstream_url, headers=headers)
         if resp.status_code >= 400:
             raise RuntimeError(f"上游清单返回 HTTP {resp.status_code}: {upstream_url}")
 
         final_url = str(resp.url)
-        if final_url != upstream_url and not is_safe_public_url(final_url):
+        if final_url != upstream_url and not is_safe_public_url(final_url, resolve_dns=resolve_dns):
             raise ValueError(f"清单重定向到不安全地址: {final_url}")
         raw_body = resp.content
 
@@ -213,20 +242,26 @@ def fetch_and_decode_segment(
 
     返回: (data_bytes, media_type, status_code, extra_headers)
     """
-    if not is_safe_public_url(upstream_url):
+    proxy_url = _get_proxy_url_for_site(site)
+    resolve_dns = False if proxy_url else True
+    if not is_safe_public_url(upstream_url, resolve_dns=resolve_dns):
         raise ValueError(f"不合规或受保护的流媒体切片地址: {upstream_url}")
 
     headers = _build_upstream_headers(upstream_url, custom_referer)
-    if range_header:
+    # ⚠️ 关键：若站点具有媒体解密/解封装钩子（如伪装成 PNG 的 MPEG-TS），切不可将 Range 传给上游源站！
+    # 因为对压缩或封装文件进行部分 Range 抓取会导致解密/解压缩损坏。
+    # 此时应全量拉取上游密文/伪装体，解密完成后再由本地对解密后的媒体流实施 Range 切片切块。
+    has_decoder = callable(get_site_media_decoder(site)) if site else False
+    if range_header and not has_decoder:
         headers["Range"] = range_header
 
-    with httpx.Client(follow_redirects=True, timeout=25.0) as client:
+    with _create_http_client(site=site, timeout=30.0) as client:
         resp = client.get(upstream_url, headers=headers)
         if resp.status_code >= 400:
             raise RuntimeError(f"上游分片返回 HTTP {resp.status_code}: {upstream_url}")
 
         final_url = str(resp.url)
-        if final_url != upstream_url and not is_safe_public_url(final_url):
+        if final_url != upstream_url and not is_safe_public_url(final_url, resolve_dns=resolve_dns):
             raise ValueError(f"切片重定向到不安全地址: {final_url}")
 
         raw_body = resp.content
@@ -279,16 +314,18 @@ def fetch_and_decode_key(
     custom_referer: str | None = None,
 ) -> tuple[bytes, str]:
     """拉取 AES-128 加密密钥，解封装后返回。"""
-    if not is_safe_public_url(upstream_url):
+    proxy_url = _get_proxy_url_for_site(site)
+    resolve_dns = False if proxy_url else True
+    if not is_safe_public_url(upstream_url, resolve_dns=resolve_dns):
         raise ValueError(f"不合规或受保护的密钥地址: {upstream_url}")
 
     headers = _build_upstream_headers(upstream_url, custom_referer)
-    with httpx.Client(follow_redirects=True, timeout=10.0) as client:
+    with _create_http_client(site=site, timeout=15.0) as client:
         resp = client.get(upstream_url, headers=headers)
         if resp.status_code >= 400:
             raise RuntimeError(f"上游密钥返回 HTTP {resp.status_code}: {upstream_url}")
         final_url = str(resp.url)
-        if final_url != upstream_url and not is_safe_public_url(final_url):
+        if final_url != upstream_url and not is_safe_public_url(final_url, resolve_dns=resolve_dns):
             raise ValueError(f"密钥重定向到不安全地址: {final_url}")
         raw = resp.content
         if len(raw) > 8192:

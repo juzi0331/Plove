@@ -244,11 +244,24 @@ function onProgressLeave(): void {
       <span class="nf-gate-text">點擊解鎖並開啟高畫質影院</span>
     </div>
 
-    <!-- 静音自播中提示胶囊 -->
+    <!-- 静音提示胶囊 (任何处于静音播放时均显示，触屏与点击均可一键恢复声音) -->
     <Transition name="nf-fade">
-      <div v-if="isMutedAutoplay && isPlaying" class="nf-muted-toast" @click.stop="emit('unmute')">
-        <span>🔊 當前為靜音自播模式</span>
-        <button class="nf-muted-btn" type="button">開啟聲音</button>
+      <div
+        v-if="isMuted && isPlaying"
+        class="nf-muted-toast"
+        @click.stop="emit('unmute')"
+        @touchend.stop.prevent="emit('unmute')"
+      >
+        <span class="nf-muted-toast-icon">🔊</span>
+        <span class="nf-muted-toast-text">當前為靜音播放</span>
+        <button
+          class="nf-muted-btn"
+          type="button"
+          @click.stop="emit('unmute')"
+          @touchend.stop.prevent="emit('unmute')"
+        >
+          開啟聲音
+        </button>
       </div>
     </Transition>
 
@@ -344,9 +357,16 @@ function onProgressLeave(): void {
             </svg>
           </button>
 
-          <!-- 音量调节 (移动端由 CSS 响应式隐藏) -->
+          <!-- 音量调节 (移动端仅隐藏滑动条，保留一键静音/取消静音图标) -->
           <div class="nf-volume-group">
-            <button class="nf-ctrl-btn" type="button" :title="isMuted ? '取消靜音 (M)' : '靜音 (M)'" @click="emit('toggleMute')">
+            <button
+              class="nf-ctrl-btn mute-btn"
+              :class="{ 'is-muted': isMuted || volume === 0 }"
+              type="button"
+              :title="isMuted ? '取消靜音 (M)' : '靜音 (M)'"
+              @click.stop="emit('toggleMute')"
+              @touchend.stop.prevent="emit('toggleMute')"
+            >
               <svg v-if="isMuted || volume === 0" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M11 5L6 9H2v6h4l5 4V5z" fill="currentColor" />
                 <line x1="23" y1="9" x2="17" y2="15" stroke-width="2.5" />

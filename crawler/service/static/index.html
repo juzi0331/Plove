@@ -3200,7 +3200,11 @@ if __name__ == "__main__":
           if (!rawUrl || typeof rawUrl !== 'string') return '';
           const trimmed = rawUrl.trim();
           if (trimmed.startsWith('data:')) return trimmed;
-          if (trimmed.startsWith('/api/v1/proxy/image')) return trimmed;
+          if (trimmed.startsWith('/api/v1/proxy/image') || trimmed.startsWith('https://wsrv.nl/')) return trimmed;
+          // 针对海外被墙或防盗链阻断的图床（如网飞猫 vres.cyscyy.com），自动通过 wsrv.nl 边缘 CDN 加速
+          if (trimmed.includes('vres.cyscyy.com') || (siteKey === 'www_ncat21_com' && trimmed.startsWith('http'))) {
+            return `https://wsrv.nl/?url=${encodeURIComponent(trimmed)}`;
+          }
           const siteParam = siteKey ? `&site=${encodeURIComponent(siteKey)}` : '';
           return `/api/v1/proxy/image?url=${encodeURIComponent(trimmed)}${siteParam}`;
         }

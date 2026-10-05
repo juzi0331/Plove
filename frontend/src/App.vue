@@ -13,7 +13,7 @@ import { getPublicSystemStatus } from '@/api/client'
 import type { SystemNoticePayload, SystemStatusPayload } from '@/api/types'
 import { useDeviceStore } from '@/stores/device'
 import { useExperienceStore } from '@/stores/experience'
-import { setDecryptDomains, setGlobalImageProxy } from '@/utils/format'
+import { setCdnPrefixRules, setDecryptDomains, setGlobalImageProxy } from '@/utils/format'
 
 const device = useDeviceStore()
 const experience = useExperienceStore()
@@ -87,6 +87,7 @@ async function fetchStatus(): Promise<void> {
     sysStatus.value = res
     setGlobalImageProxy(Boolean(res.image_proxy_enabled))
     setDecryptDomains(res.image_decrypt_domains || [])
+    setCdnPrefixRules(res.image_cdn_prefix_rules || [])
     // 首次弹窗策略：若公告为 modal 或 both 或 all，且本次会话未关闭过
     if (
       res.notice?.enabled &&

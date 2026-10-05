@@ -15,6 +15,7 @@ import {
   Key,
   MagicStick,
   Plus,
+  Promotion,
   Refresh,
   Setting,
 } from '@element-plus/icons-vue'
@@ -24,6 +25,7 @@ import { ui } from '@/admin/ui'
 import { useImageProxy } from './image-proxy/useImageProxy'
 import GlobalProxyDialog from './image-proxy/GlobalProxyDialog.vue'
 import DecryptionRulesDialog from './image-proxy/DecryptionRulesDialog.vue'
+import CdnPrefixDialog from './image-proxy/CdnPrefixDialog.vue'
 
 const {
   loading,
@@ -63,6 +65,17 @@ const {
   loadData,
   handleSaveConfig,
   handleSaveConfigAndCloseDialog,
+  // CDN 前缀规则
+  cdnRulesList,
+  showCdnPrefixDialog,
+  showCdnRuleEditDialog,
+  isEditingCdnRule,
+  cdnRuleForm,
+  openAddCdnRule,
+  openEditCdnRule,
+  handleSaveCdnRule,
+  handleDeleteCdnRule,
+  handleToggleCdnRule,
 } = useImageProxy()
 
 onMounted(() => {
@@ -223,6 +236,66 @@ onMounted(() => {
           </ElButton>
         </div>
       </ElCard>
+
+      <!-- 卡片 3: 图床加速与代理前缀路由 (CDN Prefix Relay) -->
+      <ElCard shadow="hover" class="module-card cdn-card" @click="showCdnPrefixDialog = true">
+        <div class="card-top-bar">
+          <div class="card-title-group">
+            <div class="card-icon-box cdn-icon" style="background: rgba(14, 165, 233, 0.12); color: #0ea5e9">
+              <ElIcon :size="20"><Promotion /></ElIcon>
+            </div>
+            <div>
+              <div class="card-title">图床加速与代理前缀路由</div>
+              <div class="card-subtitle">按站点/域名指定免费边缘 CDN 反代（如 wsrv.nl），解决被墙与丢包破图</div>
+            </div>
+          </div>
+          <ElTag type="success" effect="dark" class="status-tag">
+            {{ cdnRulesList.filter(r => r.enabled).length }} / {{ cdnRulesList.length }} 规则生效中
+          </ElTag>
+        </div>
+
+        <div class="card-body-section">
+          <div class="info-pill-grid">
+            <div class="info-pill-item">
+              <span class="pill-label">已配置规则</span>
+              <span class="pill-value-number">{{ cdnRulesList.length }} <small>条</small></span>
+            </div>
+
+            <div class="info-pill-item">
+              <span class="pill-label">边缘加速支持</span>
+              <span class="pill-value-text">wsrv.nl / weserv</span>
+            </div>
+
+            <div class="info-pill-item">
+              <span class="pill-label">特征站点/图床</span>
+              <span class="pill-value-text">
+                {{ cdnRulesList.length > 0 ? (cdnRulesList[0].site_key || cdnRulesList[0].match_domain || '网飞猫') : '暂无规则' }}
+                <span v-if="cdnRulesList.length > 1" style="opacity: 0.6;"> +{{ cdnRulesList.length - 1 }}</span>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-bottom-bar">
+          <ElButton
+            size="small"
+            type="primary"
+            plain
+            :icon="Plus"
+            :disabled="ui.readOnly"
+            @click.stop="openAddCdnRule"
+          >
+            添加加速规则
+          </ElButton>
+          <ElButton
+            type="primary"
+            link
+            @click.stop="showCdnPrefixDialog = true"
+          >
+            管理加速路由 →
+          </ElButton>
+        </div>
+      </ElCard>
     </div>
 
     <!-- 弹窗 1: 全局海报防盗链中继总控详情 -->
@@ -272,6 +345,21 @@ onMounted(() => {
       @parse-ai-json="handleParseAiJson"
       @open-test-rule-modal="openTestRuleModal"
       @run-modal-test="runModalTest"
+    />
+
+    <!-- 弹窗 3: 图床加速与代理前缀管理弹窗 -->
+    <CdnPrefixDialog
+      v-model="showCdnPrefixDialog"
+      :cdn-rules-list="cdnRulesList"
+      :show-cdn-rule-edit-dialog="showCdnRuleEditDialog"
+      :is-editing-cdn-rule="isEditingCdnRule"
+      :cdn-rule-form="cdnRuleForm"
+      @update:show-cdn-rule-edit-dialog="showCdnRuleEditDialog = $event"
+      @open-add-cdn-rule="openAddCdnRule"
+      @open-edit-cdn-rule="openEditCdnRule"
+      @save-cdn-rule="handleSaveCdnRule"
+      @delete-cdn-rule="handleDeleteCdnRule"
+      @toggle-cdn-rule="handleToggleCdnRule"
     />
   </div>
 </template>

@@ -7,7 +7,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Header, Query
 
 from app.api.deps import get_content_cache, get_registry, require_device
 from app.cache.content import ContentCache
@@ -82,6 +82,8 @@ def playback(
         description="详情里那一集的 play_id，原样回传可省掉爬虫的一次源站请求；"
         "不传也能用，只是慢一点",
     ),
+    token: str | None = Query(None, description="可选的设备或鉴权令牌"),
+    x_device_token: str | None = Header(None, alias="X-Device-Token"),
     request_id: str = Depends(get_request_id),
     registry: SiteRegistry = Depends(get_registry),
 ) -> Envelope[Playback]:
@@ -94,7 +96,10 @@ def playback(
     :func:`app.services.catalog_service._clean_play_id`）：不像站内定位符就忽略它，
     而不是回 4xx —— 它是加速用的，不该成为一个新的失败原因。
     """
+    active_token = x_device_token or token
     return ok(
-        catalog_service.playback(registry, key, vod_id, ep=ep, line=line, play_id=play_id),
+        catalog_service.playback(
+            registry, key, vod_id, ep=ep, line=line, play_id=play_id, token=active_token
+        ),
         request_id,
     )

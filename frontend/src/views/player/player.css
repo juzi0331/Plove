@@ -295,6 +295,7 @@
   object-fit: contain;
   background-color: #000000;
   outline: none;
+  pointer-events: none;
 }
 
 .nf-video-wrapper.mode-fill .nf-cinema-video {
@@ -312,15 +313,24 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  background: rgba(20, 20, 20, 0.9);
+  background: rgba(20, 20, 20, 0.92);
   border: 1px solid rgba(229, 9, 20, 0.5);
   backdrop-filter: blur(16px);
   padding: 10px 20px;
   border-radius: 28px;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7);
-  z-index: 35;
+  z-index: 60;
   cursor: pointer;
+  pointer-events: auto !important;
   animation: nf-float 2.5s ease-in-out infinite;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.nf-muted-toast:hover,
+.nf-muted-toast:active {
+  background: rgba(28, 28, 28, 0.98);
+  border-color: #e50914;
 }
 
 .nf-muted-btn {
@@ -328,10 +338,21 @@
   color: #ffffff;
   border: none;
   border-radius: 14px;
-  padding: 4px 12px;
-  font-size: 12px;
+  padding: 6px 14px;
+  font-size: 13px;
   font-weight: 700;
   cursor: pointer;
+  pointer-events: auto !important;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.nf-muted-btn:active {
+  transform: scale(0.94);
+  background: #f40612;
+}
+
+.nf-ctrl-btn.mute-btn.is-muted {
+  color: #ff3b30;
 }
 
 /* 受限时的巨型开播大门 */
@@ -804,6 +825,16 @@
 /* ====================================================================
    右侧滑出选集抽屉 (Episodes Drawer)
 ==================================================================== */
+.nf-drawer-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  z-index: 45;
+  cursor: pointer;
+  transition: opacity 0.25s ease;
+}
+
 .nf-episodes-drawer {
   position: absolute;
   top: 0;
@@ -1328,10 +1359,24 @@
     border-radius: 4px;
   }
 
-  /* 移动端隐藏音量调节（使用物理音量键）及画中画 */
-  .nf-volume-group,
+  /* 移动端仅隐藏拖拽滑块及画中画，保留一键静音/取消静音按钮与提示 */
+  .nf-volume-slider-wrap,
   .nf-ctrl-btn.pip-btn {
     display: none !important;
+  }
+
+  .nf-volume-group {
+    display: flex !important;
+    align-items: center;
+  }
+
+  .nf-muted-toast {
+    top: calc(68px + var(--plove-safe-top, 0px));
+    padding: 8px 16px;
+    font-size: 13px;
+    gap: 8px;
+    width: auto;
+    max-width: 90vw;
   }
 
   .nf-time-display {

@@ -212,6 +212,7 @@ def playback(
     ep: int = 1,
     line: int | None = None,
     play_id: str | None = None,
+    token: str | None = None,
 ) -> Playback:
     """取播放地址。
 
@@ -241,7 +242,8 @@ def playback(
 
     # 阶段 9 流代理：若该源标记为 mode == "proxy"，通过后端流中继代理以支持伪装容器解封装与防盗链穿透
     if meta.mode == "proxy":
-        proxy_url = f"/api/v1/proxy/stream/m3u8?site={quote(key)}&url={quote(raw.url)}"
+        token_part = f"&token={quote(token)}" if token else ""
+        proxy_url = f"/api/v1/proxy/stream/m3u8?site={quote(key)}&url={quote(raw.url)}{token_part}"
         return raw.model_copy(update={"url": proxy_url, "headers": {}})
 
     return raw

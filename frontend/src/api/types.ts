@@ -470,6 +470,16 @@ export interface ImageProxyClearResult {
   freed_mb: number
 }
 
+/** 图床加速与代理前缀规则（如 wsrv.nl 等公共边缘 CDN 反代）。 */
+export interface ImageCdnPrefixRule {
+  id: string
+  name: string
+  site_key?: string
+  match_domain?: string
+  prefix: string
+  enabled: boolean
+}
+
 /** 全局图片防盗链代理总控配置。 */
 export interface ImageProxyConfig {
   global_proxy_enabled?: boolean
@@ -478,6 +488,7 @@ export interface ImageProxyConfig {
   custom_referer?: string
   cache_max_mb?: number
   decryption_rules?: ImageDecryptionRule[]
+  cdn_prefix_rules?: ImageCdnPrefixRule[]
   updated_at?: string
 }
 
@@ -914,6 +925,7 @@ export interface SystemStatusPayload {
   notice?: SystemNoticePayload | null
   image_proxy_enabled?: boolean
   image_decrypt_domains?: string[]
+  image_cdn_prefix_rules?: ImageCdnPrefixRule[]
 }
 
 export interface TelegramConfig {

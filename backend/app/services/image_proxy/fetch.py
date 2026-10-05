@@ -61,8 +61,23 @@ def fetch_image_with_cache(
         except Exception:
             pass
 
-    # 2. 远端抓取
-    parsed = urlparse(url)
+    # 2. 远端抓取（优先检查外部 CDN 加速前缀规则）
+    target_fetch_url = url
+    for rule in getattr(cfg, "cdn_prefix_rules", []):
+        if not getattr(rule, "enabled", True) or not getattr(rule, "prefix", ""):
+            continue
+        r_site = (getattr(rule, "site_key", "") or "").strip().lower()
+        r_domain = (getattr(rule, "match_domain", "") or "").strip().lower()
+        if r_site and site and r_site != site.strip().lower():
+            continue
+        if r_domain and r_domain not in url.lower():
+            continue
+        # 命中前缀加速规则：转由公共边缘 CDN 反代抓取
+        if not url.startswith(rule.prefix):
+            target_fetch_url = f"{rule.prefix}{url}"
+        break
+
+    parsed = urlparse(target_fetch_url)
     default_referer = f"{parsed.scheme}://{parsed.netloc}/"
     referer = custom_referer or default_referer
 
@@ -76,7 +91,7 @@ def fetch_image_with_cache(
     }
 
     with httpx.Client(timeout=timeout_seconds, follow_redirects=True) as client:
-        resp = client.get(url, headers=headers)
+        resp = client.get(target_fetch_url, headers=headers)
         if resp.status_code != 200:
             raise RuntimeError(f"源站返回 HTTP {resp.status_code}")
         

@@ -117,11 +117,15 @@ def get_public_system_status(db: Session) -> SystemStatusPayload:
                 if d and d.strip() and d.strip() not in decrypt_domains:
                     decrypt_domains.append(d.strip())
 
+    # 动态汇聚所有已启用的外部 CDN 加速前缀规则
+    cdn_rules = [r for r in getattr(proxy_cfg, "cdn_prefix_rules", []) if r.enabled and r.prefix]
+
     return SystemStatusPayload(
         maintenance=m.enabled,
         maintenance_message=m.message,
         notice=n if n.enabled else None,
         image_proxy_enabled=proxy_cfg.global_proxy_enabled,
         image_decrypt_domains=decrypt_domains,
+        image_cdn_prefix_rules=cdn_rules,
     )
 

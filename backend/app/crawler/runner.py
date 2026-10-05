@@ -38,28 +38,35 @@ def _get_proxy_for_site(crawler_dir: Path, key: str) -> str | None:
     """查找站点专属代理配置。
 
     优先级：
-    1. 站点管理后台（SiteSetting / SitesView.vue）配置的独立代理与开关
-    2. 环境变量 PROXY_{KEY}
+    1. 站点管理后台（SiteSetting / SitesView.vue）配置的独立代理与开关（数据库权威数据）
+       - 若站点在数据库中有显式记录且 proxy_enabled 为 False，代表运维明确指定直连，绝不走代理！
+       - 若 proxy_enabled 为 True 且配置了代理地址，返回该代理地址。
+    2. 环境变量 PROXY_{KEY}（支持赋值 direct/none/off 强制直连）
     3. crawler/service/proxy_config.json 独立绑定或全局配置
+       - 若站点在 bindings 中绑定为 "direct" 或 "none"，绝不走代理！
+       - 若站点绑定了具体节点 ID，返回对应节点的代理地址。
+       - 全局 default_proxy_url 仅对未明确声明直连的站点兜底生效。
     """
-    # 1. 站点后台配置（UI 独立开关与地址）
+    clean_k = (key or "").strip().lower()
+
+    # 1. 站点后台配置（数据库权威配置）
     try:
         from app.services.site_settings import store
-        cfg = store().config(key)
+        cfg = store().get_explicit(clean_k)
         if cfg is not None:
-            if getattr(cfg, "proxy_enabled", False):
-                url = (getattr(cfg, "proxy_url", "") or "").strip()
-                if url:
-                    return url
-            elif getattr(cfg, "proxy_url", "").strip():
-                # 填写了代理地址但开关处于关闭状态，说明运维明确要求该站走直连
+            if not getattr(cfg, "proxy_enabled", False):
+                # 运维在后台显式未开启或关闭了代理，明确要求直连！绝不走代理！
                 return None
-    except Exception:
-        pass
+            url = (getattr(cfg, "proxy_url", "") or "").strip()
+            return url if url else None
+    except Exception as exc:
+        logger.debug("读取站点代理配置异常: %s", exc)
 
     # 2. 站点专属环境变量: PROXY_HUANGGUOAI_COM
-    env_key = f"PROXY_{key.upper()}"
+    env_key = f"PROXY_{clean_k.upper()}"
     if env_val := os.environ.get(env_key, "").strip():
+        if env_val.lower() in ("direct", "none", "off", "0"):
+            return None
         return env_val
 
     # 3. 检查 crawler/service/proxy_config.json 独立绑定
@@ -68,18 +75,20 @@ def _get_proxy_for_site(crawler_dir: Path, key: str) -> str | None:
         try:
             data = json.loads(cfg_path.read_text(encoding="utf-8"))
             bindings = data.get("bindings", {})
-            target = bindings.get(key.lower(), "default")
-            if target == "direct":
+            target = bindings.get(clean_k, "default")
+            if target in ("direct", "none", "off"):
                 return None
             if target and target != "default":
                 for node in data.get("nodes", []):
                     if node.get("id") == target:
                         return node.get("proxy_url") or node.get("local_http_proxy")
             # 兼容老版 sites 结构
-            if "sites" in data and key.lower() in data["sites"]:
-                s_cfg = data["sites"][key.lower()]
+            if "sites" in data and clean_k in data["sites"]:
+                s_cfg = data["sites"][clean_k]
                 if s_cfg.get("enabled") and s_cfg.get("proxy_url"):
                     return s_cfg["proxy_url"]
+                elif s_cfg.get("enabled") is False:
+                    return None
             # 跟随全局默认
             if data.get("enabled"):
                 return data.get("default_proxy_url") or data.get("proxy_url")
@@ -96,9 +105,9 @@ class CrawlerRunner:
         sites_dir: Path,
         python: str | None = None,
         timeout: float = 8.0,
-        timeout_play: float = 5.0,
+        timeout_play: float = 12.0,
     ) -> None:
-        self.sites_dir = Path(sites_dir)
+        self.sites_dir = Path(sites_dir).resolve()
         #: 用**当前解释器**跑爬虫，保证本地与线上是同一条路径
         self.python = python or sys.executable
         self.timeout = timeout
