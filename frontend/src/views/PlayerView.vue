@@ -199,7 +199,18 @@ function attachPlayer(result: Playback): void {
       }
     },
     enableWorker: true,
-    lowLatencyMode: true,
+    enableSoftwareAES: true,
+    defaultAudioCodec: 'mp4a.40.2',
+    // 普通点播不是低延迟直播。关闭 LL-HLS 可减少额外请求和缓冲抖动。
+    lowLatencyMode: false,
+    startFragPrefetch: true,
+    maxBufferLength: 30,
+    maxMaxBufferLength: 60,
+    manifestLoadingTimeOut: 25000,
+    fragLoadingTimeOut: 30000,
+    levelLoadingTimeOut: 25000,
+    fragLoadingMaxRetry: 4,
+    levelLoadingMaxRetry: 4,
   })
 
   hls.on(Hls.Events.ERROR, (_event, data) => {
@@ -249,33 +260,35 @@ async function load(): Promise<void> {
     const key = sites.currentKey
     if (!key) throw new Error('後端暫無可用片源站')
 
-    // 并发预加载影片详情（获取完整集数、线路信息）与播放流地址
-    const [playbackRes, detailRes] = await Promise.allSettled([
-      api.getPlayback(key, {
-        vodId: props.vodId,
-        ep: Number(props.ep) || 1,
-        line: route.query.line ? Number(route.query.line) : undefined,
-        playId: typeof route.query.play_id === 'string' ? route.query.play_id : undefined,
-      }),
-      detail.value ? Promise.resolve(detail.value) : api.getDetail(key, props.vodId),
-    ])
+    // 详情与播放地址仍然并发请求，但首帧绝不能被详情拖住。
+    // ncat21 实测 playback 带 play_id 约 3.4s，而 detail 约 4s；
+    // 等 Promise.allSettled 会人为把可播放时间抬到最慢请求。
+    const detailPromise = detail.value
+      ? Promise.resolve(detail.value)
+      : api.getDetail(key, props.vodId)
+
+    void detailPromise.then((result) => {
+      if (currentSeq !== loadSeq || isUnmounted) return
+      detail.value = result
+    }).catch(() => {
+      // 详情只负责选集/线路 UI；播放地址成功时不应因为详情失败而阻断首帧。
+    })
+
+    const playbackRes = await api.getPlayback(key, {
+      vodId: props.vodId,
+      ep: Number(props.ep) || 1,
+      line: route.query.line ? Number(route.query.line) : undefined,
+      playId: typeof route.query.play_id === 'string' ? route.query.play_id : undefined,
+    })
 
     if (currentSeq !== loadSeq || isUnmounted) return
 
-    if (detailRes.status === 'fulfilled') {
-      detail.value = detailRes.value
-    }
-
-    if (playbackRes.status === 'rejected') {
-      throw playbackRes.reason
-    }
-
-    playback.value = playbackRes.value
+    playback.value = playbackRes
     await nextTick()
 
     if (currentSeq !== loadSeq || isUnmounted) return
 
-    attachPlayer(playbackRes.value)
+    attachPlayer(playbackRes)
   } catch (err) {
     if (currentSeq !== loadSeq || isUnmounted) return
     error.value = describeError(err)

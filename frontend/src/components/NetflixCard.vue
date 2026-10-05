@@ -45,6 +45,8 @@ const displayPic = computed(() => {
         class="nf-card__img"
         referrerpolicy="no-referrer"
         loading="lazy"
+        decoding="async"
+        fetchpriority="low"
         @error="($event.target as HTMLElement).style.display = 'none'"
       />
 

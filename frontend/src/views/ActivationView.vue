@@ -258,6 +258,8 @@ onMounted(() => {
                   :alt="item.vod_name"
                   class="nf-rank-card__img"
                   loading="lazy"
+                  decoding="async"
+                  fetchpriority="low"
                   @error="($event.target as HTMLElement).style.display = 'none'"
                 />
               </div>

@@ -104,9 +104,10 @@ function buildPosterWall(): void {
 
   const allPics = shuffleArray([...officialNetflixPosters, ...cinemaWallPosters, ...livePics])
 
-  // 2. 构造具有自然错落大小比例的卡片池 (竖向 3~4 排需约 60~72 张卡片密集平铺)
+  // 2. 海报墙是纯装饰背景，不应抢占首屏真实内容的网络与解码预算。
+  // 桌面 48 张已足够保持密集视觉；移动端缩到 30 张，显著减少图片并发。
   const result: PosterCardItem[] = []
-  const count = 72
+  const count = typeof window !== 'undefined' && window.innerWidth <= 768 ? 30 : 48
 
   for (let i = 0; i < count; i++) {
     const pic = allPics[i % allPics.length]
@@ -163,7 +164,9 @@ watch(() => props.items, () => {
             alt="poster"
             class="nf-poster-img"
             referrerpolicy="no-referrer"
-            crossorigin="anonymous"
+            loading="lazy"
+            decoding="async"
+            fetchpriority="low"
             @error="($event.target as HTMLElement).style.display = 'none'"
           />
         </div>
