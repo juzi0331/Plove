@@ -21,6 +21,7 @@ import type { DetailPayload, Episode, VodItem } from '@/api/types'
 import BrandLogo from '@/components/BrandLogo.vue'
 import NetflixCard from '@/components/NetflixCard.vue'
 import UserMenu from '@/components/UserMenu.vue'
+import { proxiedImageUrl } from '@/utils/art'
 import { useDeviceStore } from '@/stores/device'
 import { useSitesStore } from '@/stores/sites'
 
@@ -44,6 +45,7 @@ const activeLine = ref<number | undefined>(undefined)
 const lineManuallySelected = ref(false)
 
 const video = computed(() => detail.value?.video ?? null)
+const heroPoster = computed(() => proxiedImageUrl(video.value?.vod_pic))
 const lines = computed(() => detail.value?.lines ?? [])
 const allEpisodes = computed(() => detail.value?.episodes ?? [])
 
@@ -240,7 +242,7 @@ function scrollRow(direction: 'left' | 'right'): void {
       <section class="nf-detail-hero">
         <div
           class="nf-hero-bg"
-          :style="{ backgroundImage: `url(${video.vod_pic || ''})` }"
+          :style="{ backgroundImage: heroPoster ? `url(${heroPoster})` : 'none' }"
         />
         <div class="nf-hero-vignette" />
 

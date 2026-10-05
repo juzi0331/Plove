@@ -36,3 +36,28 @@ export function titleGradient(text: string): string {
   const to = (hue + 32) % 360
   return `linear-gradient(155deg, hsl(${hue} 38% 24%), hsl(${to} 44% 9%))`
 }
+
+
+/**
+ * Third-party poster URL -> same-origin image proxy.
+ *
+ * 2048's image CDN is already browser-friendly and is intentionally left
+ * direct to avoid an unnecessary hop. Other upstreams often require
+ * anti-hotlink headers / WAF handling and must go through the backend proxy.
+ */
+export function proxiedImageUrl(url: string | null | undefined): string {
+  const raw = String(url || '').trim()
+  if (!raw) return ''
+  if (!/^https?:\/\//i.test(raw)) return raw
+
+  try {
+    const parsed = new URL(raw)
+    const host = parsed.hostname.toLowerCase()
+    if (host === '2048ai.vip' || host.endsWith('.2048ai.vip')) return raw
+    if (typeof window !== 'undefined' && host === window.location.hostname) return raw
+  } catch {
+    return raw
+  }
+
+  return `/api/v1/proxy/image?url=${encodeURIComponent(raw)}`
+}

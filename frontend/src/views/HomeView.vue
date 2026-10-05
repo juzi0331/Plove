@@ -45,9 +45,24 @@ const siteSelectorRef = ref<InstanceType<typeof SiteSelector> | null>(null)
 
 // 视频横幅楼层：优先使用后端下发的后台指定分类楼层（每类严格10部）
 const displayedSections = computed<HomeSection[]>(() => {
-  if (sections.value && sections.value.length > 0) {
-    return sections.value
+  const seen = new Set<string>()
+  const uniqueSections: HomeSection[] = []
+
+  // 前端再做一道跨楼层去重。即使某个采集器临时又返回重复数据，
+  // 首页也不会把同一部片在每一行重复展示。
+  for (const section of sections.value ?? []) {
+    const videos = (section.videos ?? []).filter((item) => {
+      const key = String(item.vod_id)
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+    if (videos.length > 0) {
+      uniqueSections.push({ ...section, videos })
+    }
   }
+  if (uniqueSections.length > 0) return uniqueSections
+
   // 兜底：若暂无分类楼层且有原始推荐，展示前10部
   if (recommend.value && recommend.value.length > 0) {
     return [{

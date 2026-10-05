@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
 import shutil
 import time
 from pathlib import Path
@@ -23,6 +24,28 @@ from app.core.config import BACKEND_DIR
 from app.schemas.admin_extended import ImageProxyClearResult, ImageProxyStats
 
 CACHE_DIR = BACKEND_DIR / "data" / "img_cache"
+
+_CDND_COOKIE = "cdndefend_js_cookie"
+_CDND_STATUS = 850
+_CDND_SECRET_RE = re.compile(r"['\"]([0-9A-Fa-f]{40})['\"]")
+_NCAT_RDUL_HOSTS = (
+    "https://103.39.111.180:51050",
+    "https://103.39.111.184:51050",
+)
+
+
+def _solve_cdndefend(challenge_html: str) -> str:
+    """Solve the lightweight cdndefend JS challenge used by ncat21 image hosts."""
+    match = _CDND_SECRET_RE.search(challenge_html or "")
+    if not match:
+        raise RuntimeError("cdndefend challenge secret not found")
+    secret = match.group(1).upper()
+    offset = int(secret[0], 16)
+    for counter in range(2_000_000):
+        digest = hashlib.sha1(f"{secret}{counter}".encode()).digest()
+        if digest[offset] == 0xB0 and digest[offset + 1] == 0x0B:
+            return secret + str(counter)
+    raise RuntimeError("cdndefend challenge solve timeout")
 
 
 def ensure_cache_dir() -> Path:
@@ -89,13 +112,43 @@ def fetch_image_with_cache(
         "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
     }
 
+    hostname = (parsed.hostname or "").lower()
     with httpx.Client(timeout=timeout_seconds, follow_redirects=True) as client:
-        resp = client.get(url, headers=headers)
+        resp = None
+
+        # 网飞猫网页里的 LazyImageLoader 本来就会把 /vod1/* 图片改到 RDUL
+        # 资源节点；直接访问 www.ncat21.com 的图片反而会遭遇 850/403。
+        # 后端代理复刻源站自己的正确取图路径，避免每张封面都跑一次挑战。
+        if hostname.endswith("ncat21.com") and parsed.path.startswith("/vod1/"):
+            suffix = parsed.path + (f"?{parsed.query}" if parsed.query else "")
+            for base in _NCAT_RDUL_HOSTS:
+                try:
+                    candidate = client.get(base + suffix, headers=headers)
+                except httpx.HTTPError:
+                    continue
+                candidate_type = candidate.headers.get("content-type", "")
+                if candidate.status_code == 200 and candidate_type.lower().startswith("image/"):
+                    resp = candidate
+                    break
+
+        if resp is None:
+            resp = client.get(url, headers=headers)
+
+        # RDUL 全部不可用时保留 cdndefend 兜底。
+        if resp.status_code == _CDND_STATUS and hostname.endswith("ncat21.com"):
+            cookie_value = _solve_cdndefend(resp.text)
+            time.sleep(1.05)
+            headers_with_cookie = dict(headers)
+            headers_with_cookie["Cookie"] = f"{_CDND_COOKIE}={cookie_value}"
+            resp = client.get(url, headers=headers_with_cookie)
+
         if resp.status_code != 200:
             raise RuntimeError(f"源站返回 HTTP {resp.status_code}")
-        
+
         content = resp.content
         c_type = resp.headers.get("content-type", "image/jpeg")
+        if not c_type.lower().startswith("image/"):
+            raise RuntimeError(f"源站返回的不是图片: {c_type}")
 
     # 3. 异步/即时落盘
     try:

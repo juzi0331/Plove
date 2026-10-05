@@ -104,19 +104,58 @@ class Ai2048:
 
     def home(self):
         data = self._api("/short-dramas/home") or {}
+        categories = self._categories()
         sections = []
         recommend = []
+        seen_ids: set[str] = set()
+
+        def take_unseen(items, limit=10):
+            picked = []
+            for video in _to_vod_list(items):
+                vid = str(video["vod_id"])
+                if vid in seen_ids:
+                    continue
+                seen_ids.add(vid)
+                picked.append(video)
+                recommend.append(video)
+                if len(picked) >= limit:
+                    break
+            return picked
+
+        # 源站三个首页字段实测会大量重复。跨板块去重，避免用户看到
+        # “热播 / 追剧榜 / 精选”其实是同一排内容。
         for field, title in HOME_SECTIONS:
-            videos = _to_vod_list(data.get(field))
-            if not videos:
-                continue
-            sections.append({"title": title, "videos": videos})
-            recommend.extend(videos)
+            videos = take_unseen(data.get(field))
+            if videos:
+                sections.append({"title": title, "videos": videos})
+
+        # 如果源站首页字段重复得只剩很少内容，用真实分类补足不同楼层。
+        # 最多尝试 6 个分类，避免为了首页无限追加上游请求。
+        if len(sections) < 3 or sum(len(s["videos"]) for s in sections) < 20:
+            for category in categories[:6]:
+                if len(sections) >= 4:
+                    break
+                listing = self._api(
+                    "/short-dramas",
+                    sortBy="heat",
+                    page=1,
+                    size=12,
+                    categoryId=category["tid"],
+                ) or {}
+                videos = take_unseen(listing.get("items"))
+                if len(videos) < 3:
+                    continue
+                sections.append(
+                    {
+                        "title": category["name"],
+                        "tid": category["tid"],
+                        "videos": videos,
+                    }
+                )
 
         return {
-            "categories": self._categories(),
-            "recommend": clean.dedupe(recommend, key=lambda v: v["vod_id"]),
-            # 扩展字段：首页板块分组的原始结构，前端可选用
+            "categories": categories,
+            "recommend": recommend,
             "sections": sections,
         }
 

@@ -65,6 +65,17 @@ let hudTimer: number | null = null
 /** 全屏状态 */
 const isFullscreen = ref(false)
 
+/** YouTube 风格播放器状态 */
+const isPlaying = ref(false)
+const isBuffering = ref(false)
+const currentTime = ref(0)
+const duration = ref(0)
+const volume = ref(1)
+const isMuted = ref(false)
+const playbackRate = ref(1)
+const isRateMenuOpen = ref(false)
+const playWasBlocked = ref(false)
+
 // ==========================================
 // 计算属性
 // ==========================================
@@ -115,6 +126,20 @@ const displayEpText = computed(() => {
   return `第 ${props.ep} 集`
 })
 
+const progressPercent = computed(() => {
+  if (!Number.isFinite(duration.value) || duration.value <= 0) return 0
+  return Math.min(100, Math.max(0, (currentTime.value / duration.value) * 100))
+})
+
+function formatClock(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return '0:00'
+  const total = Math.floor(seconds)
+  const hours = Math.floor(total / 3600)
+  const mins = Math.floor((total % 3600) / 60)
+  const secs = String(total % 60).padStart(2, '0')
+  return hours > 0 ? `${hours}:${String(mins).padStart(2, '0')}:${secs}` : `${mins}:${secs}`
+}
+
 // ==========================================
 // 播放器并发控制与销毁防护 (修复 C-1)
 // ==========================================
@@ -138,6 +163,143 @@ function destroyPlayer(): void {
     video.removeAttribute('src')
     video.load()
   }
+  isPlaying.value = false
+  isBuffering.value = false
+  currentTime.value = 0
+  duration.value = 0
+  playWasBlocked.value = false
+}
+
+async function attemptPlayback(): Promise<void> {
+  const video = videoEl.value
+  if (!video || !playback.value || isUnmounted) return
+  try {
+    await video.play()
+    playWasBlocked.value = false
+  } catch {
+    // iOS/WKWebView 的自动播放策略经常拒绝非用户手势触发的 play()。
+    // 不把它当成“流坏了”；保留画面并显示中央播放键，用户一点即可开始。
+    playWasBlocked.value = true
+    isPlaying.value = false
+    showHud()
+  }
+}
+
+function togglePlay(): void {
+  const video = videoEl.value
+  if (!video || loading.value || error.value) return
+  showHud()
+  if (video.paused || video.ended) {
+    void attemptPlayback()
+  } else {
+    video.pause()
+  }
+}
+
+function seekBy(seconds: number): void {
+  const video = videoEl.value
+  if (!video || !Number.isFinite(video.duration)) return
+  video.currentTime = Math.min(video.duration, Math.max(0, video.currentTime + seconds))
+  currentTime.value = video.currentTime
+  showHud()
+}
+
+function seekToPercent(event: Event): void {
+  const video = videoEl.value
+  const input = event.target as HTMLInputElement
+  if (!video || !Number.isFinite(video.duration) || video.duration <= 0) return
+  const percent = Number(input.value)
+  video.currentTime = (percent / 100) * video.duration
+  currentTime.value = video.currentTime
+  showHud()
+}
+
+function toggleMute(): void {
+  const video = videoEl.value
+  if (!video) return
+  video.muted = !video.muted
+  isMuted.value = video.muted
+  showHud()
+}
+
+function setVolume(event: Event): void {
+  const video = videoEl.value
+  const input = event.target as HTMLInputElement
+  if (!video) return
+  const next = Math.min(1, Math.max(0, Number(input.value)))
+  video.volume = next
+  video.muted = next === 0
+  volume.value = next
+  isMuted.value = video.muted
+  showHud()
+}
+
+function setRate(rate: number): void {
+  const video = videoEl.value
+  playbackRate.value = rate
+  isRateMenuOpen.value = false
+  if (video) video.playbackRate = rate
+  showHud()
+}
+
+function syncMediaState(): void {
+  const video = videoEl.value
+  if (!video) return
+  currentTime.value = Number.isFinite(video.currentTime) ? video.currentTime : 0
+  duration.value = Number.isFinite(video.duration) ? video.duration : 0
+  volume.value = video.volume
+  isMuted.value = video.muted
+  playbackRate.value = video.playbackRate || 1
+}
+
+function onVideoPlay(): void {
+  isPlaying.value = true
+  isBuffering.value = false
+  playWasBlocked.value = false
+  showHud()
+}
+
+function onVideoPause(): void {
+  isPlaying.value = false
+  showHud()
+}
+
+function onVideoWaiting(): void {
+  isBuffering.value = true
+  showHud()
+}
+
+function onVideoPlaying(): void {
+  isPlaying.value = true
+  isBuffering.value = false
+}
+
+function onVideoEnded(): void {
+  isPlaying.value = false
+  isBuffering.value = false
+  showHud()
+}
+
+function onNativeVideoError(): void {
+  const video = videoEl.value
+  if (!video || loading.value) return
+  if (tryAutoLineFailover()) {
+    error.value = null
+    return
+  }
+  const mediaError = video.error
+  error.value = mediaError
+    ? `影片播放失敗（MediaError ${mediaError.code}），請重試或切換線路`
+    : '影片播放失敗，請重試或切換線路'
+  showHud()
+}
+
+function handleStageDoubleClick(event: MouseEvent): void {
+  const container = playerContainerRef.value
+  if (!container) return
+  const rect = container.getBoundingClientRect()
+  const ratio = (event.clientX - rect.left) / Math.max(1, rect.width)
+  seekBy(ratio < 0.5 ? -10 : 10)
 }
 
 function tryAutoLineFailover(): boolean {
@@ -171,14 +333,17 @@ function attachPlayer(result: Playback): void {
   // 1. 直链 mp4 直接播放
   if (result.format === 'mp4') {
     video.src = result.url
-    void video.play().catch(() => undefined)
+    video.load()
+    void attemptPlayback()
     return
   }
 
-  // 2. iOS / Safari 原生支持 HLS
+  // 2. iOS / Safari / WKWebView 优先原生 HLS。
+  // 自动播放被系统策略阻止时不报“线路坏了”，中央播放键会接管。
   if (video.canPlayType('application/vnd.apple.mpegurl')) {
     video.src = result.url
-    void video.play().catch(() => undefined)
+    video.load()
+    void attemptPlayback()
     return
   }
 
@@ -236,9 +401,12 @@ function attachPlayer(result: Playback): void {
     }
   })
 
+  hls.on(Hls.Events.MANIFEST_PARSED, () => {
+    void attemptPlayback()
+  })
+
   hls.loadSource(result.url)
   hls.attachMedia(video)
-  void video.play().catch(() => undefined)
 }
 
 // ==========================================
@@ -352,8 +520,18 @@ function goBack(): void {
 // ==========================================
 function toggleFullscreen(): void {
   const container = playerContainerRef.value || document.documentElement
+  const video = videoEl.value
+  const iosVideo = video as (HTMLVideoElement & { webkitEnterFullscreen?: () => void }) | null
+
   if (!document.fullscreenElement) {
-    void container.requestFullscreen().catch(() => undefined)
+    if (container.requestFullscreen) {
+      void container.requestFullscreen().catch(() => {
+        // iPhone/WKWebView 不一定开放 Fullscreen API，退回原生视频全屏。
+        iosVideo?.webkitEnterFullscreen?.()
+      })
+    } else {
+      iosVideo?.webkitEnterFullscreen?.()
+    }
   } else {
     void document.exitFullscreen().catch(() => undefined)
   }
@@ -370,8 +548,8 @@ function showHud(): void {
   isHudVisible.value = true
   if (hudTimer) clearTimeout(hudTimer)
   hudTimer = window.setTimeout(() => {
-    // 如果抽屉或弹窗打开，保持 HUD 不自动关闭
-    if (!isDrawerOpen.value && !isLineMenuOpen.value) {
+    // 只有“正在播放且没有菜单”的时候才自动收起。暂停状态要一直给用户明确控制入口。
+    if (isPlaying.value && !isDrawerOpen.value && !isLineMenuOpen.value && !isRateMenuOpen.value) {
       isHudVisible.value = false
     }
   }, 3500)
@@ -381,6 +559,33 @@ function onMouseMove(): void {
   showHud()
 }
 
+function onKeyDown(event: KeyboardEvent): void {
+  const target = event.target as HTMLElement | null
+  if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return
+
+  switch (event.key.toLowerCase()) {
+    case ' ':
+    case 'k':
+      event.preventDefault()
+      togglePlay()
+      break
+    case 'arrowleft':
+      event.preventDefault()
+      seekBy(-10)
+      break
+    case 'arrowright':
+      event.preventDefault()
+      seekBy(10)
+      break
+    case 'm':
+      toggleMute()
+      break
+    case 'f':
+      toggleFullscreen()
+      break
+  }
+}
+
 // ==========================================
 // 生命周期与监听
 // ==========================================
@@ -388,6 +593,7 @@ onMounted(() => {
   isUnmounted = false
   void load()
   document.addEventListener('fullscreenchange', onFullscreenChange)
+  document.addEventListener('keydown', onKeyDown)
   showHud()
 })
 
@@ -397,6 +603,7 @@ onBeforeUnmount(() => {
   destroyPlayer()
   if (hudTimer) clearTimeout(hudTimer)
   document.removeEventListener('fullscreenchange', onFullscreenChange)
+  document.removeEventListener('keydown', onKeyDown)
 })
 
 watch(() => [props.vodId, props.ep], () => failedStartupLines.clear())
@@ -514,16 +721,135 @@ watch(() => device.restoredAt, () => void load())
     </header>
 
     <!-- ==================================================== 播放舞台核心视界 -->
-    <main class="nf-theater-stage">
+    <main
+      class="nf-theater-stage"
+      @click="showHud"
+      @dblclick="handleStageDoubleClick"
+    >
       <video
         v-if="playback && !error"
         ref="videoEl"
         class="nf-cinema-video"
-        controls
         autoplay
         playsinline
         preload="auto"
+        @play="onVideoPlay"
+        @pause="onVideoPause"
+        @playing="onVideoPlaying"
+        @waiting="onVideoWaiting"
+        @timeupdate="syncMediaState"
+        @durationchange="syncMediaState"
+        @loadedmetadata="syncMediaState"
+        @volumechange="syncMediaState"
+        @ratechange="syncMediaState"
+        @ended="onVideoEnded"
+        @error="onNativeVideoError"
       />
+
+      <!-- YouTube 式中央播放键：自动播放被 iOS 拒绝时，用户一点即可真正开播 -->
+      <button
+        v-if="playback && !error && (!isPlaying || playWasBlocked)"
+        class="yt-center-play"
+        type="button"
+        :aria-label="isPlaying ? '暫停' : '播放'"
+        @click.stop="togglePlay"
+      >
+        <span class="yt-center-play__icon">▶</span>
+      </button>
+
+      <!-- 缓冲中只盖一个轻量转圈，不把控制栏和画面整个遮死 -->
+      <div v-if="isBuffering && !loading && !error" class="yt-buffering" aria-label="緩衝中">
+        <div class="nf-spinner-ring" />
+      </div>
+
+      <!-- YouTube 风格底部控制层 -->
+      <div
+        v-if="playback && !error"
+        class="yt-controls"
+        :class="{ 'is-hidden': !isHudVisible && isPlaying }"
+        @click.stop
+        @dblclick.stop
+      >
+        <input
+          class="yt-progress"
+          type="range"
+          min="0"
+          max="100"
+          step="0.05"
+          :value="progressPercent"
+          :style="{ '--yt-progress': `${progressPercent}%` }"
+          aria-label="播放進度"
+          @input="seekToPercent"
+        />
+
+        <div class="yt-controls__row">
+          <div class="yt-controls__left">
+            <button class="yt-icon-btn" type="button" :title="isPlaying ? '暫停 (K)' : '播放 (K)'" @click="togglePlay">
+              <span v-if="isPlaying">❚❚</span>
+              <span v-else>▶</span>
+            </button>
+
+            <button v-if="nextEpisode" class="yt-icon-btn" type="button" title="下一集" @click="playNext">
+              <span>⏭</span>
+            </button>
+
+            <div class="yt-volume">
+              <button class="yt-icon-btn" type="button" :title="isMuted ? '取消靜音 (M)' : '靜音 (M)'" @click="toggleMute">
+                <span>{{ isMuted || volume === 0 ? '🔇' : '🔊' }}</span>
+              </button>
+              <input
+                class="yt-volume__range"
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                :value="isMuted ? 0 : volume"
+                aria-label="音量"
+                @input="setVolume"
+              />
+            </div>
+
+            <span class="yt-time">{{ formatClock(currentTime) }} / {{ formatClock(duration) }}</span>
+          </div>
+
+          <div class="yt-controls__right">
+            <div class="yt-rate-wrap">
+              <button
+                class="yt-text-btn"
+                type="button"
+                :title="`播放速度：${playbackRate}x`"
+                @click="isRateMenuOpen = !isRateMenuOpen"
+              >
+                {{ playbackRate }}x
+              </button>
+              <div v-if="isRateMenuOpen" class="yt-rate-menu">
+                <button
+                  v-for="rate in [0.5, 0.75, 1, 1.25, 1.5, 2]"
+                  :key="rate"
+                  type="button"
+                  :class="{ 'is-active': rate === playbackRate }"
+                  @click="setRate(rate)"
+                >
+                  {{ rate === 1 ? '正常' : `${rate}x` }}
+                </button>
+              </div>
+            </div>
+
+            <button
+              v-if="lineEpisodes.length"
+              class="yt-text-btn"
+              type="button"
+              @click="isDrawerOpen = !isDrawerOpen"
+            >
+              選集
+            </button>
+
+            <button class="yt-icon-btn" type="button" :title="isFullscreen ? '退出全螢幕 (F)' : '全螢幕 (F)'" @click="toggleFullscreen">
+              <span>{{ isFullscreen ? '⛶' : '⛶' }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
 
       <!-- 加载中 Spinner -->
       <div v-if="loading" class="nf-loading-overlay">
@@ -876,6 +1202,266 @@ watch(() => device.restoredAt, () => void load())
   max-height: 100vh;
   object-fit: contain;
   background-color: #000000;
+}
+
+/* ====================================================================
+   YouTube-style primary controls
+==================================================================== */
+.yt-center-play {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 76px;
+  height: 54px;
+  transform: translate(-50%, -50%);
+  border: 0;
+  border-radius: 14px;
+  background: rgba(10, 10, 10, 0.78);
+  color: #fff;
+  z-index: 18;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.yt-center-play:hover {
+  transform: translate(-50%, -50%) scale(1.06);
+  background: rgba(229, 9, 20, 0.92);
+}
+
+.yt-center-play__icon {
+  font-size: 25px;
+  margin-left: 4px;
+  line-height: 1;
+}
+
+.yt-buffering {
+  position: absolute;
+  inset: 0;
+  z-index: 17;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  background: radial-gradient(circle at center, rgba(0, 0, 0, 0.2), transparent 24%);
+}
+
+.yt-buffering .nf-spinner-ring {
+  width: 44px;
+  height: 44px;
+}
+
+.yt-controls {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 32;
+  padding: 36px 18px max(14px, env(safe-area-inset-bottom));
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.94) 0%, rgba(0, 0, 0, 0.6) 44%, transparent 100%);
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.yt-controls.is-hidden {
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+}
+
+.yt-progress {
+  --yt-progress: 0%;
+  width: 100%;
+  height: 18px;
+  margin: 0;
+  padding: 7px 0;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  cursor: pointer;
+  accent-color: #ff0033;
+}
+
+.yt-progress::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    #ff0033 0,
+    #ff0033 var(--yt-progress),
+    rgba(255, 255, 255, 0.35) var(--yt-progress),
+    rgba(255, 255, 255, 0.35) 100%
+  );
+}
+
+.yt-progress::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 13px;
+  height: 13px;
+  margin-top: -5px;
+  border: 0;
+  border-radius: 50%;
+  background: #ff0033;
+}
+
+.yt-progress::-moz-range-track {
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.yt-progress::-moz-range-progress {
+  height: 3px;
+  border-radius: 999px;
+  background: #ff0033;
+}
+
+.yt-progress::-moz-range-thumb {
+  width: 13px;
+  height: 13px;
+  border: 0;
+  border-radius: 50%;
+  background: #ff0033;
+}
+
+.yt-controls__row,
+.yt-controls__left,
+.yt-controls__right,
+.yt-volume {
+  display: flex;
+  align-items: center;
+}
+
+.yt-controls__row {
+  min-height: 42px;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.yt-controls__left,
+.yt-controls__right {
+  gap: 6px;
+}
+
+.yt-icon-btn,
+.yt-text-btn {
+  height: 38px;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 600;
+  border-radius: 6px;
+}
+
+.yt-icon-btn {
+  min-width: 40px;
+  padding: 0 8px;
+  font-size: 18px;
+}
+
+.yt-text-btn {
+  padding: 0 11px;
+  font-size: 13px;
+}
+
+.yt-icon-btn:hover,
+.yt-text-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.yt-time {
+  margin-left: 4px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.88);
+  white-space: nowrap;
+}
+
+.yt-volume {
+  gap: 0;
+}
+
+.yt-volume__range {
+  width: 0;
+  opacity: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  height: 3px;
+  transition: width 0.18s ease, opacity 0.18s ease;
+  accent-color: #fff;
+}
+
+.yt-volume:hover .yt-volume__range,
+.yt-volume__range:focus {
+  width: 74px;
+  opacity: 1;
+}
+
+.yt-rate-wrap {
+  position: relative;
+}
+
+.yt-rate-menu {
+  position: absolute;
+  right: 0;
+  bottom: 46px;
+  width: 120px;
+  padding: 6px;
+  border-radius: 8px;
+  background: rgba(28, 28, 28, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(16px);
+}
+
+.yt-rate-menu button {
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.yt-rate-menu button:hover,
+.yt-rate-menu button.is-active {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+@media (max-width: 720px) {
+  .yt-controls {
+    padding-left: 10px;
+    padding-right: 10px;
+    padding-bottom: max(9px, env(safe-area-inset-bottom));
+  }
+
+  .yt-volume__range,
+  .yt-volume:hover .yt-volume__range {
+    display: none;
+  }
+
+  .yt-time {
+    font-size: 11px;
+  }
+
+  .yt-text-btn {
+    padding: 0 7px;
+  }
+
+  .yt-center-play {
+    width: 68px;
+    height: 48px;
+  }
+
+  .nf-vip-pill,
+  .nf-btn-text {
+    display: none;
+  }
 }
 
 /* ====================================================================

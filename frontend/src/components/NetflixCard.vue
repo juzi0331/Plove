@@ -10,7 +10,9 @@
  * 5. 鼠标悬停平滑浮起放大 (scale 1.15~1.2) + 纵深投影。
  */
 
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
+
+import { proxiedImageUrl, titleGradient } from '@/utils/art'
 
 const props = defineProps<{
   item: {
@@ -29,17 +31,27 @@ const emit = defineEmits<{
   (event: 'select', item: any): void
 }>()
 
-// 容错图片
-const displayPic = computed(() => {
-  return props.item.vod_pic || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&q=80'
-})
+const imageFailed = ref(false)
+
+watch(
+  () => props.item.vod_pic,
+  () => {
+    imageFailed.value = false
+  },
+)
+
+const displayPic = computed(() => proxiedImageUrl(props.item.vod_pic))
+const fallbackStyle = computed(() => ({
+  background: titleGradient(props.item.vod_name),
+}))
 </script>
 
 <template>
   <div class="nf-card" role="button" tabindex="0" @click="emit('select', item)">
-    <div class="nf-card__inner">
+    <div class="nf-card__inner" :style="fallbackStyle">
       <!-- 16:9 横版大片剧照 -->
       <img
+        v-if="displayPic && !imageFailed"
         :src="displayPic"
         :alt="item.vod_name"
         class="nf-card__img"
@@ -47,7 +59,7 @@ const displayPic = computed(() => {
         loading="lazy"
         decoding="async"
         fetchpriority="low"
-        @error="($event.target as HTMLElement).style.display = 'none'"
+        @error="imageFailed = true"
       />
 
       <!-- 底部暗影遮罩 (保证标题与标签清晰) -->
