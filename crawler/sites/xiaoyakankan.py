@@ -210,27 +210,65 @@ def _split_tag2(text):
 
 
 def _nav_categories(root):
-    """首页分类：顶部导航（10 电影 / 11 连续剧 / 12 综艺 / 13 动漫 / 15 福利）
-    加上各板块的子分类（1001 动作片…）。``全部xx`` 与导航 tid 重叠，去重丢弃。"""
-    out = []
+    """Build the real two-level category tree from the Xiaoya homepage."""
+    parents: list[dict] = []
+    parent_by_tid: dict[str, dict] = {}
+
     head = root.select_first(".m4-head") or root
     for anchor in head.select('a[href^="/cat/"]'):
         match = re.search(r"/cat/(\d+)\.html", anchor.attr("href") or "")
         if not match:
             continue
+        tid = match.group(1)
         span = anchor.select_first("span")
         name = clean.collapse(span.text if span is not None else anchor.text)
-        if name:
-            out.append({"tid": match.group(1), "name": name})
+        if not name or tid in parent_by_tid:
+            continue
+        item = {"tid": tid, "name": name, "subcategories": []}
+        parent_by_tid[tid] = item
+        parents.append(item)
+
     for meta in root.select(".m4-meta"):
+        links = []
         for anchor in meta.select('a[href^="/cat/"]'):
             match = re.search(r"/cat/(\d+)\.html", anchor.attr("href") or "")
             if not match:
                 continue
+            tid = match.group(1)
             name = clean.collapse(anchor.text)
             if name:
-                out.append({"tid": match.group(1), "name": name})
-    return clean.dedupe(out, key=lambda item: item["tid"])
+                links.append({"tid": tid, "name": name})
+        if not links:
+            continue
+
+        parent_link = next(
+            (item for item in links if item["tid"] in parent_by_tid),
+            links[0],
+        )
+        parent = parent_by_tid.get(parent_link["tid"])
+        if parent is None:
+            heading = meta.select_first("h2")
+            parent = {
+                "tid": parent_link["tid"],
+                "name": clean.collapse(
+                    heading.text if heading is not None else parent_link["name"]
+                ) or parent_link["name"],
+                "subcategories": [],
+            }
+            parent_by_tid[parent["tid"]] = parent
+            parents.append(parent)
+
+        children = []
+        seen = set()
+        for item in links:
+            if item["tid"] == parent["tid"] or item["tid"] in seen:
+                continue
+            seen.add(item["tid"])
+            children.append(item)
+        if children:
+            parent["subcategories"] = children
+
+    return parents
 
 
 def _home_sections(root):

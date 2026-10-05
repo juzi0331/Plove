@@ -17,7 +17,7 @@ import { useRouter } from 'vue-router'
 
 import * as api from '@/api/client'
 import { describeError } from '@/api/http'
-import type { HomePayload, HomeSection } from '@/api/types'
+import type { HomePayload, HomeSection, VodCategory } from '@/api/types'
 import BrandLogo from '@/components/BrandLogo.vue'
 import NetflixCard from '@/components/NetflixCard.vue'
 import SiteSelector from '@/components/SiteSelector.vue'
@@ -140,9 +140,18 @@ function openCategory(tid: string): void {
   void router.push({ name: 'category', params: { tid } })
 }
 
-function onSelectCategory(tid: string): void {
-  activeNav.value = tid
-  openCategory(tid)
+function categoryTarget(cat: VodCategory): string {
+  const tid = String(cat.tid)
+  if (tid.startsWith('menu:')) {
+    const first = cat.subcategories?.find((sub) => !sub.hidden)
+    if (first) return String(first.tid)
+  }
+  return tid
+}
+
+function onSelectCategory(cat: VodCategory): void {
+  activeNav.value = String(cat.tid)
+  openCategory(categoryTarget(cat))
 }
 
 function toggleSearch(): void {
@@ -195,7 +204,7 @@ function scrollRow(rowId: string, direction: 'left' | 'right'): void {
             class="nf-nav-item"
             :class="{ 'is-active': activeNav === cat.tid }"
             type="button"
-            @click="onSelectCategory(cat.tid)"
+            @click="onSelectCategory(cat)"
           >
             {{ formatCatDisplay(cat.name, cat.custom_name) || cat.tid }}
           </button>
@@ -639,7 +648,49 @@ function scrollRow(rowId: string, direction: 'left' | 'right'): void {
 }
 
 @media (max-width: 900px) {
-  .nf-nav-menu { display: none; }
+  /* 手机端不能把分类直接隐藏掉：导航改成上下两层，第二层横滑。 */
+  .nf-navbar {
+    height: calc(106px + var(--plove-safe-top));
+    align-items: flex-start;
+  }
+
+  .nf-navbar__left {
+    width: 100%;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding-top: 8px;
+  }
+
+  .nf-nav-menu {
+    display: flex;
+    width: 92vw;
+    max-width: 92vw;
+    gap: 14px;
+    padding: 0 0 8px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .nf-nav-item {
+    font-size: 13px;
+    padding: 5px 0;
+  }
+
+  .nf-navbar__right {
+    position: absolute;
+    top: calc(var(--plove-safe-top) + 7px);
+    right: 4%;
+    gap: 8px;
+  }
+
+  .nf-search-box {
+    display: none;
+  }
+
+  .nf-main-content {
+    padding-top: calc(124px + var(--plove-safe-top));
+  }
+
   .nf-billboard { height: 60vh; min-height: 420px; }
   .nf-row-arrow { display: none; }
 }

@@ -128,11 +128,43 @@ def home(
             pass
 
     if custom_sections:
-        # 用户确认选择方案 A（前台完全替代）：以真实分类横幅注入 sections
+        # 后台可指定首页楼层，但不能因为只勾了 1 个分类就把源站原有首页
+        # 三个真实楼层全部吃掉。优先保留配置楼层，再用源站 sections 补足
+        # 至少 3 行，并做跨行影片去重。
+        merged_sections = list(custom_sections)
+        seen_video_ids = {
+            str(video.vod_id)
+            for section in merged_sections
+            for video in section.videos
+        }
+        seen_section_keys = {
+            (str(section.tid or ""), section.title)
+            for section in merged_sections
+        }
+
+        for section in raw.sections:
+            if len(merged_sections) >= 3:
+                break
+            section_key = (str(section.tid or ""), section.title)
+            if section_key in seen_section_keys:
+                continue
+            unique_videos = [
+                video
+                for video in section.videos
+                if str(video.vod_id) not in seen_video_ids
+            ][:10]
+            if not unique_videos:
+                continue
+            merged_sections.append(
+                section.model_copy(update={"videos": unique_videos})
+            )
+            seen_section_keys.add(section_key)
+            seen_video_ids.update(str(video.vod_id) for video in unique_videos)
+
         return raw.model_copy(
             update={
                 "categories": filtered_categories,
-                "sections": custom_sections,
+                "sections": merged_sections,
             }
         )
 

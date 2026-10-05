@@ -243,6 +243,9 @@ def apply_category_rules(
     for cat in categories:
         tid = str(cat.tid)
         seen_tids.add(tid)
+        # 子分类也是源站真实 tid。旧版曾把这些 tid 平铺保存为一级分类；
+        # 新版恢复层级后不能再把旧规则当成“后台新增分类”重复追加一遍。
+        seen_tids.update(str(sub.tid) for sub in cat.subcategories)
         rule = rules_map.get(tid)
         if rule and rule.get("hidden"):
             # 隐藏该分类

@@ -135,12 +135,14 @@ class Ai2048:
             for category in categories[:6]:
                 if len(sections) >= 4:
                     break
+                children = category.get("subcategories") or []
+                target_tid = children[0]["tid"] if children else category["tid"]
                 listing = self._api(
                     "/short-dramas",
                     sortBy="heat",
                     page=1,
                     size=12,
-                    categoryId=category["tid"],
+                    categoryId=target_tid,
                 ) or {}
                 videos = take_unseen(listing.get("items"))
                 if len(videos) < 3:
@@ -148,7 +150,7 @@ class Ai2048:
                 sections.append(
                     {
                         "title": category["name"],
-                        "tid": category["tid"],
+                        "tid": target_tid,
                         "videos": videos,
                     }
                 )
@@ -162,7 +164,21 @@ class Ai2048:
     def category(self, tid=None, page=1):
         params = {"sortBy": "heat", "page": page, "size": PAGE_SIZE}
         if tid is not None and str(tid).strip() != "":
-            params["categoryId"] = tid
+            target_tid = str(tid).strip()
+            if target_tid.startswith("menu:"):
+                parent = next(
+                    (
+                        category
+                        for category in self._categories()
+                        if str(category.get("tid")) == target_tid
+                    ),
+                    None,
+                )
+                children = parent.get("subcategories") if parent else []
+                if not children:
+                    raise CrawlerError("NOT_FOUND", f"无效的一级分类: {tid}")
+                target_tid = str(children[0]["tid"])
+            params["categoryId"] = target_tid
 
         data = self._api("/short-dramas", **params) or {}
         videos = _to_vod_list(data.get("items"))
@@ -250,12 +266,26 @@ class Ai2048:
     # ------------------------------------------------------------ 内部工具
 
     def _categories(self):
-        data = self._api("/categories", type="video") or []
-        out = []
-        for raw in data:
-            if not isinstance(raw, dict):
-                continue
-            if raw.get("enabled") is False:
+        """Return the source's real two-level menu/category hierarchy.
+
+        /menus is the primary navigation (原创精选 / 国产视频 / 中文AV),
+        while /categories contains the actual routable categoryId values and a
+        menuId pointing back to the parent.  The parent keeps the first child
+        tid as its own routable tid so existing category API calls stay valid.
+        """
+        raw_categories = self._api("/categories", type="video") or []
+        try:
+            raw_menus = self._api("/menus", type="video") or []
+        except CrawlerError:
+            # Older deployments/test fixtures did not expose /menus.  Falling
+            # back to the original flat category list keeps that contract.
+            raw_menus = []
+
+        children_by_menu: dict[int, list[dict]] = {}
+        orphaned: list[dict] = []
+        flat_categories: list[dict] = []
+        for raw in raw_categories:
+            if not isinstance(raw, dict) or raw.get("enabled") is False:
                 continue
             product = raw.get("productId")
             if product is not None and clean.to_int(product) != PRODUCT_ID:
@@ -263,7 +293,56 @@ class Ai2048:
             tid = clean.to_int(raw.get("id"))
             if tid is None:
                 continue
-            out.append({"tid": str(tid), "name": clean.clean_text(raw.get("name"))})
+            item = {
+                "tid": str(tid),
+                "name": clean.clean_text(raw.get("name")) or str(tid),
+            }
+            flat_categories.append(item)
+            menu_id = clean.to_int(raw.get("menuId"))
+            if menu_id is None:
+                orphaned.append(item)
+            else:
+                children_by_menu.setdefault(menu_id, []).append(item)
+
+        if not raw_menus:
+            return flat_categories
+
+        out = []
+        used_children: set[str] = set()
+        for raw in raw_menus:
+            if not isinstance(raw, dict) or raw.get("enabled") is False:
+                continue
+            if raw.get("type") not in (None, "", "video"):
+                continue
+            product = raw.get("productId")
+            if product is not None and clean.to_int(product) != PRODUCT_ID:
+                continue
+            menu_id = clean.to_int(raw.get("id"))
+            if menu_id is None:
+                continue
+            children = children_by_menu.get(menu_id, [])
+            if not children:
+                continue
+            for child in children:
+                used_children.add(child["tid"])
+            out.append(
+                {
+                    # menu:<id> is a UI grouping id, not a categoryId.
+                    # The frontend opens its first real child by default.
+                    "tid": f"menu:{menu_id}",
+                    "name": clean.clean_text(raw.get("name")) or children[0]["name"],
+                    "subcategories": children,
+                }
+            )
+
+        # Keep any category that the upstream did not attach to a visible menu.
+        for item in orphaned:
+            if item["tid"] not in used_children:
+                out.append(item)
+        for children in children_by_menu.values():
+            for item in children:
+                if item["tid"] not in used_children:
+                    out.append(item)
         return out
 
 

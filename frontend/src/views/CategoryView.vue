@@ -232,6 +232,15 @@ watch(() => props.tid, () => void loadFirstPage(), { immediate: true })
 watch(() => sites.currentKey, () => void loadFirstPage(true))
 watch(() => device.restoredAt, () => void loadFirstPage())
 
+function categoryTarget(cat: VodCategory): string {
+  const tid = String(cat.tid)
+  if (tid.startsWith('menu:')) {
+    const first = cat.subcategories?.find((sub) => !sub.hidden)
+    if (first) return String(first.tid)
+  }
+  return tid
+}
+
 function switchCategory(tid: string): void {
   if (String(tid) === String(props.tid)) return
   saveState()
@@ -280,7 +289,7 @@ function goBack(): void {
             class="nf-cat-item"
             :class="{ 'is-active': currentParentCategory ? String(currentParentCategory.tid) === String(cat.tid) : String(cat.tid) === String(props.tid) }"
             type="button"
-            @click="switchCategory(cat.tid)"
+            @click="switchCategory(categoryTarget(cat))"
           >
             {{ formatCatDisplay(cat.name, cat.custom_name) || cat.tid }}
           </button>
@@ -312,6 +321,15 @@ function goBack(): void {
 
         <!-- 二级分类胶囊筛选栏 (Pill Filters) -->
         <div v-if="currentSubcategories.length > 0" class="nf-subcat-bar">
+          <button
+            v-if="currentParentCategory && !String(currentParentCategory.tid).startsWith('menu:')"
+            class="nf-subcat-pill"
+            :class="{ 'is-active': String(currentParentCategory.tid) === String(props.tid) }"
+            type="button"
+            @click="switchCategory(currentParentCategory.tid)"
+          >
+            全部
+          </button>
           <button
             v-for="sub in currentSubcategories"
             :key="sub.tid"
@@ -701,7 +719,60 @@ function goBack(): void {
 }
 
 @media (max-width: 900px) {
-  .nf-cat-menu { display: none; }
+  /* 手机端保留一级分类横滑，不再把整个分类入口隐藏。 */
+  .nf-navbar {
+    height: calc(106px + var(--plove-safe-top));
+    align-items: flex-start;
+  }
+
+  .nf-navbar__left {
+    width: 100%;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 8px 10px;
+    padding-top: 8px;
+    overflow: visible;
+  }
+
+  .nf-back-btn {
+    padding: 4px 9px;
+  }
+
+  .nf-back-text {
+    display: none;
+  }
+
+  .nf-cat-menu {
+    display: flex;
+    order: 3;
+    flex-basis: 92vw;
+    width: 92vw;
+    max-width: 92vw;
+    gap: 14px;
+    padding: 2px 0 8px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .nf-cat-item {
+    font-size: 13px;
+  }
+
+  .nf-navbar__right {
+    position: absolute;
+    top: calc(var(--plove-safe-top) + 7px);
+    right: 4%;
+    gap: 8px;
+  }
+
+  .nf-category-main {
+    padding-top: calc(124px + var(--plove-safe-top));
+  }
+
+  .nf-subcat-bar {
+    margin-top: 14px;
+    padding: 0 0 6px;
+  }
+
   .category__waterfall {
     grid-template-columns: repeat(2, 1fr);
     gap: 12px 8px;

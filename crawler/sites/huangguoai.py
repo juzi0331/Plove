@@ -20,17 +20,22 @@ from __future__ import annotations
 
 import base64
 import binascii
+import json
+import os
 import re
 import sys
 
 if __package__ in (None, ""):  # 允许直接 `python sites/huangguoai.py` 运行
-    sys.path.insert(0, "/e/Pychon-code/NY/Plove1.0")
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from crawler_kit import Client, CrawlerError, clean, cli, log, parse  # noqa: E402
 
 KEY = "huangguoai"
 NAME = "黄果短剧官网"
 BASE_URL = "https://huangguoai.com/"
+PUBLISH_URL = "https://huangguoai.pages.dev/publish.js"
+PUBLISH_FALLBACK_ROOTS = ("gkudvxhjh.cc", "ngfxaxnp.cc", "xxpofweu.cc")
+PUBLISH_SUBDOMAINS = ("thu", "pku", "fdu")
 DEFAULT_TIMEOUT = 20.0
 
 # 播放页里 `<script id=config>` 的 JS 对象：`key: b64(ep_index)`。
@@ -195,8 +200,10 @@ class Huangguoai:
     capabilities = ("meta", "home", "category", "detail", "play")
 
     def __init__(self, client=None):
+        self._injected_client = client is not None
+        self._active_base = ""
         self.http = client or Client(
-            base_url=BASE_URL,
+            base_url="",
             timeout=DEFAULT_TIMEOUT,
             headers={
                 "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -224,11 +231,77 @@ class Huangguoai:
 
     # ---------------------------------------------------------------- 请求
 
+    def _candidate_bases(self) -> list[str]:
+        """Resolve the currently published mirror list.
+
+        huangguoai.com is now only a permanent address and may resolve to a
+        non-serving IP. The publish page contains the live mirror root domains.
+        Keep a short built-in fallback list so a temporary publish-page failure
+        does not take the whole source down.
+        """
+        roots = list(PUBLISH_FALLBACK_ROOTS)
+        try:
+            response = self.http.get(PUBLISH_URL)
+            if response.ok:
+                match = re.search(r"var\s+urls\s*=\s*\[(.*?)\]", response.text, re.S)
+                if match:
+                    discovered = re.findall(r"['\"]([^'\"]+\.cc)/?['\"]", match.group(1))
+                    roots = discovered + [root for root in roots if root not in discovered]
+        except Exception:
+            pass
+
+        out: list[str] = []
+        if self._active_base:
+            out.append(self._active_base.rstrip("/"))
+        for root in roots:
+            root = root.strip().strip("/")
+            if not root:
+                continue
+            for subdomain in PUBLISH_SUBDOMAINS:
+                out.append(f"https://{subdomain}.{root}")
+        out.append(BASE_URL.rstrip("/"))
+        return clean.dedupe(out, key=lambda item: item)
+
     def _page(self, path: str) -> str:
-        response = self.http.get(path)
-        if not response.ok:
-            raise CrawlerError("HTTP_ERROR", f"{path} 返回 HTTP {response.status}")
-        return response.text
+        # Tests inject a relative-path fake client; preserve that contract.
+        if self._injected_client:
+            response = self.http.get(path)
+            if not response.ok:
+                raise CrawlerError("HTTP_ERROR", f"{path} 返回 HTTP {response.status}")
+            return response.text
+
+        normalized = "/" + str(path or "/").lstrip("/")
+        last_error: Exception | None = None
+        for base in self._candidate_bases():
+            try:
+                response = self.http.get(base + normalized)
+            except Exception as exc:
+                last_error = exc
+                continue
+            if not response.ok:
+                last_error = CrawlerError(
+                    "HTTP_ERROR", f"{base}{normalized} 返回 HTTP {response.status}"
+                )
+                continue
+
+            html = response.text
+            # The current mirrors publish a canonical URL. Cache that origin so
+            # detail/play/category calls in the same process stop probing.
+            canonical = re.search(
+                r'<link[^>]+rel=["\']canonical["\'][^>]+href=["\'](https://[^/"\']+)',
+                html,
+                re.I,
+            )
+            if canonical:
+                self._active_base = canonical.group(1).rstrip("/")
+            else:
+                self._active_base = base.rstrip("/")
+            self.base_url = self._active_base + "/"
+            return html
+
+        if isinstance(last_error, CrawlerError):
+            raise last_error
+        raise CrawlerError("TIMEOUT", f"黄果所有可用镜像均不可达: {normalized}")
 
     # ---------------------------------------------------------------- 动作
 
@@ -246,19 +319,54 @@ class Huangguoai:
         tid = str(tid).strip()
         if not tid:
             raise CrawlerError("NOT_FOUND", f"无效的分类 id: {tid}")
-        html = self._page(f"/{tid}/")
+
+        if tid.startswith("tag:"):
+            slug = tid.split(":", 1)[1]
+            if not re.fullmatch(r"[a-z0-9-]{1,80}", slug):
+                raise CrawlerError("NOT_FOUND", f"无效的标签 id: {tid}")
+            base_path = f"/tag/{slug}/"
+        else:
+            if not re.fullmatch(r"ai-[a-z0-9-]{1,80}", tid):
+                raise CrawlerError("NOT_FOUND", f"无效的分类 id: {tid}")
+            base_path = f"/{tid}/"
+
+        path = base_path if page == 1 else f"{base_path}{page}/"
+        html = self._page(path)
         root = parse.parse_html(html)
-        return self._common_page(root, f"/{tid}/")
+        return self._common_page(root, path)
 
     def _common_page(self, root, current_path: str):
         categories = _categories(root)
-        # 首页只抓推荐；分类页才抓完整片单。分类页可能只给当前页片单。
-        videos = _videos(root, forbidden_selectors=("#app-mobile .banner .item",))
+        # 标签是黄果真实的二级筛选入口（/tag/<slug>/）。
+        # 放到每个一级分类下，移动端分类页就能直接切换真实题材标签。
+        subcategories = _tag_subcategories(root)
+        if subcategories:
+            categories = [
+                {**cat, "subcategories": list(subcategories)}
+                for cat in categories
+            ]
+
+        # 分类/标签页只取正在展示的 latest 主网格，不能把搜索建议、
+        # 猜你喜欢等全页卡片混进分类结果。首页没有该网格时仍按整页推荐抓取。
+        video_root = root
+        if current_path != "/":
+            main_grid = root.select_first(
+                '.hg-card-grid[data-channel-panel="latest"]'
+            )
+            if main_grid is not None:
+                video_root = main_grid
+
+        videos = _videos(
+            video_root,
+            forbidden_selectors=("#app-mobile .banner .item",),
+            base_url=self.base_url,
+        )
         has_more = _has_more(root, current_path)
         return {
             "categories": categories,
             "recommend": videos,
-            "page": _current_page(root),
+            "videos": videos,
+            "page": _current_page(current_path),
             "has_more": has_more,
         }
 
@@ -266,6 +374,39 @@ class Huangguoai:
         detail_id = self._check_detail_id(id)
         if detail_id is None:
             raise CrawlerError("NOT_FOUND", f"无效的影片 id: {id}")
+
+        # Current Huangguo mirrors merged detail + playback into /video/<id>/.
+        # Keep the legacy branch for injected fixtures / older mirrors.
+        if not self._injected_client:
+            html = self._page(f"/video/{detail_id}/")
+            initial = _video_initial_data(html)
+            if initial:
+                root = parse.parse_html(html)
+                episodes, lines = _modern_episodes(root, detail_id)
+                if not episodes:
+                    episodes = [{
+                        "ep_index": 1,
+                        "ep_name": "第1集",
+                        "play_id": f"/video/{detail_id}/",
+                        "line": 1,
+                    }]
+                    lines = [{"line": 1, "name": "默认线路", "count": 1}]
+
+                name = clean.clean_text(initial.get("title")) or detail_id
+                raw_pic = initial.get("posterSrc") or initial.get("coverSrc") or ""
+                video = {
+                    "vod_id": detail_id,
+                    "vod_name": name,
+                    "vod_pic": clean.absolute(str(raw_pic), self.base_url) if raw_pic else "",
+                    "vod_remarks": f"更新至{len(episodes)}集" if len(episodes) > 1 else "",
+                }
+                desc = clean.clean_text(initial.get("description") or "")
+                return {
+                    "video": video,
+                    "desc": desc,
+                    "episodes": episodes,
+                    "lines": lines,
+                }
 
         root = parse.parse_html(self._page(f"/detail/{detail_id}.html"))
         video = _video(root, detail_id)
@@ -292,6 +433,10 @@ class Huangguoai:
         }
 
     def play(self, id=None, ep=1, line=1, play_id=None):
+        detail_id = self._check_detail_id(id)
+        if detail_id is None:
+            raise CrawlerError("NOT_FOUND", f"无效的影片 id: {id}")
+
         index = clean.to_int(ep, 1) or 1
         if index < 1:
             index = 1
@@ -299,7 +444,28 @@ class Huangguoai:
         if line_no < 1:
             line_no = 1
 
-        detail = self.detail(id)
+        if not self._injected_client:
+            expected = (
+                f"/video/{detail_id}/"
+                if index == 1
+                else f"/video/{detail_id}/ep-{index}/"
+            )
+            candidate = clean.safe_relative_path(play_id) if play_id else ""
+            if candidate and candidate != expected:
+                candidate = ""
+            html = self._page(candidate or expected)
+            initial = _video_initial_data(html)
+            if initial and str(initial.get("id") or detail_id) == detail_id:
+                m3u8 = str(initial.get("videoSrc") or "").strip()
+                if m3u8:
+                    return {
+                        "url": m3u8,
+                        "format": "m3u8",
+                        "headers": {"Referer": self.base_url or BASE_URL},
+                    }
+
+        # Legacy fallback for older Huangguo pages and unit-test fixtures.
+        detail = self.detail(detail_id)
         target = _pick_episode(detail, index, line_no)
         if target is None:
             raise CrawlerError(
@@ -310,9 +476,13 @@ class Huangguoai:
         html = self._page(target["play_id"])
         m3u8 = _m3u8_from_play_page(html)
         if not m3u8:
-            raise CrawlerError("PARSE_ERROR", "播放页未解密出 m3u8")
+            raise CrawlerError("PARSE_ERROR", "播放页未解析到 m3u8")
 
-        return {"url": m3u8, "format": "m3u8", "headers": {"Referer": BASE_URL}}
+        return {
+            "url": m3u8,
+            "format": "m3u8",
+            "headers": {"Referer": self.base_url or BASE_URL},
+        }
 
     def _check_detail_id(self, id):
         value = str(id or "").strip()
@@ -359,7 +529,38 @@ def _categories(root):
     return out
 
 
-def _videos(root, forbidden_selectors):
+def _tag_subcategories(root, limit: int = 16):
+    """Extract real topic/tag links as second-level filters.
+
+    The live Huangguo mirrors expose tags as /tag/<slug>/ links. They are
+    global filters on the upstream site, so the same set is safe to surface
+    under each primary content channel.
+    """
+    out = []
+    seen = set()
+    for anchor in root.select('a[href^="/tag/"]'):
+        href = clean.clean_text(anchor.attr("href") or "")
+        match = re.fullmatch(r"/tag/([a-z0-9-]{1,80})/?", href)
+        if not match:
+            continue
+        slug = match.group(1)
+        if slug in seen:
+            continue
+        text = clean.clean_text(anchor.text)
+        # Card tag links often contain "现代 题材短剧 · 《片名》"; keep only
+        # the actual tag label.
+        name_match = re.match(r"([^·《]{1,12}?)(?:\s*题材短剧)?\s*(?:·|$)", text)
+        name = clean.clean_text(name_match.group(1)) if name_match else ""
+        if not name:
+            name = slug
+        seen.add(slug)
+        out.append({"tid": f"tag:{slug}", "name": name})
+        if len(out) >= limit:
+            break
+    return out
+
+
+def _videos(root, forbidden_selectors, base_url=BASE_URL):
     """首页主推荐区的影片卡片 -> VodItem。"""
     out = []
     # 首页主推荐区：<a class="hg-drama-card__cover-link" href="/video/6875/">
@@ -381,7 +582,7 @@ def _videos(root, forbidden_selectors):
         if image is not None:
             raw_pic = image.attr("data-src") or image.attr("src") or ""
             if raw_pic and "cover-placeholder" not in raw_pic:
-                pic = clean.absolute(raw_pic, BASE_URL)
+                pic = clean.absolute(raw_pic, base_url)
 
         video = {
             "vod_id": match.group(1),
@@ -394,18 +595,76 @@ def _videos(root, forbidden_selectors):
 
 
 def _has_more(root, current_path: str) -> bool:
-    # 首页/分类页都没有分页，返回 False；协议需要 has_more。
-    return False
+    if current_path == "/":
+        return False
+    # The current list template publishes a real rel=next pager.
+    return root.select_first('a[rel="next"]') is not None
 
 
 def _is_pager_link(href: str) -> bool:
     """判断是否是分页/伪分类链接，例：/ai-duanju/2、/ai-duanju/3。"""
-    return bool(re.fullmatch(r"/ai-[a-z]+/\d+(\/.*)?", href))
+    return bool(re.fullmatch(r"/ai-[a-z0-9-]+/\d+(\/.*)?", href))
 
 
-def _current_page(root):
-    # 当前页码：首页/分类页只有一页，返回 1。
-    return 1
+def _current_page(current_path: str):
+    match = re.search(r"/(\d+)/?$", str(current_path or ""))
+    return int(match.group(1)) if match else 1
+
+
+def _video_initial_data(html: str) -> dict:
+    """Parse the current site's SSR player payload.
+
+    Current mirrors expose the whole playback contract in
+    <script id="videoInitialData" type="application/json">.
+    """
+    match = re.search(
+        r'<script[^>]+id=["\']videoInitialData["\'][^>]*>(.*?)</script>',
+        html or "",
+        re.S | re.I,
+    )
+    if not match:
+        return {}
+    try:
+        data = json.loads(match.group(1).strip())
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _modern_episodes(root, detail_id: str):
+    """Parse the live /video/<id>/ episode grid as a single real line."""
+    episodes = []
+    seen = set()
+    for anchor in root.select('a.hg-web-play__ep[data-ep-id]'):
+        index = clean.to_int(anchor.attr("data-ep-id"))
+        if index is None or index < 1 or index in seen:
+            continue
+        href = clean.safe_relative_path(anchor.attr("href") or "")
+        if not href:
+            href = (
+                f"/video/{detail_id}/"
+                if index == 1
+                else f"/video/{detail_id}/ep-{index}/"
+            )
+        expected_prefix = f"/video/{detail_id}/"
+        if not href.startswith(expected_prefix):
+            continue
+        seen.add(index)
+        episodes.append(
+            {
+                "ep_index": index,
+                "ep_name": f"第{index}集",
+                "play_id": href,
+                "line": 1,
+            }
+        )
+    episodes.sort(key=lambda item: item["ep_index"])
+    lines = (
+        [{"line": 1, "name": "默认线路", "count": len(episodes)}]
+        if episodes
+        else []
+    )
+    return episodes, lines
 
 
 def _description(root):
