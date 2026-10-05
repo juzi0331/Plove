@@ -3,10 +3,12 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 
 import {
   getImageProxyConfig,
+  listSites,
   testDecryptImage,
   updateImageProxyConfig,
 } from '@/admin/api'
 import type {
+  AdminSiteItem,
   ImageCdnPrefixRule,
   ImageDecryptionRule,
   ImageProxyConfig,
@@ -26,6 +28,8 @@ export function useImageProxy() {
     decryption_rules: [],
     cdn_prefix_rules: [],
   })
+
+  const availableSites = ref<AdminSiteItem[]>([])
 
   const rulesList = computed(() => config.value.decryption_rules || [])
   const cdnRulesList = computed(() => config.value.cdn_prefix_rules || [])
@@ -400,7 +404,11 @@ export function useImageProxy() {
   async function loadData(): Promise<void> {
     loading.value = true
     try {
-      const cfg = await getImageProxyConfig()
+      const [cfg, siteRes] = await Promise.all([
+        getImageProxyConfig(),
+        listSites().catch(() => ({ sites: [] })),
+      ])
+      availableSites.value = siteRes?.sites || []
       config.value = {
         global_proxy_enabled: Boolean(cfg.global_proxy_enabled),
         disk_cache_enabled: Boolean(cfg.disk_cache_enabled),
@@ -507,6 +515,7 @@ export function useImageProxy() {
     handleSaveCdnRule,
     handleDeleteCdnRule,
     handleToggleCdnRule,
+    availableSites,
     loadData,
     handleSaveConfig,
     handleSaveConfigAndCloseDialog,

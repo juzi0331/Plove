@@ -76,6 +76,7 @@ const {
   handleSaveCdnRule,
   handleDeleteCdnRule,
   handleToggleCdnRule,
+  availableSites,
 } = useImageProxy()
 
 onMounted(() => {
@@ -354,6 +355,7 @@ onMounted(() => {
       :show-cdn-rule-edit-dialog="showCdnRuleEditDialog"
       :is-editing-cdn-rule="isEditingCdnRule"
       :cdn-rule-form="cdnRuleForm"
+      :available-sites="availableSites"
       @update:show-cdn-rule-edit-dialog="showCdnRuleEditDialog = $event"
       @open-add-cdn-rule="openAddCdnRule"
       @open-edit-cdn-rule="openEditCdnRule"
