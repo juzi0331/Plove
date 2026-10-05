@@ -26,7 +26,7 @@ const emit = defineEmits<{
 /** 选集抽屉显示模式：'card' (详细卡片) | 'grid' (数字矩阵) */
 const drawerMode = ref<'card' | 'grid'>('card')
 
-/** 长剧集分页大小（如短剧 80-100 集，30 集一页分段） */
+/** 长剧集分页大小（如上百集动漫或电视剧，30 集一页分段） */
 const EP_PAGE_SIZE = 30
 const selectedEpRange = ref<number>(0)
 
@@ -162,7 +162,7 @@ watch(
           </button>
         </div>
 
-        <!-- 2. 数字矩阵模式 (五列密集芯片，便于快速翻找上百集短剧) -->
+        <!-- 2. 数字矩阵模式 (五列密集芯片，便于快速翻找上百集剧集) -->
         <div v-else class="nf-drawer-chip-grid">
           <button
             v-for="epItem in pagedEpisodes"

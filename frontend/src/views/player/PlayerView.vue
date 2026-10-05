@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * PlayerView - 旗舰沉浸式影院播放大厅 (短剧 & 宽屏双模智能自适应编排器)
+ * PlayerView - 旗舰沉浸式影院播放大厅
  */
 
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
@@ -10,7 +10,6 @@ import { reportPlaybackHeartbeat } from '@/api/client'
 import type { Episode } from '@/api/types'
 import { useDeviceStore } from '@/stores/device'
 import { useSitesStore } from '@/stores/sites'
-import { formatPosterUrl } from '@/utils/format'
 import EpisodeDrawer from './EpisodeDrawer.vue'
 import PlayerHUD from './PlayerHUD.vue'
 import './player.css'
@@ -35,6 +34,7 @@ const state = usePlayerState(videoEl, playerContainerRef)
 
 const hlsEngine = useHls(videoEl, vodIdRef, epRef, {
   startPlay: state.startPlay,
+  onCancelPlay: state.cancelPendingPlay,
   onAutoNext: () => {
     if (nextEpisode.value) {
       state.startAutoNextCountdown(playNext)
@@ -49,9 +49,6 @@ const hlsEngine = useHls(videoEl, vodIdRef, epRef, {
   },
   onDurationChange: (dur) => {
     state.duration.value = dur
-  },
-  onVerticalDetected: (vertical) => {
-    state.isVideoVertical.value = vertical
   },
   onVolumeChange: (vol, muted) => {
     state.volume.value = vol
@@ -205,7 +202,7 @@ let lastTouchEndTime = 0
 let desktopClickTimer: ReturnType<typeof setTimeout> | null = null
 let lastDesktopDblClickTime = 0
 
-function resetGestureState(): void {
+function clearPendingTapGestures(): void {
   touchTapCount = 0
   if (touchSingleTimer) {
     clearTimeout(touchSingleTimer)
@@ -217,6 +214,10 @@ function resetGestureState(): void {
   }
   touchTap1Pos = { x: 0, y: 0, time: 0 }
   touchStartPos = { x: 0, y: 0 }
+}
+
+function resetGestureState(): void {
+  clearPendingTapGestures()
   lastTouchEndTime = 0
   lastDesktopDblClickTime = 0
 }
@@ -236,23 +237,20 @@ function isInteractiveTarget(target: HTMLElement | null): boolean {
 
 /** 统一双击处理：双击屏幕中央及主体区域一律触发 播放 / 暂停，左右两侧触发快进/快退 */
 function handleStageDoubleAction(clickX?: number, width?: number): void {
-  resetGestureState()
+  clearPendingTapGestures()
 
-  // 宽屏模式下两侧（各 25%）支持快退快进，中央 50% 无论如何都是双击播放/暂停
+  // 两侧（各 25%）支持快退快进，中央 50% 为双击播放/暂停
   if (clickX !== undefined && width && width > 0) {
-    const isVertical = state.isVideoVertical.value || state.aspectMode.value === 'vertical'
-    if (!isVertical) {
-      if (clickX < width * 0.25) {
-        state.seekRelative(-10)
-        state.triggerCenterAction('seek-bwd')
-        state.showHud(2000)
-        return
-      } else if (clickX > width * 0.75) {
-        state.seekRelative(10)
-        state.triggerCenterAction('seek-fwd')
-        state.showHud(2000)
-        return
-      }
+    if (clickX < width * 0.25) {
+      state.seekRelative(-10)
+      state.triggerCenterAction('seek-bwd')
+      state.showHud(2000)
+      return
+    } else if (clickX > width * 0.75) {
+      state.seekRelative(10)
+      state.triggerCenterAction('seek-fwd')
+      state.showHud(2000)
+      return
     }
   }
 
@@ -302,7 +300,7 @@ function handleStageTouchEnd(e: TouchEvent): void {
   const touch = e.changedTouches[0]
   if (!touch) return
 
-  // 过滤明显的滑动（如划屏切集或调节手势）
+  // 过滤明显的滑动（防手抖与页面滚动误触）
   const dx = Math.abs(touch.clientX - touchStartPos.x)
   const dy = Math.abs(touch.clientY - touchStartPos.y)
   if (dx > 30 || dy > 30) {
@@ -324,12 +322,13 @@ function handleStageTouchEnd(e: TouchEvent): void {
 
     // 两次触击在 420ms 内完成，且位移在 85px 范围内（完全覆盖人机拇指双击正常容差）
     if (timeDiff > 40 && timeDiff < 420 && distDiff < 85) {
-      resetGestureState()
+      lastTouchEndTime = now
+      lastDesktopDblClickTime = now
+      clearPendingTapGestures()
       handleStageDoubleAction(clickX, width)
       return
     } else {
-      // 超时或位移过远，重置重新识别
-      resetGestureState()
+      clearPendingTapGestures()
     }
   }
 
@@ -346,7 +345,7 @@ function handleStageTouchEnd(e: TouchEvent): void {
     } else {
       state.showHud(2500)
     }
-    resetGestureState()
+    clearPendingTapGestures()
   }, 360)
 }
 
@@ -367,10 +366,7 @@ function handleStageClick(event: MouseEvent): void {
 
   // 1. 如果浏览器直接派发原生双击事件 (event.detail >= 2)
   if (event.detail >= 2) {
-    if (desktopClickTimer) {
-      clearTimeout(desktopClickTimer)
-      desktopClickTimer = null
-    }
+    clearPendingTapGestures()
     lastDesktopDblClickTime = Date.now()
     handleStageDoubleAction(clickX, width)
     return
@@ -378,8 +374,7 @@ function handleStageClick(event: MouseEvent): void {
 
   // 2. 软件防抖判定：两次点击在 280ms 内接连发生 -> 触发双击
   if (desktopClickTimer) {
-    clearTimeout(desktopClickTimer)
-    desktopClickTimer = null
+    clearPendingTapGestures()
     lastDesktopDblClickTime = Date.now()
     handleStageDoubleAction(clickX, width)
     return
@@ -401,14 +396,11 @@ function handleStageDblClick(event: MouseEvent): void {
   }
 
   // 若 handleStageClick 已经通过 detail >= 2 或连续点击执行过双击，避免重复触发导致一关一开
-  if (Date.now() - lastDesktopDblClickTime < 350) {
+  if (Date.now() - lastDesktopDblClickTime < 450) {
     return
   }
 
-  if (desktopClickTimer) {
-    clearTimeout(desktopClickTimer)
-    desktopClickTimer = null
-  }
+  clearPendingTapGestures()
   lastDesktopDblClickTime = Date.now()
 
   const stage = playerContainerRef.value
@@ -445,11 +437,9 @@ let hasSentInitialPlayHeartbeat = false
 
 function triggerPlaybackTick(curr: number): void {
   if (curr > 0) {
-    if (!state.isPlaying.value) {
-      state.isPlaying.value = true
-    }
+    const isPlaying = !!(videoEl.value ? (!videoEl.value.paused && !videoEl.value.ended) : state.isPlaying.value)
     const now = Date.now()
-    if (!hasSentInitialPlayHeartbeat || now - lastHeartbeatTime >= 20000) {
+    if (isPlaying && (!hasSentInitialPlayHeartbeat || now - lastHeartbeatTime >= 20000)) {
       hasSentInitialPlayHeartbeat = true
       lastHeartbeatTime = now
       sendHeartbeat(true)
@@ -553,6 +543,21 @@ watch(
   },
 )
 watch(() => device.restoredAt, () => void hlsEngine.load())
+watch(
+  () => device.kicked,
+  (kicked) => {
+    if (kicked) {
+      if (videoEl.value) {
+        videoEl.value.pause()
+      }
+      state.cancelPendingPlay()
+      state.isPlaying.value = false
+      hlsEngine.destroyPlayer()
+      hlsEngine.error.value = '設備已被其他終端頂替下線，播放已暫停'
+      stopHeartbeatLoop()
+    }
+  },
+)
 </script>
 
 <template>
@@ -561,18 +566,10 @@ watch(() => device.restoredAt, () => void hlsEngine.load())
     class="nf-theater"
     :class="{
       'is-idle': !state.isHudVisible.value && state.isPlaying.value,
-      'is-vertical-theater': state.isVideoVertical.value || state.aspectMode.value === 'vertical',
       'is-fill': state.aspectMode.value === 'fill',
     }"
     @mousemove="state.showHud(2000)"
   >
-    <!-- 背景流光氛围灯 (Ambient Glow) -->
-    <div
-      v-if="state.isVideoVertical.value || state.aspectMode.value === 'vertical'"
-      class="nf-ambient-backdrop"
-      :style="{ backgroundImage: videoMeta?.vod_pic ? `url(${formatPosterUrl(videoMeta.vod_pic, sitesStore.currentKey)})` : 'none' }"
-    />
-
     <!-- 视频渲染舞台 -->
     <div
       class="nf-theater-stage nf-video-stage"
@@ -585,7 +582,6 @@ watch(() => device.restoredAt, () => void hlsEngine.load())
       <div
         class="nf-video-wrapper"
         :class="{
-          'mode-vertical': state.isVideoVertical.value || state.aspectMode.value === 'vertical',
           'mode-widescreen': state.aspectMode.value === 'widescreen',
           'mode-fill': state.aspectMode.value === 'fill',
         }"
@@ -639,7 +635,6 @@ watch(() => device.restoredAt, () => void hlsEngine.load())
       :visible="state.isHudVisible.value"
       :vod-title="vodTitle"
       :display-ep-text="displayEpText"
-      :is-video-vertical="state.isVideoVertical.value"
       :aspect-mode="state.aspectMode.value"
       :is-playing="state.isPlaying.value"
       :is-muted="state.isMuted.value"
@@ -657,6 +652,7 @@ watch(() => device.restoredAt, () => void hlsEngine.load())
       :has-prev-ep="!!prevEpisode"
       :has-next-ep="!!nextEpisode"
       :is-drawer-open="state.isDrawerOpen.value"
+      :allowed-rates="state.playerDefaults?.value?.allowed_rates"
       @go-back="goBack"
       @go-to-detail="goToDetail"
       @set-aspect-mode="state.setAspectMode"
@@ -672,6 +668,8 @@ watch(() => device.restoredAt, () => void hlsEngine.load())
       @cancel-auto-next="state.cancelAutoNext"
       @toggle-drawer="state.isDrawerOpen.value = !state.isDrawerOpen.value"
       @seek-to="seekTo"
+      @drag-start="state.onProgressDragStart"
+      @drag-end="state.onProgressDragEnd"
     />
 
     <!-- 右侧滑出选集抽屉 -->

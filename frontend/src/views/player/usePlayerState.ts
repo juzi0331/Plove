@@ -1,10 +1,16 @@
-/**
- * usePlayerState - 播放器交互、画面比例与音视频控制状态
- */
-
 import { computed, ref, type Ref } from 'vue'
+import { useExperienceStore } from '@/stores/experience'
 
 export function usePlayerState(videoEl: Ref<HTMLVideoElement | null>, containerEl: Ref<HTMLElement | null>) {
+  const experienceStore = useExperienceStore()
+  const playerDefaults = computed(() => experienceStore.bootstrap?.player_defaults)
+
+  /** 播放代次，防止切集或销毁后的旧 play() 请求干扰新剧集 (AUD-03) */
+  const playGeneration = ref(0)
+  function cancelPendingPlay(): void {
+    playGeneration.value++
+  }
+
   /** 播放控制核心状态 (移动端默认静音起播保障自播畅通，桌面端默认有声) */
   const isMobileClient = typeof window !== 'undefined' && (
     window.innerWidth <= 768 || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)
@@ -15,7 +21,7 @@ export function usePlayerState(videoEl: Ref<HTMLVideoElement | null>, containerE
   const currentTime = ref(0)
   const duration = ref(0)
   const bufferedEnd = ref(0)
-  const playbackRate = ref(1.0)
+  const playbackRate = ref(playerDefaults.value?.default_rate ?? 1.0)
   const isFullscreen = ref(false)
   const isPiP = ref(false)
 
@@ -23,9 +29,8 @@ export function usePlayerState(videoEl: Ref<HTMLVideoElement | null>, containerE
   const isAutoplayBlocked = ref(false)
   const isMutedAutoplay = ref(isMobileClient)
 
-  /** 画面比例模式: 'auto' | 'vertical' (9:16) | 'widescreen' (16:9) | 'fill' */
-  const aspectMode = ref<'auto' | 'vertical' | 'widescreen' | 'fill'>('auto')
-  const isVideoVertical = ref(false)
+  /** 画面比例模式: 'auto' | 'widescreen' (16:9) | 'fill' */
+  const aspectMode = ref<'auto' | 'widescreen' | 'fill'>('auto')
 
   /** 抽屉与菜单面板开关 */
   const isDrawerOpen = ref(false)
@@ -46,7 +51,7 @@ export function usePlayerState(videoEl: Ref<HTMLVideoElement | null>, containerE
   const centerActionType = ref<'play' | 'pause' | 'seek-fwd' | 'seek-bwd' | null>(null)
   let centerActionTimer: number | null = null
 
-  /** 短剧完播自动下一集倒计时 */
+  /** 剧集完播自动下一集倒计时 */
   const autoNextCountdown = ref<number | null>(null)
   let autoNextTimer: number | null = null
 
@@ -60,9 +65,10 @@ export function usePlayerState(videoEl: Ref<HTMLVideoElement | null>, containerE
     return Math.min(100, Math.max(0, (bufferedEnd.value / duration.value) * 100))
   })
 
-  function showHud(duration = 2000): void {
+  function showHud(duration?: number): void {
     isHudVisible.value = true
     if (hudTimer) clearTimeout(hudTimer)
+    const effectiveDuration = duration ?? (playerDefaults.value?.hud_hide_after_ms ?? 2500)
     hudTimer = window.setTimeout(() => {
       if (
         !isDrawerOpen.value &&
@@ -73,7 +79,18 @@ export function usePlayerState(videoEl: Ref<HTMLVideoElement | null>, containerE
       ) {
         isHudVisible.value = false
       }
-    }, duration)
+    }, effectiveDuration)
+  }
+
+  function onProgressDragStart(): void {
+    isDraggingProgress.value = true
+    isHudVisible.value = true
+    if (hudTimer) clearTimeout(hudTimer)
+  }
+
+  function onProgressDragEnd(): void {
+    isDraggingProgress.value = false
+    showHud(2500)
   }
 
   function triggerCenterAction(type: 'play' | 'pause' | 'seek-fwd' | 'seek-bwd') {
@@ -91,14 +108,9 @@ export function usePlayerState(videoEl: Ref<HTMLVideoElement | null>, containerE
     showHud(2000)
 
     if (video.paused || video.ended) {
-      void video.play().then(() => {
-        isPlaying.value = true
-        isAutoplayBlocked.value = false
-        triggerCenterAction('play')
-      }).catch(() => {
-        void startPlay(true)
-      })
+      void startPlay()
     } else {
+      cancelPendingPlay()
       video.pause()
       isPlaying.value = false
       triggerCenterAction('pause')
@@ -109,7 +121,7 @@ export function usePlayerState(videoEl: Ref<HTMLVideoElement | null>, containerE
     const video = videoEl.value
     if (!video) return
 
-    // 如果未显式传入布尔值，则尊重当前 isMuted.value（跨集切换时延续用户选择，杜绝第2集突发取消静音）
+    const thisGen = ++playGeneration.value
     const shouldMute = typeof muted === 'boolean' ? muted : isMuted.value
 
     video.muted = shouldMute
@@ -117,14 +129,24 @@ export function usePlayerState(videoEl: Ref<HTMLVideoElement | null>, containerE
 
     try {
       await video.play()
+      if (playGeneration.value !== thisGen) {
+        return
+      }
       isPlaying.value = true
       isAutoplayBlocked.value = false
       isMutedAutoplay.value = shouldMute
-    } catch (playErr) {
+    } catch (playErr: any) {
+      if (playGeneration.value !== thisGen) {
+        return
+      }
+      if (playErr?.name === 'AbortError') {
+        return
+      }
       console.warn('播放器主动起播受限:', playErr)
-      if (!shouldMute) {
-        // 如果有声播放被浏览器拦截，自动降级为静音起播
-        await startPlay(true)
+      if (!shouldMute && playErr?.name === 'NotAllowedError') {
+        if (playGeneration.value === thisGen) {
+          await startPlay(true)
+        }
       } else {
         isAutoplayBlocked.value = true
       }
@@ -179,7 +201,7 @@ export function usePlayerState(videoEl: Ref<HTMLVideoElement | null>, containerE
     isSpeedMenuOpen.value = false
   }
 
-  function setAspectMode(mode: 'auto' | 'vertical' | 'widescreen' | 'fill'): void {
+  function setAspectMode(mode: 'auto' | 'widescreen' | 'fill'): void {
     aspectMode.value = mode
     isAspectMenuOpen.value = false
   }
@@ -223,8 +245,12 @@ export function usePlayerState(videoEl: Ref<HTMLVideoElement | null>, containerE
   }
 
   function startAutoNextCountdown(onFinish: () => void): void {
+    if (playerDefaults.value && playerDefaults.value.auto_next === false) {
+      return
+    }
     if (autoNextTimer) clearInterval(autoNextTimer)
-    autoNextCountdown.value = 5
+    const delay = playerDefaults.value?.auto_next_delay_seconds ?? 5
+    autoNextCountdown.value = delay
     autoNextTimer = window.setInterval(() => {
       if (autoNextCountdown.value !== null && autoNextCountdown.value > 1) {
         autoNextCountdown.value--
@@ -262,7 +288,6 @@ export function usePlayerState(videoEl: Ref<HTMLVideoElement | null>, containerE
     isAutoplayBlocked,
     isMutedAutoplay,
     aspectMode,
-    isVideoVertical,
     isDrawerOpen,
     isLineMenuOpen,
     isSpeedMenuOpen,
@@ -275,6 +300,11 @@ export function usePlayerState(videoEl: Ref<HTMLVideoElement | null>, containerE
     autoNextCountdown,
     progressPercent,
     bufferedPercent,
+    playerDefaults,
+    playGeneration,
+    cancelPendingPlay,
+    onProgressDragStart,
+    onProgressDragEnd,
     showHud,
     triggerCenterAction,
     togglePlay,

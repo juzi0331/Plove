@@ -6,7 +6,7 @@ import json
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import desc, func, select
+from sqlalchemy import desc, func, select, update
 from sqlalchemy.orm import Session
 
 from app.core.clock import utcnow
@@ -157,15 +157,33 @@ class SqlAlchemyExperienceRepository:
                 f"配置已被其他人修改（您的版本号: {current_revision}，当前数据库最新: {draft.revision}），请刷新草稿后再试以防覆盖",
             )
 
-        draft.brand_json = brand_json
-        draft.theme_json = theme_json
-        draft.navigation_json = navigation_json
-        draft.pages_json = pages_json
-        draft.player_defaults_json = player_defaults_json
-        draft.revision += 1
-        draft.updated_at = utcnow()
-        draft.updated_by = updated_by
-        self.session.flush()
+        now = utcnow()
+        stmt = (
+            update(ExperienceDraft)
+            .where(
+                ExperienceDraft.id == draft.id,
+                ExperienceDraft.revision == current_revision,
+            )
+            .values(
+                brand_json=brand_json,
+                theme_json=theme_json,
+                navigation_json=navigation_json,
+                pages_json=pages_json,
+                player_defaults_json=player_defaults_json,
+                revision=current_revision + 1,
+                updated_at=now,
+                updated_by=updated_by,
+            )
+        )
+        res = self.session.execute(stmt)
+        if res.rowcount == 0:
+            self.session.expire(draft)
+            raise AppError(
+                ErrorCode.BAD_REQUEST,
+                f"配置并发保存冲突（版本号已变更），请刷新草稿后再试以防覆盖",
+            )
+
+        self.session.refresh(draft)
         return draft
 
     def get_active_release(
@@ -212,6 +230,14 @@ class SqlAlchemyExperienceRepository:
         note: str = "",
         channel: str = "default",
     ) -> tuple[ExperienceRelease, ExperienceActivePointer]:
+        # 锁定当前频道的活跃指针，以保证并发发布时版本分配串行化
+        pointer_stmt = (
+            select(ExperienceActivePointer)
+            .where(ExperienceActivePointer.channel == channel)
+            .with_for_update()
+        )
+        pointer = self.session.scalar(pointer_stmt)
+
         next_rev = self._get_next_release_revision()
 
         release = ExperienceRelease(
@@ -230,9 +256,6 @@ class SqlAlchemyExperienceRepository:
         self.session.flush()
 
         # 更新或创建激活指针
-        pointer = self.session.scalar(
-            select(ExperienceActivePointer).where(ExperienceActivePointer.channel == channel)
-        )
         if pointer is None:
             pointer = ExperienceActivePointer(
                 channel=channel,

@@ -23,12 +23,20 @@ export function createHlsInstance(
     xhrSetup: (xhr, requestUrl) => {
       const token = getDeviceToken()
       if (!token) return
-      const isInternal =
-        !requestUrl ||
-        requestUrl.startsWith('/') ||
-        (typeof window !== 'undefined' && requestUrl.startsWith(window.location.origin)) ||
-        requestUrl.includes('/api/v1/proxy/') ||
-        requestUrl.includes('/api/v2/')
+      let isInternal = false
+      try {
+        if (typeof window !== 'undefined') {
+          const parsed = new URL(requestUrl, window.location.href)
+          if (parsed.origin === window.location.origin) {
+            isInternal =
+              parsed.pathname.startsWith('/api/v1/proxy/') ||
+              parsed.pathname.startsWith('/api/v2/') ||
+              parsed.pathname.startsWith('/api/')
+          }
+        }
+      } catch {
+        isInternal = false
+      }
       if (isInternal) {
         xhr.setRequestHeader('X-Device-Token', token)
       }

@@ -49,5 +49,5 @@ class PlaybackRecord(Base):
     activation: Mapped["ActivationCode"] = relationship(back_populates="playback_records")
 
     __table_args__ = (
-        UniqueConstraint("device_id", "vod_id", name="uq_device_vod"),
+        UniqueConstraint("device_id", "site_key", "vod_id", name="uq_device_site_vod"),
     )

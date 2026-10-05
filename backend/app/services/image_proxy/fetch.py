@@ -90,14 +90,25 @@ def fetch_image_with_cache(
         "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
     }
 
-    with httpx.Client(timeout=timeout_seconds, follow_redirects=True) as client:
-        resp = client.get(target_fetch_url, headers=headers)
+    with httpx.Client(timeout=timeout_seconds, follow_redirects=False) as client:
+        current_fetch_url = target_fetch_url
+        for _ in range(5):
+            if not is_safe_public_url(current_fetch_url):
+                raise ValueError(f"图片请求目标不安全: {current_fetch_url}")
+            resp = client.get(current_fetch_url, headers=headers)
+            if resp.is_redirect:
+                loc = resp.headers.get("Location")
+                if not loc:
+                    break
+                next_url = str(resp.url.join(loc))
+                if not is_safe_public_url(next_url):
+                    raise ValueError(f"图片重定向到不安全地址: {next_url}")
+                current_fetch_url = next_url
+                continue
+            break
+
         if resp.status_code != 200:
             raise RuntimeError(f"源站返回 HTTP {resp.status_code}")
-        
-        final_url = str(resp.url)
-        if final_url != url and not is_safe_public_url(final_url):
-            raise ValueError(f"图片重定向到不安全地址: {final_url}")
 
         content = resp.content
         c_type = resp.headers.get("content-type", "image/jpeg")

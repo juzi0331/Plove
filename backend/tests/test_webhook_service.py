@@ -135,12 +135,14 @@ def test_dispatch_event_async_non_blocking(tmp_path):
     )
     service.save(cfg)
 
-    start = time.perf_counter()
-    # 异步投递必须瞬时返回
-    res = service.dispatch_event("circuit_break", "熔断", "内容", sync=False)
-    duration = time.perf_counter() - start
-    assert res == []
-    assert duration < 0.1, f"dispatch_event 耗时 {duration}s，违反非阻塞异步要求"
+    with patch.object(service._executor, "submit") as mock_submit:
+        start = time.perf_counter()
+        # 异步投递必须瞬时返回
+        res = service.dispatch_event("circuit_break", "熔断", "内容", sync=False)
+        duration = time.perf_counter() - start
+        assert res == []
+        assert duration < 0.1, f"dispatch_event 耗时 {duration}s，违反非阻塞异步要求"
+        assert mock_submit.call_count == 1
 
 
 def test_admin_webhooks_api_verify_and_detect(authed_client):
@@ -275,7 +277,8 @@ def test_telegram_html_parse_error_auto_fallback(tmp_path):
             mock_resp.json.return_value = {"ok": True}
         return mock_resp
 
-    with patch("httpx.Client.post", side_effect=mock_post):
+    with patch("httpx.Client.post", side_effect=mock_post), \
+         patch("app.services.webhook.dispatch._resolve_telegram_proxy", return_value=None):
         res = service._send_telegram(cfg, "测试", "内容", event_type="circuit_break")
         assert res.ok is True
         assert call_count == 2

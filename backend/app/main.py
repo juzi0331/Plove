@@ -97,7 +97,7 @@ async def lifespan(app: FastAPI):
     try:
         from app.services.proxy_node import proxy_node_service, xray_engine
         nodes = proxy_node_service.get_nodes()
-        if any(n.get("protocol") == "vless" for n in nodes):
+        if any(n.get("protocol") in ("vless", "trojan") for n in nodes):
             if xray_engine.find_binary():
                 xray_engine.start_engine(nodes)
                 from app.core.logging import get_logger

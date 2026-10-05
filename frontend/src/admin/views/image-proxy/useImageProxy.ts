@@ -358,11 +358,11 @@ export function useImageProxy() {
   }
 
   async function handleSaveCdnRule(): Promise<void> {
-    if (!cdnRuleForm.value.name.trim()) {
+    if (!cdnRuleForm.value.name?.trim()) {
       ElMessage.warning('请输入规则名称')
       return
     }
-    if (!cdnRuleForm.value.prefix.trim()) {
+    if (!cdnRuleForm.value.prefix?.trim()) {
       ElMessage.warning('请输入代理前缀（如 https://wsrv.nl/?url=）')
       return
     }

@@ -25,6 +25,7 @@ export function formatExpiry(time: number | string | null | undefined): string {
 }
 
 import { getDeviceToken } from '@/api/session'
+import { getAdminToken } from '@/admin/token'
 import type { ImageCdnPrefixRule } from '@/api/types'
 
 let _globalImageProxy = false
@@ -88,7 +89,7 @@ export function formatPosterUrl(rawUrl: string | undefined | null, siteKey?: str
 
   if ((_globalImageProxy || isEncryptedHost) && (trimmed.startsWith('http://') || trimmed.startsWith('https://'))) {
     const siteParam = siteKey ? `&site=${encodeURIComponent(siteKey)}` : ''
-    const devToken = getDeviceToken() || (typeof localStorage !== 'undefined' ? (localStorage.getItem('plove_admin_token') || '') : '')
+    const devToken = getDeviceToken() || getAdminToken() || ''
     const tokenParam = devToken ? `&token=${encodeURIComponent(devToken)}` : ''
     return `/api/v1/proxy/image?url=${encodeURIComponent(trimmed)}${siteParam}${tokenParam}`
   }

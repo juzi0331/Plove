@@ -19,6 +19,12 @@ DANGEROUS_MODULES: frozenset[str] = frozenset({
     "multiprocessing",
     "shutil",
     "importlib",
+    "pathlib",
+    "tempfile",
+    "posix",
+    "nt",
+    "builtins",
+    "inspect",
 })
 
 #: 禁止直接调用的高危系统方法或属性
@@ -30,6 +36,14 @@ DANGEROUS_ATTRIBUTES: frozenset[str] = frozenset({
     "spawn",
     "fork",
     "kill",
+    "remove",
+    "unlink",
+    "rmdir",
+    "mkdir",
+    "rename",
+    "replace",
+    "chmod",
+    "open",
 })
 
 #: 禁止直接引用的内置危险全局函数
@@ -37,6 +51,8 @@ DANGEROUS_BUILTIN_NAMES: frozenset[str] = frozenset({
     "eval",
     "exec",
     "__import__",
+    "open",
+    "compile",
 })
 
 
@@ -71,9 +87,20 @@ def audit_script_ast(code: str) -> tuple[bool, str | None]:
     return True, None
 
 
+#: 允许透传给子进程的白名单系统环境变量
+_SAFE_ENV_KEYS: frozenset[str] = frozenset({
+    "PATH", "SYSTEMROOT", "WINDIR", "TEMP", "TMP", "PYTHONHOME", "LANG", "LC_ALL",
+    "PROGRAMFILES", "PROGRAMFILES(X86)", "PROGRAMDATA", "APPDATA", "LOCALAPPDATA",
+    "USERPROFILE", "HOMEDRIVE", "HOMEPATH", "COMSPEC", "PATHEXT",
+})
+
+
 def get_crawler_runner_env() -> dict[str, str]:
-    """构建确保子进程运行并正确加载 crawler_kit 的隔离环境变量。"""
-    env = os.environ.copy()
+    """构建确保子进程运行并正确加载 crawler_kit 的隔离白名单环境变量。"""
+    # 严格采用白名单，杜绝将父进程敏感配置（密钥、令牌、数据库连接）泄漏给第三方采集脚本
+    env: dict[str, str] = {
+        k: v for k, v in os.environ.items() if k.upper() in _SAFE_ENV_KEYS
+    }
     env["PYTHONIOENCODING"] = "utf-8"
     env["PYTHONUTF8"] = "1"
 

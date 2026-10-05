@@ -104,7 +104,33 @@ def _get_proxy_url_for_site(site: str | None) -> str | None:
 
 def _create_http_client(site: str | None, timeout: float) -> httpx.Client:
     proxy = _get_proxy_url_for_site(site)
-    return httpx.Client(proxy=proxy, follow_redirects=True, timeout=timeout)
+    return httpx.Client(proxy=proxy, follow_redirects=False, timeout=timeout)
+
+
+def _safe_http_get(
+    client: httpx.Client,
+    url: str,
+    headers: dict[str, str],
+    max_redirects: int = 5,
+    resolve_dns: bool = True,
+) -> httpx.Response:
+    """逐跳验证重定向目标，严格抵御中间重定向路径的 SSRF 探测。"""
+    current_url = url
+    for _ in range(max_redirects):
+        if not is_safe_public_url(current_url, resolve_dns=resolve_dns):
+            raise ValueError(f"流媒体请求目标不安全: {current_url}")
+        resp = client.get(current_url, headers=headers)
+        if resp.is_redirect:
+            loc = resp.headers.get("Location")
+            if not loc:
+                return resp
+            next_url = str(resp.url.join(loc))
+            if not is_safe_public_url(next_url, resolve_dns=resolve_dns):
+                raise ValueError(f"流媒体重定向到不安全地址: {next_url}")
+            current_url = next_url
+            continue
+        return resp
+    return resp
 
 
 def _build_upstream_headers(url: str, custom_referer: str | None = None) -> dict[str, str]:
@@ -137,13 +163,11 @@ def fetch_and_rewrite_m3u8(
 
     headers = _build_upstream_headers(upstream_url, custom_referer)
     with _create_http_client(site=site, timeout=20.0) as client:
-        resp = client.get(upstream_url, headers=headers)
+        resp = _safe_http_get(client, upstream_url, headers=headers, resolve_dns=resolve_dns)
         if resp.status_code >= 400:
             raise RuntimeError(f"上游清单返回 HTTP {resp.status_code}: {upstream_url}")
 
         final_url = str(resp.url)
-        if final_url != upstream_url and not is_safe_public_url(final_url, resolve_dns=resolve_dns):
-            raise ValueError(f"清单重定向到不安全地址: {final_url}")
         raw_body = resp.content
 
     # 1. 尝试解封装（如 rou.video 伪装成 PNG 的 zlib 压缩清单）
@@ -185,6 +209,33 @@ def rewrite_m3u8_content(
         if stripped.startswith("#EXT-X-STREAM-INF:"):
             is_variant_stream = True
             output_lines.append(line)
+            continue
+
+        # 处理 #EXT-X-MEDIA (音轨、字幕、备选视频流)
+        if stripped.startswith("#EXT-X-MEDIA:"):
+            def replace_media_uri(match: re.Match) -> str:
+                original_uri = match.group(1)
+                abs_media_url = urljoin(base_url, original_uri)
+                if ".m3u8" in original_uri.lower() or "type=audio" in stripped.lower() or "type=subtitles" in stripped.lower():
+                    proxy_media_url = f"/api/v1/proxy/stream/m3u8?url={quote(abs_media_url)}{site_param}{token_param}"
+                else:
+                    proxy_media_url = f"/api/v1/proxy/stream/segment?url={quote(abs_media_url)}{site_param}{token_param}"
+                return f'URI="{proxy_media_url}"'
+
+            new_line = re.sub(r'URI="([^"]+)"', replace_media_uri, line)
+            output_lines.append(new_line)
+            continue
+
+        # 处理 #EXT-X-I-FRAME-STREAM-INF (I帧变体清单)
+        if stripped.startswith("#EXT-X-I-FRAME-STREAM-INF:"):
+            def replace_iframe_uri(match: re.Match) -> str:
+                original_uri = match.group(1)
+                abs_iframe_url = urljoin(base_url, original_uri)
+                proxy_iframe_url = f"/api/v1/proxy/stream/m3u8?url={quote(abs_iframe_url)}{site_param}{token_param}"
+                return f'URI="{proxy_iframe_url}"'
+
+            new_line = re.sub(r'URI="([^"]+)"', replace_iframe_uri, line)
+            output_lines.append(new_line)
             continue
 
         # 处理 #EXT-X-KEY (AES-128 加密密钥)
@@ -256,16 +307,14 @@ def fetch_and_decode_segment(
         headers["Range"] = range_header
 
     with _create_http_client(site=site, timeout=30.0) as client:
-        resp = client.get(upstream_url, headers=headers)
+        resp = _safe_http_get(client, upstream_url, headers=headers, resolve_dns=resolve_dns)
         if resp.status_code >= 400:
             raise RuntimeError(f"上游分片返回 HTTP {resp.status_code}: {upstream_url}")
 
-        final_url = str(resp.url)
-        if final_url != upstream_url and not is_safe_public_url(final_url, resolve_dns=resolve_dns):
-            raise ValueError(f"切片重定向到不安全地址: {final_url}")
-
         raw_body = resp.content
         upstream_content_type = resp.headers.get("content-type") or ""
+        upstream_status = resp.status_code
+        upstream_content_range = resp.headers.get("content-range")
 
     # 调用解封装钩子（将伪装 PNG 剥除，还原出 TS/MP4 数据）
     decoded = _decode_media_content(raw_body, site=site)
@@ -286,7 +335,14 @@ def fetch_and_decode_segment(
         "Cache-Control": "public, max-age=86400, immutable",
     }
 
-    # 处理客户端 Range 请求
+    # 上游已响应 206 局部切片且无本地解码器时，直接透传局部切片和 Content-Range，严禁二次切片截断 (AUD-15)
+    if upstream_status == 206 and not has_decoder:
+        if upstream_content_range:
+            resp_headers["Content-Range"] = upstream_content_range
+        resp_headers["Accept-Ranges"] = "bytes"
+        return decoded, media_type, 206, resp_headers
+
+    # 处理客户端 Range 请求（当站点有解码钩子在全量解密后切片，或上游返回 200 全量数据时实施切片）
     if range_header and range_header.startswith("bytes="):
         try:
             byte_range = range_header.split("=", 1)[1].strip()
@@ -321,12 +377,9 @@ def fetch_and_decode_key(
 
     headers = _build_upstream_headers(upstream_url, custom_referer)
     with _create_http_client(site=site, timeout=15.0) as client:
-        resp = client.get(upstream_url, headers=headers)
+        resp = _safe_http_get(client, upstream_url, headers=headers, resolve_dns=resolve_dns)
         if resp.status_code >= 400:
             raise RuntimeError(f"上游密钥返回 HTTP {resp.status_code}: {upstream_url}")
-        final_url = str(resp.url)
-        if final_url != upstream_url and not is_safe_public_url(final_url, resolve_dns=resolve_dns):
-            raise ValueError(f"密钥重定向到不安全地址: {final_url}")
         raw = resp.content
         if len(raw) > 8192:
             raise ValueError("密钥响应体异常过大")

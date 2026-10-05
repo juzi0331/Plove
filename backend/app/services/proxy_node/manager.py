@@ -14,7 +14,7 @@ import httpx
 
 from app.core.logging import get_logger
 from app.services.proxy_node.engine import xray_engine
-from app.services.proxy_node.vless import generate_xray_config, parse_vless_url
+from app.services.proxy_node.vless import generate_xray_config, parse_trojan_url, parse_vless_url
 
 logger = get_logger("proxy_node_manager")
 
@@ -41,8 +41,8 @@ _get_proxy_config_path = get_proxy_config_path
 class ProxyNodeManager:
     """管理节点池与绑定的单例服务。"""
 
-    def __init__(self) -> None:
-        self.config_path = get_proxy_config_path()
+    def __init__(self, config_path: Optional[Path] = None) -> None:
+        self.config_path = config_path or get_proxy_config_path()
         self._enabled: bool = False
         self._default_proxy_url: str = "http://127.0.0.1:10809"
         self._nodes: list[dict[str, Any]] = []
@@ -119,7 +119,7 @@ class ProxyNodeManager:
             parsed = parse_vless_url(text)
             name = custom_name.strip() or parsed.get("name") or f"VLESS ({parsed.get('server')})"
 
-            used_ports = {int(n.get("local_port", 0)) for n in self._nodes if n.get("protocol") == "vless"}
+            used_ports = {int(n.get("local_port", 0)) for n in self._nodes if n.get("protocol") in ("vless", "trojan")}
             alloc_port = local_port
             while alloc_port in used_ports:
                 alloc_port += 1
@@ -148,13 +148,46 @@ class ProxyNodeManager:
                     xray_engine.install_binary_sync()
                 except Exception as exc:
                     logger.warning("尝试自动下载安装 Xray 核心失败: %s", exc)
-        else:
+
+        elif text.startswith("trojan://"):
+            parsed = parse_trojan_url(text)
+            name = custom_name.strip() or parsed.get("name") or f"Trojan ({parsed.get('server')})"
+
+            used_ports = {int(n.get("local_port", 0)) for n in self._nodes if n.get("protocol") in ("vless", "trojan")}
+            alloc_port = local_port
+            while alloc_port in used_ports:
+                alloc_port += 1
+            local_port = alloc_port
+
+            local_http_proxy = f"http://127.0.0.1:{local_port}"
+            node = {
+                "id": node_id,
+                "name": name,
+                "protocol": "trojan",
+                "raw_url": text,
+                "proxy_url": local_http_proxy,
+                "local_http_proxy": local_http_proxy,
+                "local_port": local_port,
+                "server": parsed.get("server", ""),
+                "port": parsed.get("port", 443),
+                "network_type": parsed.get("type", "tcp"),
+                "security": parsed.get("security", "tls"),
+                "sni": parsed.get("sni") or parsed.get("server", ""),
+                "parsed_data": parsed,
+                "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+            }
+
+            if not xray_engine.find_binary():
+                try:
+                    xray_engine.install_binary_sync()
+                except Exception as exc:
+                    logger.warning("尝试自动下载安装 Xray 核心失败: %s", exc)
+
+        elif text.startswith(("http://", "https://", "socks5://", "socks://")):
             proxy_url = text
-            if not proxy_url.startswith(("http://", "https://", "socks5://", "socks://")):
-                proxy_url = f"http://{proxy_url}"
-            name = custom_name.strip() or f"代理节点 ({proxy_url.replace('http://', '')})"
             proto = "socks5" if proxy_url.startswith("socks") else "http"
             parsed_u = urllib.parse.urlparse(proxy_url)
+            name = custom_name.strip() or f"代理节点 ({parsed_u.netloc or proxy_url})"
             node = {
                 "id": node_id,
                 "name": name,
@@ -164,15 +197,22 @@ class ProxyNodeManager:
                 "local_http_proxy": proxy_url,
                 "local_port": parsed_u.port or (10808 if proto == "socks5" else 10809),
                 "server": parsed_u.hostname or "127.0.0.1",
-                "port": parsed_u.port or 10809,
+                "port": parsed_u.port or (10808 if proto == "socks5" else 10809),
                 "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
             }
+        else:
+            raise ValueError("不支持的代理协议或链接格式，仅支持 vless://, trojan://, http://, https://, socks5://")
 
         for i, item in enumerate(self._nodes):
             if item.get("raw_url") == text:
                 node["id"] = item["id"]
                 node["local_port"] = item.get("local_port", node["local_port"])
-                node["proxy_url"] = f"http://127.0.0.1:{node['local_port']}"
+                if node.get("protocol") in ("vless", "trojan"):
+                    node["proxy_url"] = f"http://127.0.0.1:{node['local_port']}"
+                    node["local_http_proxy"] = f"http://127.0.0.1:{node['local_port']}"
+                else:
+                    node["proxy_url"] = item.get("proxy_url", node["proxy_url"])
+                    node["local_http_proxy"] = item.get("local_http_proxy", node["local_http_proxy"])
                 self._nodes[i] = node
                 self.save()
                 try:

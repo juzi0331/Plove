@@ -118,16 +118,6 @@
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
 }
 
-.nf-drama-badge {
-  background: rgba(229, 9, 20, 0.2);
-  border: 1px solid rgba(229, 9, 20, 0.5);
-  color: #ff3b30;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 10px;
-}
-
 .nf-sub-title {
   font-size: 13px;
   color: rgba(255, 255, 255, 0.75);
@@ -245,19 +235,6 @@
   -webkit-touch-callout: none;
 }
 
-/* 弥散环绕氛围灯 (短剧模式自动开启，烘托沉浸感) */
-.nf-ambient-backdrop {
-  position: absolute;
-  inset: -20px;
-  background-size: cover;
-  background-position: center;
-  filter: blur(60px) brightness(0.35);
-  opacity: 0.65;
-  pointer-events: none;
-  transform: scale(1.1);
-  z-index: 1;
-}
-
 .nf-video-wrapper {
   position: relative;
   z-index: 2;
@@ -269,17 +246,6 @@
   max-width: 100vw;
   max-height: 100vh;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* 短剧竖屏专属黄金视界容器 (9:16) */
-.nf-video-wrapper.mode-vertical {
-  width: auto;
-  height: 100%;
-  max-width: calc(100vh * (9 / 16));
-  aspect-ratio: 9 / 16;
-  border-radius: 12px;
-  box-shadow: 0 0 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(229, 9, 20, 0.15);
-  overflow: hidden;
 }
 
 .nf-video-wrapper.mode-widescreen {
@@ -462,7 +428,7 @@
   font-weight: 500;
 }
 
-/* 短剧自动连播倒计时卡片 */
+/* 剧集自动连播倒计时卡片 */
 .nf-auto-next-card {
   position: absolute;
   bottom: 110px;
@@ -1258,10 +1224,6 @@
     white-space: nowrap;
   }
 
-  .nf-drama-badge {
-    display: none;
-  }
-
   /* 顶部比例切换按钮：移动端与返回键对称，圆润精致 */
   .nf-tool-btn {
     width: 36px;
@@ -1286,15 +1248,6 @@
   .nf-round-back-btn {
     width: 36px;
     height: 36px;
-  }
-
-  /* 移动端短剧垂直铺满沉浸体验 */
-  .nf-video-wrapper.mode-vertical {
-    width: 100%;
-    height: 100%;
-    max-width: 100vw;
-    border-radius: 0;
-    box-shadow: none;
   }
 
   /* 底部控制台：严格保证单行横向 Flex 布局 */

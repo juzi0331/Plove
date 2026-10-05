@@ -6,7 +6,7 @@
 // 重新生成：cd frontend && npm run gen:types
 // 检查是否过期：npm run check:types（退出码非 0 = 契约改过但没重新生成）
 //
-// 契约指纹：a9e4050db895
+// 契约指纹：17ba0392a600
 /** 命名意图动作描述。由前端映射至受控处理函数，不执行动态代码。 */
 export interface ActionPayload {
   type: string
@@ -450,6 +450,16 @@ export interface HomeSection {
   videos?: VodItem[]
 }
 
+/** 图床加速与代理前缀规则（如 wsrv.nl 等公共边缘 CDN 反代）。 */
+export interface ImageCdnPrefixRule {
+  id?: string
+  name?: string
+  site_key?: string
+  match_domain?: string
+  prefix?: string
+  enabled?: boolean
+}
+
 /** 站点图片解密规则配置。 */
 export interface ImageDecryptionRule {
   id?: string
@@ -468,16 +478,6 @@ export interface ImageDecryptionRule {
 export interface ImageProxyClearResult {
   cleared_files: number
   freed_mb: number
-}
-
-/** 图床加速与代理前缀规则（如 wsrv.nl 等公共边缘 CDN 反代）。 */
-export interface ImageCdnPrefixRule {
-  id: string
-  name: string
-  site_key?: string
-  match_domain?: string
-  prefix: string
-  enabled: boolean
 }
 
 /** 全局图片防盗链代理总控配置。 */

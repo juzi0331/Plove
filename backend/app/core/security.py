@@ -31,14 +31,6 @@ def _is_safe_ip(ip: ipaddress.IPv4Address | ipaddress.IPv6Address, is_from_dns: 
     if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
         ip = ip.ipv4_mapped
 
-    # 兼容透明代理/TUN 模式与 DNS 污染下由 DNS 虚拟分配的 Fake-IP 公网段
-    if is_from_dns:
-        if any(ip in net for net in _FAKE_IP_NETWORKS):
-            return True
-        # 兼容 TUN/Mihomo/Sing-box 与 DNS 污染分配的 127.x.x.x 虚拟段（排除真实主机环回 127.0.0.1）
-        if isinstance(ip, ipaddress.IPv4Address) and ip in ipaddress.ip_network("127.0.0.0/8") and str(ip) != "127.0.0.1":
-            return True
-
     if ip.is_loopback:
         return False
     if ip.is_private:

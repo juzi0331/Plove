@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import uuid
 from datetime import datetime
 
 from sqlalchemy.orm import Session
@@ -31,7 +32,8 @@ def rollback_experience_release(
         raise AppError(ErrorCode.NOT_FOUND, f"目标历史版本未找到: {target_release_id}")
 
     timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-    new_release_id = f"exp_rollback_{timestamp_str}"
+    rand_suffix = uuid.uuid4().hex[:6]
+    new_release_id = f"exp_rollback_{timestamp_str}_{rand_suffix}"
     effective_note = note or f"回滚至历史版本 {target_release_id} (原 r{target_release.revision})"
 
     # 1. 以历史快照为载荷，创建新发布并推进指针（获得更大的 revision）

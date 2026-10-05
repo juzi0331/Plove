@@ -7,7 +7,6 @@ export interface VideoEventCallbacks {
   onBufferingChange: (buffering: boolean) => void
   onProgressUpdate: (curr: number, buffered: number) => void
   onDurationChange: (dur: number) => void
-  onVerticalDetected: (vertical: boolean) => void
   onVolumeChange: (vol: number, muted: boolean) => void
   onAutoNext: () => void
   onFatalVideoError: () => void
@@ -65,9 +64,6 @@ export function bindVideoEvents(
   video.onloadedmetadata = () => {
     if (video.duration && !isNaN(video.duration)) {
       callbacks.onDurationChange(video.duration)
-    }
-    if (video.videoWidth && video.videoHeight) {
-      callbacks.onVerticalDetected(video.videoHeight > video.videoWidth)
     }
   }
 

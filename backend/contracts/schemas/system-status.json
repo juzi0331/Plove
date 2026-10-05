@@ -2,6 +2,47 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://plove.local/schemas/system-status.json",
   "$defs": {
+    "ImageCdnPrefixRule": {
+      "description": "图床加速与代理前缀规则（如 wsrv.nl 等公共边缘 CDN 反代）。",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "default": "",
+          "description": "规则名称，例如：网飞猫图床加速",
+          "title": "Name",
+          "type": "string"
+        },
+        "site_key": {
+          "default": "",
+          "description": "适用的站点 Key（例如：www_ncat21_com，留空则匹配所有站点）",
+          "title": "Site Key",
+          "type": "string"
+        },
+        "match_domain": {
+          "default": "",
+          "description": "匹配的域名或 URL 关键词（例如：vres.cyscyy.com）",
+          "title": "Match Domain",
+          "type": "string"
+        },
+        "prefix": {
+          "default": "https://wsrv.nl/?url=",
+          "description": "代理前缀，例如：https://wsrv.nl/?url=",
+          "title": "Prefix",
+          "type": "string"
+        },
+        "enabled": {
+          "default": true,
+          "description": "是否启用该规则",
+          "title": "Enabled",
+          "type": "boolean"
+        }
+      },
+      "title": "ImageCdnPrefixRule",
+      "type": "object"
+    },
     "SystemNoticePayload": {
       "description": "全站公告内容与弹窗策略。",
       "properties": {
@@ -115,6 +156,14 @@
         "type": "string"
       },
       "title": "Image Decrypt Domains",
+      "type": "array"
+    },
+    "image_cdn_prefix_rules": {
+      "description": "需要添加外部 CDN 前缀代理的图床规则",
+      "items": {
+        "$ref": "#/$defs/ImageCdnPrefixRule"
+      },
+      "title": "Image Cdn Prefix Rules",
       "type": "array"
     }
   },

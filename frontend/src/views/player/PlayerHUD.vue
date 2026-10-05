@@ -3,38 +3,43 @@
  * PlayerHUD - 奈飞级影院 HUD 控制台 (顶部导航 + 底部控制栏 + 中央手势反馈与连播倒计时)
  */
 
-import { ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import './player.css'
 import { formatTime } from './usePlayerState'
 
-const props = defineProps<{
-  visible: boolean
-  vodTitle: string
-  displayEpText: string
-  isVideoVertical: boolean
-  aspectMode: 'auto' | 'vertical' | 'widescreen' | 'fill'
-  isPlaying: boolean
-  isMuted: boolean
-  volume: number
-  currentTime: number
-  duration: number
-  bufferedPercent: number
-  progressPercent: number
-  playbackRate: number
-  isFullscreen: boolean
-  isAutoplayBlocked: boolean
-  isMutedAutoplay: boolean
-  autoNextCountdown: number | null
-  centerActionType: 'play' | 'pause' | 'seek-fwd' | 'seek-bwd' | null
-  hasPrevEp: boolean
-  hasNextEp: boolean
-  isDrawerOpen: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    visible: boolean
+    vodTitle: string
+    displayEpText: string
+    aspectMode: 'auto' | 'widescreen' | 'fill'
+    isPlaying: boolean
+    isMuted: boolean
+    volume: number
+    currentTime: number
+    duration: number
+    bufferedPercent: number
+    progressPercent: number
+    playbackRate: number
+    isFullscreen: boolean
+    isAutoplayBlocked: boolean
+    isMutedAutoplay: boolean
+    autoNextCountdown: number | null
+    centerActionType: 'play' | 'pause' | 'seek-fwd' | 'seek-bwd' | null
+    hasPrevEp: boolean
+    hasNextEp: boolean
+    isDrawerOpen: boolean
+    allowedRates?: number[]
+  }>(),
+  {
+    allowedRates: () => [0.5, 0.75, 1.0, 1.25, 1.5, 2.0],
+  },
+)
 
 const emit = defineEmits<{
   (e: 'goBack'): void
   (e: 'goToDetail'): void
-  (e: 'setAspectMode', mode: 'auto' | 'vertical' | 'widescreen' | 'fill'): void
+  (e: 'setAspectMode', mode: 'auto' | 'widescreen' | 'fill'): void
   (e: 'togglePlay'): void
   (e: 'toggleMute'): void
   (e: 'unmute'): void
@@ -54,7 +59,11 @@ const emit = defineEmits<{
 const isAspectMenuOpen = ref(false)
 const isSpeedMenuOpen = ref(false)
 
-const availableSpeeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0]
+const availableSpeeds = computed(() =>
+  props.allowedRates && props.allowedRates.length > 0
+    ? props.allowedRates
+    : [0.5, 0.75, 1.0, 1.25, 1.5, 2.0]
+)
 
 const progressBarRef = ref<HTMLElement | null>(null)
 const hoverTime = ref<number | null>(null)
@@ -112,6 +121,22 @@ function onProgressTouchEnd(e: TouchEvent): void {
   }
 }
 
+function onProgressTouchCancel(): void {
+  if (isDragging.value) {
+    isDragging.value = false
+    hoverTime.value = null
+    emit('dragEnd')
+  }
+}
+
+onBeforeUnmount(() => {
+  if (isDragging.value) {
+    isDragging.value = false
+    hoverTime.value = null
+    emit('dragEnd')
+  }
+})
+
 function updateProgressByTouch(touch: Touch, commit: boolean): void {
   const bar = progressBarRef.value
   if (!bar || !props.duration) return
@@ -167,7 +192,6 @@ function onProgressLeave(): void {
         <div class="nf-title-group" @click="emit('goToDetail')">
           <div class="nf-title-row">
             <h1 class="nf-main-title">{{ vodTitle }}</h1>
-            <span v-if="isVideoVertical" class="nf-drama-badge">📱 豎屏微短劇</span>
           </div>
           <span class="nf-sub-title">{{ displayEpText }}</span>
         </div>
@@ -185,7 +209,7 @@ function onProgressLeave(): void {
           >
             <span class="nf-btn-icon">📐</span>
             <span class="nf-btn-text">
-              {{ aspectMode === 'vertical' ? '豎屏 9:16' : aspectMode === 'widescreen' ? '寬屏 16:9' : aspectMode === 'fill' ? '鋪滿' : '自適應' }}
+              {{ aspectMode === 'widescreen' ? '寬屏 16:9' : aspectMode === 'fill' ? '鋪滿' : '自適應' }}
             </span>
           </button>
           <Transition name="nf-dropdown">
@@ -194,10 +218,6 @@ function onProgressLeave(): void {
               <button class="nf-dropdown-item" :class="{ 'is-active': aspectMode === 'auto' }" type="button" @click="emit('setAspectMode', 'auto'); isAspectMenuOpen = false">
                 <span>智能自適應</span>
                 <span v-if="aspectMode === 'auto'">✓</span>
-              </button>
-              <button class="nf-dropdown-item" :class="{ 'is-active': aspectMode === 'vertical' }" type="button" @click="emit('setAspectMode', 'vertical'); isAspectMenuOpen = false">
-                <span>豎屏短劇 (9:16)</span>
-                <span v-if="aspectMode === 'vertical'">✓</span>
               </button>
               <button class="nf-dropdown-item" :class="{ 'is-active': aspectMode === 'widescreen' }" type="button" @click="emit('setAspectMode', 'widescreen'); isAspectMenuOpen = false">
                 <span>影院寬屏 (16:9)</span>
@@ -265,11 +285,11 @@ function onProgressLeave(): void {
       </div>
     </Transition>
 
-    <!-- 微短剧自动下一集倒计时浮层 -->
+    <!-- 剧集自动下一集倒计时浮层 -->
     <Transition name="nf-fade">
       <div v-if="autoNextCountdown !== null" class="nf-auto-next-card">
         <div class="nf-next-header">
-          <span class="nf-next-pill">微短劇連播</span>
+          <span class="nf-next-pill">自動連播</span>
           <span class="nf-next-clock">{{ autoNextCountdown }}s</span>
         </div>
         <div class="nf-next-title">即將為您播放下一集</div>
@@ -296,6 +316,7 @@ function onProgressLeave(): void {
         @touchstart.passive="onProgressTouchStart"
         @touchmove.passive="onProgressTouchMove"
         @touchend.passive="onProgressTouchEnd"
+        @touchcancel="onProgressTouchCancel"
       >
         <div class="nf-progress-track">
           <div class="nf-progress-buffered" :style="{ width: `${bufferedPercent}%` }" />

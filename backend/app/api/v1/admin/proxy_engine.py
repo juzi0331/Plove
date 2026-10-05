@@ -33,8 +33,19 @@ async def install_proxy_engine(
 ) -> Envelope[ProxyEngineActionResponse]:
     try:
         await xray_engine.install_binary()
-        xray_engine.start_engine(proxy_node_service.get_nodes())
+        start_res = xray_engine.start_engine(proxy_node_service.get_nodes())
         status = xray_engine.get_status(proxy_node_service.get_nodes())
+        if not status.get("running"):
+            err_detail = start_res.get("error") or "Xray 核心已成功安装，但启动失败"
+            audit("install_proxy_engine", request_id, success=False, error=err_detail)
+            return ok(
+                ProxyEngineActionResponse(
+                    success=False,
+                    message=f"Xray 核心已成功安装，但启动失败: {err_detail}",
+                    status=ProxyEngineStatusPayload(**status),
+                ),
+                request_id,
+            )
         audit("install_proxy_engine", request_id, success=True)
         return ok(
             ProxyEngineActionResponse(

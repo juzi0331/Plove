@@ -56,8 +56,8 @@ async def visual_proxy(
 
             final_html = build_injected_visual_proxy_html(final_url, html, mode=mode)
             headers = {
-                "X-Frame-Options": "ALLOWALL",
-                "Content-Security-Policy": "frame-ancestors *;",
+                "X-Frame-Options": "SAMEORIGIN",
+                "Content-Security-Policy": "sandbox allow-scripts allow-forms allow-popups; frame-ancestors 'self' http://127.0.0.1:* http://localhost:*;",
             }
             return HTMLResponse(content=final_html, headers=headers)
     except Exception as exc:

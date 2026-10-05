@@ -28,11 +28,13 @@ def record_playback_heartbeat(
     if payload.is_playing:
         device.last_playback_at = now
 
-    # 查找此设备对此影片的历史记录（防膨胀：1设备1影片1条记录）
+    site_key = (payload.site or "").strip()[:64]
+    # 查找此设备在此站点对此影片的历史记录（防跨站冲突：1设备1站点1影片1条记录）
     stmt = (
         select(PlaybackRecord)
         .where(
             PlaybackRecord.device_id == device.id,
+            PlaybackRecord.site_key == site_key,
             PlaybackRecord.vod_id == payload.vod_id,
         )
         .limit(1)

@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 from datetime import datetime
 
 from sqlalchemy.orm import Session
@@ -42,9 +43,10 @@ def publish_experience_release(
         if errs:
             raise AppError(ErrorCode.BAD_REQUEST, f"发布被拒绝：页面 '{pid}' 未通过校验: {'; '.join(errs)}")
 
-    # 2. 生成发布快照 ID 并原子发布
+    # 2. 生成发布快照 ID 并原子发布（增加随机后缀防止同秒发布主键冲突）
     timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-    release_id = f"exp_{timestamp_str}"
+    rand_suffix = uuid.uuid4().hex[:6]
+    release_id = f"exp_{timestamp_str}_{rand_suffix}"
     effective_note = note or f"由管理员 {published_by} 发布"
 
     release, pointer = repo.create_release_and_activate(

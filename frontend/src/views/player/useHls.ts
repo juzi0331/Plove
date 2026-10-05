@@ -8,7 +8,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 import * as api from '@/api/client'
 import { describeError } from '@/api/http'
-import type { DetailPayload, Playback } from '@/api/types'
+import type { DetailPayload, Episode, Playback, VodItem } from '@/api/types'
 import { useSitesStore } from '@/stores/sites'
 
 import { createHlsInstance } from './hlsFactory'
@@ -16,10 +16,10 @@ import { bindVideoEvents } from './videoEvents'
 
 export interface HlsCallbacks {
   startPlay: (muted?: boolean) => Promise<void>
+  onCancelPlay?: () => void
   onAutoNext: () => void
   onProgressUpdate: (curr: number, buffered: number) => void
   onDurationChange: (dur: number) => void
-  onVerticalDetected: (vertical: boolean) => void
   onVolumeChange: (vol: number, muted: boolean) => void
   onPlayStateChange: (playing: boolean) => void
   onBufferingChange: (buffering: boolean) => void
@@ -53,6 +53,7 @@ export function useHls(
   let slowTimer: number | null = null
 
   function destroyPlayer(): void {
+    callbacks.onCancelPlay?.()
     if (slowTimer) {
       clearTimeout(slowTimer)
       slowTimer = null
@@ -91,7 +92,6 @@ export function useHls(
       },
       onProgressUpdate: callbacks.onProgressUpdate,
       onDurationChange: callbacks.onDurationChange,
-      onVerticalDetected: callbacks.onVerticalDetected,
       onVolumeChange: callbacks.onVolumeChange,
       onAutoNext: callbacks.onAutoNext,
       onFatalVideoError: () => {
@@ -204,23 +204,42 @@ export function useHls(
           playId: typeof route.query.play_id === 'string' ? route.query.play_id : undefined,
         })
       } catch (initialErr) {
+        const title = (route.query.title as string) || (route.query.name as string) || detail.value?.video?.vod_name || ''
         const candidateKeys = sites.sites.map((s) => s.key).filter((k) => k !== key)
         let recovered = false
-        for (const candidateKey of candidateKeys) {
-          try {
-            const res = await api.getPlayback(candidateKey, {
-              vodId: vodId.value,
-              ep: Number(ep.value) || 1,
-              line: route.query.line ? Number(route.query.line) : undefined,
-              playId: typeof route.query.play_id === 'string' ? route.query.play_id : undefined,
-            })
-            playbackRes = res
-            key = candidateKey
-            sites.select(candidateKey)
-            recovered = true
-            break
-          } catch {
-            // 继续探测下一个
+
+        if (title && candidateKeys.length > 0) {
+          for (const candidateKey of candidateKeys) {
+            try {
+              const searchResult = await api.searchVideos(candidateKey, title)
+              const matchedVod = searchResult?.videos?.find(
+                (item: VodItem) => item.vod_name === title || item.vod_name.includes(title) || title.includes(item.vod_name),
+              )
+              if (matchedVod) {
+                const newDetail = await api.getDetail(candidateKey, matchedVod.vod_id)
+                const targetEp = Number(ep.value) || 1
+                const line = newDetail?.lines?.[0]
+                const epObj = newDetail?.episodes?.find((e: Episode) => e.ep_index === targetEp) || newDetail?.episodes?.[0]
+                if (epObj) {
+                  const res = await api.getPlayback(candidateKey, {
+                    vodId: matchedVod.vod_id,
+                    ep: epObj.ep_index,
+                    line: line?.line,
+                    playId: epObj.play_id,
+                  })
+                  if (res) {
+                    playbackRes = res
+                    key = candidateKey
+                    sites.select(candidateKey)
+                    detail.value = newDetail
+                    recovered = true
+                    break
+                  }
+                }
+              }
+            } catch {
+              // 候选站点未搜到或播放失败，继续探测下一个候选站
+            }
           }
         }
         if (!recovered) throw initialErr
@@ -261,11 +280,15 @@ export function useHls(
     const nextSite = sites.sites.find((s) => s.key !== currentKey)
     if (nextSite) {
       sites.select(nextSite.key)
-      void router.replace({
-        name: 'play',
-        params: { vodId: vodId.value, ep: ep.value },
-        query: { ...route.query, site: nextSite.key },
-      })
+      const title = detail.value?.video?.vod_name || (route.query.title as string) || (route.query.name as string) || ''
+      if (title) {
+        void router.push({
+          name: 'search',
+          query: { q: title, site: nextSite.key },
+        })
+      } else {
+        void router.push({ name: 'home', query: { site: nextSite.key } })
+      }
     }
   }
 
