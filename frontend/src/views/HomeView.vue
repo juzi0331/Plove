@@ -306,11 +306,11 @@ function scrollRow(rowId: string, direction: 'left' | 'right'): void {
   left: 0;
   right: 0;
   z-index: 50;
-  height: 68px;
+  height: calc(68px + var(--plove-safe-top));
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 4%;
+  padding: var(--plove-safe-top) 4% 0;
   background: rgba(20, 20, 20, 0.94);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
@@ -541,7 +541,7 @@ function scrollRow(rowId: string, direction: 'left' | 'right'): void {
   position: relative;
   z-index: 3;
   margin-top: 0;
-  padding-top: 88px;
+  padding-top: calc(88px + var(--plove-safe-top));
   padding-bottom: 80px;
 }
 

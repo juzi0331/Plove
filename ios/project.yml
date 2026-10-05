@@ -1,0 +1,21 @@
+name: Plove4
+options:
+  deploymentTarget:
+    iOS: "15.0"
+targets:
+  Plove:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.plove.v4
+        PRODUCT_NAME: Plove
+        INFOPLIST_FILE: App/Info.plist
+        GENERATE_INFOPLIST_FILE: false
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGNING_ALLOWED: NO
+        IPHONEOS_DEPLOYMENT_TARGET: "15.0"

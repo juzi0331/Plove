@@ -417,8 +417,8 @@ function scrollRow(direction: 'left' | 'right'): void {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 4%;
-  height: 68px;
+  padding: var(--plove-safe-top) 4% 0;
+  height: calc(68px + var(--plove-safe-top));
   background: rgba(20, 20, 20, 0.85);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
@@ -920,7 +920,7 @@ function scrollRow(direction: 'left' | 'right'): void {
    首屏骨架屏与状态
 ==================================================================== */
 .nf-detail-skeleton {
-  padding-top: 68px;
+  padding-top: calc(68px + var(--plove-safe-top));
 }
 
 .nf-skeleton-hero {

@@ -30,3 +30,7 @@ backend/data/img_cache/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Plove4 iOS local build artifacts
+ios/build/
+ios/releases/*.ipa

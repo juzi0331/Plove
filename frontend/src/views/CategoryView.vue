@@ -400,8 +400,8 @@ function goBack(): void {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 4%;
-  height: 68px;
+  padding: var(--plove-safe-top) 4% 0;
+  height: calc(68px + var(--plove-safe-top));
   background: rgba(20, 20, 20, 0.94);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
@@ -497,7 +497,7 @@ function goBack(): void {
    分类页主体与 16:9 无限瀑布流
 ==================================================================== */
 .nf-category-main {
-  padding-top: 88px;
+  padding-top: calc(88px + var(--plove-safe-top));
   min-height: calc(100vh - 88px);
 }
 

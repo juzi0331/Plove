@@ -1,0 +1,298 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -project /Users/plove/sentinelx/workspace/plove4-sync/ios/Plove4.xcodeproj -scheme Plove -configuration Release -sdk iphoneos -derivedDataPath /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY= build
+
+Build settings from command line:
+    CODE_SIGN_IDENTITY = 
+    CODE_SIGNING_ALLOWED = NO
+    CODE_SIGNING_REQUIRED = NO
+    SDKROOT = iphoneos26.5
+
+note: Using codesigning identity override: 
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (1 target)
+    Target 'Plove' in project 'Plove4' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/actool --print-asset-tag-combinations --output-format xml1 /Users/plove/sentinelx/workspace/plove4-sync/ios/App/Assets.xcassets
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.5.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/actool --version --output-format xml1
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc --version
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld -version_details
+
+Build description signature: 249708289c817512f227718e9959311c
+Build description path: /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/XCBuildData/249708289c817512f227718e9959311c.xcbuilddata
+CreateBuildDirectory /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex
+    cd /Users/plove/sentinelx/workspace/plove4-sync/ios/Plove4.xcodeproj
+    builtin-create-build-directory /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex
+
+CreateBuildDirectory /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Products
+    cd /Users/plove/sentinelx/workspace/plove4-sync/ios/Plove4.xcodeproj
+    builtin-create-build-directory /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Products
+
+ClangStatCache /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.5.sdk /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/SDKStatCaches.noindex/iphoneos26.5-23F81a-32daed1954a7d5dd0789fcaf2a9bb78b.sdkstatcache
+    cd /Users/plove/sentinelx/workspace/plove4-sync/ios/Plove4.xcodeproj
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.5.sdk -o /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/SDKStatCaches.noindex/iphoneos26.5-23F81a-32daed1954a7d5dd0789fcaf2a9bb78b.sdkstatcache
+
+CreateBuildDirectory /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
+    cd /Users/plove/sentinelx/workspace/plove4-sync/ios/Plove4.xcodeproj
+    builtin-create-build-directory /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
+
+CreateBuildDirectory /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/ExplicitPrecompiledModules
+    cd /Users/plove/sentinelx/workspace/plove4-sync/ios/Plove4.xcodeproj
+    builtin-create-build-directory /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/ExplicitPrecompiledModules
+
+CreateBuildDirectory /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/EagerLinkingTBDs/Release-iphoneos
+    cd /Users/plove/sentinelx/workspace/plove4-sync/ios/Plove4.xcodeproj
+    builtin-create-build-directory /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/EagerLinkingTBDs/Release-iphoneos
+
+WriteAuxiliaryFile /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove4-98a54229af6809be7d208474a16d65c4-VFS-iphoneos/all-product-headers.yaml
+    cd /Users/plove/sentinelx/workspace/plove4-sync/ios/Plove4.xcodeproj
+    write-file /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove4-98a54229af6809be7d208474a16d65c4-VFS-iphoneos/all-product-headers.yaml
+
+CreateBuildDirectory /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Products/Release-iphoneos
+    cd /Users/plove/sentinelx/workspace/plove4-sync/ios/Plove4.xcodeproj
+    builtin-create-build-directory /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Products/Release-iphoneos
+
+WriteAuxiliaryFile /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Plove.DependencyStaticMetadataFileList (in target 'Plove' from project 'Plove4')
+    cd /Users/plove/sentinelx/workspace/plove4-sync/ios
+    write-file /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Plove.DependencyStaticMetadataFileList
+
+WriteAuxiliaryFile /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Plove.DependencyMetadataFileList (in target 'Plove' from project 'Plove4')
+    cd /Users/plove/sentinelx/workspace/plove4-sync/ios
+    write-file /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Plove.DependencyMetadataFileList
+
+WriteAuxiliaryFile /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Plove-project-headers.hmap (in target 'Plove' from project 'Plove4')
+    cd /Users/plove/sentinelx/workspace/plove4-sync/ios
+    write-file /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Plove-project-headers.hmap
+
+WriteAuxiliaryFile /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Plove.hmap (in target 'Plove' from project 'Plove4')
+    cd /Users/plove/sentinelx/workspace/plove4-sync/ios
+    write-file /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Plove.hmap
+
+WriteAuxiliaryFile /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Plove-own-target-headers.hmap (in target 'Plove' from project 'Plove4')
+    cd /Users/plove/sentinelx/workspace/plove4-sync/ios
+    write-file /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Plove-own-target-headers.hmap
+
+WriteAuxiliaryFile /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Plove-generated-files.hmap (in target 'Plove' from project 'Plove4')
+    cd /Users/plove/sentinelx/workspace/plove4-sync/ios
+    write-file /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Plove-generated-files.hmap
+
+WriteAuxiliaryFile /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Plove-all-target-headers.hmap (in target 'Plove' from project 'Plove4')
+    cd /Users/plove/sentinelx/workspace/plove4-sync/ios
+    write-file /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Plove-all-target-headers.hmap
+
+WriteAuxiliaryFile /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Plove-all-non-framework-target-headers.hmap (in target 'Plove' from project 'Plove4')
+    cd /Users/plove/sentinelx/workspace/plove4-sync/ios
+    write-file /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Plove-all-non-framework-target-headers.hmap
+
+WriteAuxiliaryFile /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Objects-normal/arm64/Plove_const_extract_protocols.json (in target 'Plove' from project 'Plove4')
+    cd /Users/plove/sentinelx/workspace/plove4-sync/ios
+    write-file /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Objects-normal/arm64/Plove_const_extract_protocols.json
+
+WriteAuxiliaryFile /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Objects-normal/arm64/Plove.SwiftFileList (in target 'Plove' from project 'Plove4')
+    cd /Users/plove/sentinelx/workspace/plove4-sync/ios
+    write-file /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Objects-normal/arm64/Plove.SwiftFileList
+
+WriteAuxiliaryFile /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Objects-normal/arm64/Plove.SwiftConstValuesFileList (in target 'Plove' from project 'Plove4')
+    cd /Users/plove/sentinelx/workspace/plove4-sync/ios
+    write-file /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Objects-normal/arm64/Plove.SwiftConstValuesFileList
+
+WriteAuxiliaryFile /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Objects-normal/arm64/Plove-OutputFileMap.json (in target 'Plove' from project 'Plove4')
+    cd /Users/plove/sentinelx/workspace/plove4-sync/ios
+    write-file /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Objects-normal/arm64/Plove-OutputFileMap.json
+
+WriteAuxiliaryFile /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Objects-normal/arm64/Plove.LinkFileList (in target 'Plove' from project 'Plove4')
+    cd /Users/plove/sentinelx/workspace/plove4-sync/ios
+    write-file /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Objects-normal/arm64/Plove.LinkFileList
+
+MkDir /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Products/Release-iphoneos/Plove.app (in target 'Plove' from project 'Plove4')
+    cd /Users/plove/sentinelx/workspace/plove4-sync/ios
+    /bin/mkdir -p /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Products/Release-iphoneos/Plove.app
+
+MkDir /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/assetcatalog_output/unthinned (in target 'Plove' from project 'Plove4')
+    cd /Users/plove/sentinelx/workspace/plove4-sync/ios
+    /bin/mkdir -p /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/assetcatalog_output/unthinned
+
+MkDir /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/assetcatalog_output/thinned (in target 'Plove' from project 'Plove4')
+    cd /Users/plove/sentinelx/workspace/plove4-sync/ios
+    /bin/mkdir -p /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/assetcatalog_output/thinned
+
+GenerateAssetSymbols /Users/plove/sentinelx/workspace/plove4-sync/ios/App/Assets.xcassets (in target 'Plove' from project 'Plove4')
+    cd /Users/plove/sentinelx/workspace/plove4-sync/ios
+    /Applications/Xcode.app/Contents/Developer/usr/bin/actool /Users/plove/sentinelx/workspace/plove4-sync/ios/App/Assets.xcassets --compile /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Products/Release-iphoneos/Plove.app --output-format human-readable-text --notices --warnings --export-dependency-info /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/assetcatalog_dependencies --output-partial-info-plist /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/assetcatalog_generated_info.plist --app-icon AppIcon --compress-pngs --enable-on-demand-resources YES --development-region en --target-device iphone --minimum-deployment-target 15.0 --platform iphoneos --bundle-identifier com.plove.v4 --generate-swift-asset-symbol-extensions NO --generate-swift-asset-symbols /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/DerivedSources/GeneratedAssetSymbols.swift --generate-objc-asset-symbols /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/DerivedSources/GeneratedAssetSymbols.h --generate-asset-symbol-index /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/DerivedSources/GeneratedAssetSymbols-Index.plist
+/* com.apple.actool.compilation-results */
+/Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/DerivedSources/GeneratedAssetSymbols-Index.plist
+/Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/DerivedSources/GeneratedAssetSymbols.h
+/Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/DerivedSources/GeneratedAssetSymbols.swift
+
+
+CompileAssetCatalogVariant thinned /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Products/Release-iphoneos/Plove.app /Users/plove/sentinelx/workspace/plove4-sync/ios/App/Assets.xcassets (in target 'Plove' from project 'Plove4')
+    cd /Users/plove/sentinelx/workspace/plove4-sync/ios
+    /Applications/Xcode.app/Contents/Developer/usr/bin/actool /Users/plove/sentinelx/workspace/plove4-sync/ios/App/Assets.xcassets --compile /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/assetcatalog_output/thinned --output-format human-readable-text --notices --warnings --export-dependency-info /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/assetcatalog_dependencies_thinned --output-partial-info-plist /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/assetcatalog_generated_info.plist_thinned --app-icon AppIcon --compress-pngs --enable-on-demand-resources YES --development-region en --target-device iphone --minimum-deployment-target 15.0 --platform iphoneos
+/* com.apple.actool.compilation-results */
+/Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/assetcatalog_generated_info.plist_thinned
+/Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/assetcatalog_output/thinned/AppIcon60x60@2x.png
+/Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/assetcatalog_output/thinned/AppIcon76x76@2x~ipad.png
+/Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/assetcatalog_output/thinned/Assets.car
+
+
+SwiftDriver Plove normal arm64 com.apple.xcode.tools.swift.compiler (in target 'Plove' from project 'Plove4')
+    cd /Users/plove/sentinelx/workspace/plove4-sync/ios
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name Plove -O -whole-module-optimization @/Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Objects-normal/arm64/Plove.SwiftFileList -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.5.sdk -target arm64-apple-ios15.0 -g -module-cache-path /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex -Xfrontend -serialize-debugging-options -swift-version 5 -I /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Products/Release-iphoneos -F /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Products/Release-iphoneos -c -num-threads 10 -Xcc -ivfsstatcache -Xcc /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/SDKStatCaches.noindex/iphoneos26.5-23F81a-32daed1954a7d5dd0789fcaf2a9bb78b.sdkstatcache -output-file-map /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Objects-normal/arm64/Plove-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex -sdk-module-cache-path /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Objects-normal/arm64/Plove.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Objects-normal/arm64/Plove_const_extract_protocols.json -Xcc -iquote -Xcc /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Plove-generated-files.hmap -Xcc -I/Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Plove-own-target-headers.hmap -Xcc -I/Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Plove-all-target-headers.hmap -Xcc -iquote -Xcc /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Plove-project-headers.hmap -Xcc -I/Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Products/Release-iphoneos/include -Xcc -I/Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/DerivedSources-normal/arm64 -Xcc -I/Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/DerivedSources/arm64 -Xcc -I/Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/DerivedSources -emit-objc-header -emit-objc-header-path /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Objects-normal/arm64/Plove-Swift.h -working-directory /Users/plove/sentinelx/workspace/plove4-sync/ios -no-emit-module-separately-wmo
+
+SwiftDriver\ Compilation Plove normal arm64 com.apple.xcode.tools.swift.compiler (in target 'Plove' from project 'Plove4')
+    cd /Users/plove/sentinelx/workspace/plove4-sync/ios
+    builtin-Swift-Compilation -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name Plove -O -whole-module-optimization @/Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Objects-normal/arm64/Plove.SwiftFileList -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.5.sdk -target arm64-apple-ios15.0 -g -module-cache-path /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex -Xfrontend -serialize-debugging-options -swift-version 5 -I /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Products/Release-iphoneos -F /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Products/Release-iphoneos -c -num-threads 10 -Xcc -ivfsstatcache -Xcc /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/SDKStatCaches.noindex/iphoneos26.5-23F81a-32daed1954a7d5dd0789fcaf2a9bb78b.sdkstatcache -output-file-map /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Objects-normal/arm64/Plove-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex -sdk-module-cache-path /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Objects-normal/arm64/Plove.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Objects-normal/arm64/Plove_const_extract_protocols.json -Xcc -iquote -Xcc /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Plove-generated-files.hmap -Xcc -I/Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Plove-own-target-headers.hmap -Xcc -I/Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Plove-all-target-headers.hmap -Xcc -iquote -Xcc /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Plove-project-headers.hmap -Xcc -I/Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Products/Release-iphoneos/include -Xcc -I/Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/DerivedSources-normal/arm64 -Xcc -I/Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/DerivedSources/arm64 -Xcc -I/Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/DerivedSources -emit-objc-header -emit-objc-header-path /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Objects-normal/arm64/Plove-Swift.h -working-directory /Users/plove/sentinelx/workspace/plove4-sync/ios -no-emit-module-separately-wmo
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/_Builtin_float-571AOQUQLOZAZ9TIFHSR8CQDH.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/DeveloperToolsSupport-39IKCSTSAGSDO6QQJBTCCDT3N.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/_SwiftConcurrencyShims-UP5KRG5MK8N3MB37T76R4K8E.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/ptrcheck-CAH631QL78NWBN3S47G2VU4DV.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/_Builtin_stddef-9KAWX1JY7B8VRFMN8Q26UO7RF.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/_Builtin_stdbool-AQNLFOJGBEZTO49W8R8SDZMWS.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/_AvailabilityInternal-610DQP76KONSQXJ09Y5H4BOSI.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/_Builtin_stdarg-2WXMRQ49GGGJFL2GD5L2OH8O6.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/ptrauth-30XSG25L3VMB1MHICBHZ4ZX35.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/SwiftShims-DTHFWA583WFK1UNOLLE3IX80L.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/_DarwinFoundation1-36O6HIJT45CBGN1IPS4MM2PT5.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/_Builtin_limits-6HPOVKZJQA56PXCM0HEVME9TU.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/_DarwinFoundation2-9RX94GFAWL9J50F57UGCNHIL5.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/_Builtin_tgmath-95FUN017QUZ8EL2TGLOSH7V8H.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/sys_types-BGQ9ZCKUOHKH00FPI44CM2B7Q.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/_Builtin_stdint-DJ8M6OL0NS9GNDHGBAZWQJ5O.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/_DarwinFoundation3-8AF8YFYJPERTM2JZNF0S584G1.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/_Builtin_stdatomic-DOO4NJP1Y3PBSZ70IHX21X8WJ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/_Builtin_intrinsics-76ZHMU9KBN2JG9LVTZU7C4TU7.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/_Builtin_inttypes-BEZKUE2KBGIEWUXYJ9LF9QGLT.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/Darwin-EXV9W0CW8UPS2HADLSTLD7QH.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/simd-A982U5OUANU08VRLX0CKAYLOG.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/MachO-COTCQ2XVLHH6XQHEIW78JW2MQ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/ObjectiveC-EJF7LY03EIL1END7I0NO24D3E.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/os_object-9VAZJC1QB9KXGZLSJ6FLBFAKT.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/os_workgroup-3MWL537HQ488Y3E06D9JQ2382.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/Spatial-D43USAKJJM8NBIYJT7TVB8OW2.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/Dispatch-EGWP0EH7HW1913DE9G0RNEX70.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/XPC-E1HOKAFSTVO0JJH8J9R9AXDQY.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/CoreFoundation-IZVCDPWCNS2CAMRFUK58XHSP.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/dnssd-2FR0RLN5715AJ1F0L8182959K.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/os-E6K8GWERQN4K4V61BF8OMMYLT.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/CFNetwork-A8O96EMYHTD4IBNYZQ26FKT79.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/Security-3003QVI3UNPRHDW0IVUQA7W37.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/CoreGraphics-98K052IH2AZKJ8GW7G24D6FQH.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/Foundation-ETPAZ5EUE1Z92O7C2GTVIR756.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/CoreText-5AAQR03606PSWRIZUXQGHHHYZ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/ImageIO-1V8P2Q8KAWA3VA3PLWK91HZXE.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/UniformTypeIdentifiers-8HGA4BRO6SPP49O8V700MDH4S.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/Symbols-8ACBZJT0IELC9CU94546UKISB.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/DataDetection-DLG654D70CJDLMTA1S2W5QAYP.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/Accessibility-8Y93PFN6S67EZONG1TT196TD9.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/CoreTransferable-8V6YXS2CJ7VD3X7A7T8BJ98DQ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/Network-BIS94AW7AMLVWFMWM7ON3D8CO.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/IOSurface-2HJEO7M2FXUPM8FZKK6EINKN3.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/OSLog-EK1344ONKCQL1HMJQ6L9T55UO.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/CoreData-24WPDXQHFQMF5BQL460THMDPI.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/UserNotifications-1EUWWHQDBUD8TTWPD0BYISX8Y.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/UIUtilities-A2ZG6BY54P5HXZL6ZBIRQ2LWO.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/FileProvider-3WP57UR7SNWOLRXH5VN00AIO.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/Metal-5IL23PHUALKGY1HZ6PWUHI1LE.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/OpenGLES-WOUDCDVGPQDUHUFZPP17NJW6.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/CoreVideo-CZGP7K3YEEHVCSYSQIHI7GC2H.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/QuartzCore-EPEZ3TMOW175FBXWQX2JESEC4.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/CoreImage-AIDETH43JYXZF3IYJ3BJV93SI.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/SwiftUICore-AXVNUEDIBLEGT54LFZD3KGK36.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/UIKit-BIFZLY5EBK8PXQFN2PLBK6K00.pcm
+
+LinkAssetCatalog /Users/plove/sentinelx/workspace/plove4-sync/ios/App/Assets.xcassets (in target 'Plove' from project 'Plove4')
+    cd /Users/plove/sentinelx/workspace/plove4-sync/ios
+    builtin-linkAssetCatalog --thinned /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/assetcatalog_output/thinned --thinned-dependencies /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/assetcatalog_dependencies_thinned --thinned-info-plist-content /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/assetcatalog_generated_info.plist_thinned --unthinned /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/assetcatalog_output/unthinned --unthinned-dependencies /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/assetcatalog_dependencies_unthinned --unthinned-info-plist-content /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/assetcatalog_generated_info.plist_unthinned --output /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Products/Release-iphoneos/Plove.app --plist-output /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/assetcatalog_generated_info.plist
+note: Emplaced /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Products/Release-iphoneos/Plove.app/Assets.car (in target 'Plove' from project 'Plove4')
+note: Emplaced /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Products/Release-iphoneos/Plove.app/AppIcon60x60@2x.png (in target 'Plove' from project 'Plove4')
+note: Emplaced /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Products/Release-iphoneos/Plove.app/AppIcon76x76@2x~ipad.png (in target 'Plove' from project 'Plove4')
+
+ProcessInfoPlistFile /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Products/Release-iphoneos/Plove.app/Info.plist /Users/plove/sentinelx/workspace/plove4-sync/ios/App/Info.plist (in target 'Plove' from project 'Plove4')
+    cd /Users/plove/sentinelx/workspace/plove4-sync/ios
+    builtin-infoPlistUtility /Users/plove/sentinelx/workspace/plove4-sync/ios/App/Info.plist -producttype com.apple.product-type.application -genpkginfo /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Products/Release-iphoneos/Plove.app/PkgInfo -expandbuildsettings -format binary -platform iphoneos -additionalcontentfile /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/assetcatalog_generated_info.plist -requiredArchitecture arm64 -o /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Products/Release-iphoneos/Plove.app/Info.plist
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/WebKit-4J2HK6PTZMH4VXW3OWVO3F7FM.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/SwiftUI-4A494QG9NKTR7LVKYY2L0E5FM.pcm
+
+SwiftCompile normal arm64 Compiling\ PloveApp.swift,\ GeneratedAssetSymbols.swift /Users/plove/sentinelx/workspace/plove4-sync/ios/App/PloveApp.swift /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/DerivedSources/GeneratedAssetSymbols.swift /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos/prebuilt-modules/26.5/Foundation.swiftmodule/arm64e-apple-ios.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos/prebuilt-modules/26.5/ObjectiveC.swiftmodule/arm64e-apple-ios.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos/prebuilt-modules/26.5/Combine.swiftmodule/arm64e-apple-ios.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos/prebuilt-modules/26.5/simd.swiftmodule/arm64e-apple-ios.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos/prebuilt-modules/26.5/SwiftUICore.swiftmodule/arm64e-apple-ios.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos/prebuilt-modules/26.5/Accessibility.swiftmodule/arm64e-apple-ios.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos/prebuilt-modules/26.5/_DarwinFoundation2.swiftmodule/arm64e-apple-ios.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos/prebuilt-modules/26.5/Network.swiftmodule/arm64e-apple-ios.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos/prebuilt-modules/26.5/FileProvider.swiftmodule/arm64e-apple-ios.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos/prebuilt-modules/26.5/_Builtin_float.swiftmodule/arm64e-apple-ios.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos/prebuilt-modules/26.5/CoreData.swiftmodule/arm64e-apple-ios.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos/prebuilt-modules/26.5/QuartzCore.swiftmodule/arm64e-apple-ios.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos/prebuilt-modules/26.5/System.swiftmodule/arm64e-apple-ios.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos/prebuilt-modules/26.5/Metal.swiftmodule/arm64e-apple-ios.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos/prebuilt-modules/26.5/UniformTypeIdentifiers.swiftmodule/arm64e-apple-ios.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos/prebuilt-modules/26.5/CoreText.swiftmodule/arm64e-apple-ios.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos/prebuilt-modules/26.5/CoreTransferable.swiftmodule/arm64e-apple-ios.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos/prebuilt-modules/26.5/DataDetection.swiftmodule/arm64e-apple-ios.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos/prebuilt-modules/26.5/CoreVideo.swiftmodule/arm64e-apple-ios.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos/prebuilt-modules/26.5/Symbols.swiftmodule/arm64e-apple-ios.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos/prebuilt-modules/26.5/Darwin.swiftmodule/arm64e-apple-ios.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos/prebuilt-modules/26.5/Spatial.swiftmodule/arm64e-apple-ios.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos/prebuilt-modules/26.5/Observation.swiftmodule/arm64e-apple-ios.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos/prebuilt-modules/26.5/CoreFoundation.swiftmodule/arm64e-apple-ios.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos/prebuilt-modules/26.5/SwiftUI.swiftmodule/arm64e-apple-ios.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos/prebuilt-modules/26.5/_StringProcessing.swiftmodule/arm64e-apple-ios.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos/prebuilt-modules/26.5/Distributed.swiftmodule/arm64e-apple-ios.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos/prebuilt-modules/26.5/WebKit.swiftmodule/arm64e-apple-ios.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos/prebuilt-modules/26.5/Dispatch.swiftmodule/arm64e-apple-ios.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos/prebuilt-modules/26.5/Swift.swiftmodule/arm64e-apple-ios.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos/prebuilt-modules/26.5/_DarwinFoundation3.swiftmodule/arm64e-apple-ios.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos/prebuilt-modules/26.5/_Concurrency.swiftmodule/arm64e-apple-ios.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos/prebuilt-modules/26.5/_DarwinFoundation1.swiftmodule/arm64e-apple-ios.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos/prebuilt-modules/26.5/OSLog.swiftmodule/arm64e-apple-ios.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos/prebuilt-modules/26.5/os.swiftmodule/arm64e-apple-ios.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos/prebuilt-modules/26.5/DeveloperToolsSupport.swiftmodule/arm64e-apple-ios.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos/prebuilt-modules/26.5/CoreGraphics.swiftmodule/arm64e-apple-ios.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos/prebuilt-modules/26.5/XPC.swiftmodule/arm64e-apple-ios.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos/prebuilt-modules/26.5/CoreImage.swiftmodule/arm64e-apple-ios.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos/prebuilt-modules/26.5/UIKit.swiftmodule/arm64e-apple-ios.swiftmodule /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/_Builtin_intrinsics-76ZHMU9KBN2JG9LVTZU7C4TU7.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/_Builtin_tgmath-95FUN017QUZ8EL2TGLOSH7V8H.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/CoreData-24WPDXQHFQMF5BQL460THMDPI.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/Metal-5IL23PHUALKGY1HZ6PWUHI1LE.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/DeveloperToolsSupport-39IKCSTSAGSDO6QQJBTCCDT3N.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/DataDetection-DLG654D70CJDLMTA1S2W5QAYP.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/CoreGraphics-98K052IH2AZKJ8GW7G24D6FQH.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/SwiftShims-DTHFWA583WFK1UNOLLE3IX80L.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/CFNetwork-A8O96EMYHTD4IBNYZQ26FKT79.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/OSLog-EK1344ONKCQL1HMJQ6L9T55UO.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/_Builtin_limits-6HPOVKZJQA56PXCM0HEVME9TU.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/MachO-COTCQ2XVLHH6XQHEIW78JW2MQ.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/_Builtin_stdarg-2WXMRQ49GGGJFL2GD5L2OH8O6.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/ObjectiveC-EJF7LY03EIL1END7I0NO24D3E.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/UniformTypeIdentifiers-8HGA4BRO6SPP49O8V700MDH4S.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/os_object-9VAZJC1QB9KXGZLSJ6FLBFAKT.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/Symbols-8ACBZJT0IELC9CU94546UKISB.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/CoreText-5AAQR03606PSWRIZUXQGHHHYZ.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/dnssd-2FR0RLN5715AJ1F0L8182959K.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/ptrauth-30XSG25L3VMB1MHICBHZ4ZX35.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/_Builtin_stdbool-AQNLFOJGBEZTO49W8R8SDZMWS.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/ImageIO-1V8P2Q8KAWA3VA3PLWK91HZXE.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/_DarwinFoundation3-8AF8YFYJPERTM2JZNF0S584G1.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/os-E6K8GWERQN4K4V61BF8OMMYLT.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/_AvailabilityInternal-610DQP76KONSQXJ09Y5H4BOSI.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/os_workgroup-3MWL537HQ488Y3E06D9JQ2382.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/_Builtin_stdatomic-DOO4NJP1Y3PBSZ70IHX21X8WJ.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/Dispatch-EGWP0EH7HW1913DE9G0RNEX70.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/CoreTransferable-8V6YXS2CJ7VD3X7A7T8BJ98DQ.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/CoreImage-AIDETH43JYXZF3IYJ3BJV93SI.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/XPC-E1HOKAFSTVO0JJH8J9R9AXDQY.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/CoreVideo-CZGP7K3YEEHVCSYSQIHI7GC2H.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/CoreFoundation-IZVCDPWCNS2CAMRFUK58XHSP.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/SwiftUI-4A494QG9NKTR7LVKYY2L0E5FM.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/WebKit-4J2HK6PTZMH4VXW3OWVO3F7FM.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/OpenGLES-WOUDCDVGPQDUHUFZPP17NJW6.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/IOSurface-2HJEO7M2FXUPM8FZKK6EINKN3.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/_Builtin_inttypes-BEZKUE2KBGIEWUXYJ9LF9QGLT.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/Security-3003QVI3UNPRHDW0IVUQA7W37.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/SwiftUICore-AXVNUEDIBLEGT54LFZD3KGK36.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/_SwiftConcurrencyShims-UP5KRG5MK8N3MB37T76R4K8E.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/_DarwinFoundation2-9RX94GFAWL9J50F57UGCNHIL5.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/QuartzCore-EPEZ3TMOW175FBXWQX2JESEC4.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/Accessibility-8Y93PFN6S67EZONG1TT196TD9.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/_Builtin_stddef-9KAWX1JY7B8VRFMN8Q26UO7RF.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/UIKit-BIFZLY5EBK8PXQFN2PLBK6K00.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/UserNotifications-1EUWWHQDBUD8TTWPD0BYISX8Y.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/UIUtilities-A2ZG6BY54P5HXZL6ZBIRQ2LWO.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/ptrcheck-CAH631QL78NWBN3S47G2VU4DV.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/simd-A982U5OUANU08VRLX0CKAYLOG.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/_Builtin_stdint-DJ8M6OL0NS9GNDHGBAZWQJ5O.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/Spatial-D43USAKJJM8NBIYJT7TVB8OW2.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/Network-BIS94AW7AMLVWFMWM7ON3D8CO.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/Foundation-ETPAZ5EUE1Z92O7C2GTVIR756.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/Darwin-EXV9W0CW8UPS2HADLSTLD7QH.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/_DarwinFoundation1-36O6HIJT45CBGN1IPS4MM2PT5.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/_Builtin_float-571AOQUQLOZAZ9TIFHSR8CQDH.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/FileProvider-3WP57UR7SNWOLRXH5VN00AIO.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/ModuleCache.noindex/sys_types-BGQ9ZCKUOHKH00FPI44CM2B7Q.pcm /Users/plove/sentinelx/workspace/plove4-sync/ios/build/Derived/Build/Intermediates.noindex/Plove4.build/Release-iphoneos/Plove.build/Objects-normal/arm64/Plove-dependencies-1.json (in target 'Plove' from project 'Plove4')
+
+CompileSwift normal arm64 (in target 'Plove' from project 'Plove4')
+    cd /Users/plove/sentinelx/workspace/plove4-sync/ios
+    
