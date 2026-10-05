@@ -10,6 +10,8 @@ dependencies = [
     "pydantic>=2.7",
     "pydantic-settings>=2.3",
     "sqlalchemy>=2.0",
+    # image proxy service uses httpx at runtime; this must not live only in [dev].
+    "httpx>=0.27",
     # MySQL 驱动。线上是 MySQL，本地/测试用内存 SQLite，靠 SQLAlchemy 切换
     "pymysql>=1.1",
     # MySQL 8 默认的 caching_sha2_password 认证需要它，不装会连不上
@@ -19,7 +21,6 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
-    "httpx>=0.27",
     "jsonschema>=4.22",
 ]
 
