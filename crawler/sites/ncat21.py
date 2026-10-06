@@ -72,6 +72,38 @@ _SECRET_RE = re.compile(r"['\"]([0-9A-Fa-f]{40})['\"]")
 _DETAIL_HREF_RE = re.compile(r"/detail/(\d+)\.html")
 _CHANNEL_HREF_RE = re.compile(r"/channel/(\d+)\.html")
 
+# 网飞猫的“片库”页把二级分类编码进 /show/<一级>-<类型>----3-<页>.html。
+# 这些名称来自 2026-10-06 实时片库页；只允许白名单中的类型，避免把前端 tid
+# 直接拼成任意上游路径。一级分类仍以源站导航为准。
+_NCAT_GENRES = {
+    "1": (
+        "剧情", "喜剧", "动作", "爱情", "恐怖", "惊悚", "犯罪", "科幻",
+        "悬疑", "奇幻", "冒险", "战争", "历史", "古装", "家庭", "传记",
+        "武侠", "动画", "儿童", "职场",
+    ),
+    "2": (
+        "剧情", "爱情", "喜剧", "犯罪", "悬疑", "古装", "动作", "家庭",
+        "惊悚", "奇幻", "美剧", "科幻", "历史", "战争", "韩剧", "武侠",
+        "言情", "恐怖", "冒险", "都市", "职场",
+    ),
+    "3": (
+        "动态漫画", "剧情", "动画", "喜剧", "冒险", "动作", "奇幻", "科幻",
+        "儿童", "搞笑", "爱情", "家庭", "短片", "热血", "益智", "悬疑",
+        "经典", "校园", "Anime", "运动", "亲子", "青春", "恋爱", "武侠",
+    ),
+    "4": (
+        "纪录", "真人秀", "记录", "脱口秀", "剧情", "历史", "喜剧", "传记",
+        "相声", "节目", "歌舞", "冒险", "运动", "Season", "犯罪", "短片",
+        "搞笑", "晚会",
+    ),
+    "6": (
+        "王爷太子", "霸道总裁", "屌丝逆袭", "赘婿系列", "重生系列",
+        "穿越短剧", "美女总裁", "娇妻系列", "龙王系列", "都市言情",
+        "逆袭", "甜宠", "虐恋", "穿越", "重生", "剧情", "科幻", "武侠",
+        "爱情", "动作", "战争", "冒险", "其它",
+    ),
+}
+
 
 def _ncat_ssl_context():
     """兼容网飞猫当前的 TLS 重协商行为。
@@ -197,15 +229,30 @@ class Ncat21:
 
     def category(self, tid=None, page=1):
         page = clean.to_int(page, 1) or 1
+        if page < 1:
+            page = 1
+
         if tid is None or str(tid).strip() == "":
             path = "/label/new.html"
+            if page > 1:
+                path += f"?page={page}"
         else:
-            number = clean.to_int(tid)
-            if number is None:
-                raise CrawlerError("NOT_FOUND", f"无效的分类 id: {tid}")
-            path = f"/channel/{number}.html"
-        if page > 1:
-            path += f"?page={page}"
+            raw_tid = str(tid).strip()
+            genre_match = re.fullmatch(r"genre:(\d+):(.+)", raw_tid)
+            if genre_match:
+                parent = genre_match.group(1)
+                genre = urllib.parse.unquote(genre_match.group(2))
+                if parent not in _NCAT_GENRES or genre not in _NCAT_GENRES[parent]:
+                    raise CrawlerError("NOT_FOUND", f"无效的二级分类: {tid}")
+                encoded_genre = urllib.parse.quote(genre, safe="")
+                path = f"/show/{parent}-{encoded_genre}----3-{page}.html"
+            else:
+                number = clean.to_int(raw_tid)
+                if number is None or str(number) not in _NCAT_GENRES:
+                    raise CrawlerError("NOT_FOUND", f"无效的分类 id: {tid}")
+                # 一级分类直接进入完整片库，而不是频道首页。频道首页只给精选
+                # 推荐且没有稳定翻页，片库才是用户期望的“分类”语义。
+                path = f"/show/{number}-----3-{page}.html"
 
         root = parse.parse_html(self._page(path))
         return {
@@ -372,8 +419,23 @@ def _nav_categories(root):
     for anchor in root.select('a[href^="/channel/"]'):
         match = _CHANNEL_HREF_RE.search(anchor.attr("href") or "")
         name = clean.collapse(anchor.text)
-        if match and name:
-            out.append({"tid": match.group(1), "name": name})
+        if not match or not name:
+            continue
+        tid = match.group(1)
+        subcategories = [
+            {
+                "tid": f"genre:{tid}:{urllib.parse.quote(genre, safe='')}",
+                "name": genre,
+            }
+            for genre in _NCAT_GENRES.get(tid, ())
+        ]
+        out.append(
+            {
+                "tid": tid,
+                "name": name,
+                "subcategories": subcategories,
+            }
+        )
     return clean.dedupe(out, key=lambda item: item["tid"])
 
 
@@ -478,8 +540,18 @@ def _detail_remarks(root) -> str:
 
 
 def _has_more(root, page) -> bool:
-    hrefs = [anchor.attr("href") or "" for anchor in root.select("a")]
-    return any(f"page={page + 1}" in href for href in hrefs)
+    next_page = page + 1
+    for anchor in root.select("a"):
+        href = anchor.attr("href") or ""
+        text = clean.collapse(anchor.text)
+        if f"page={next_page}" in href:
+            return True
+        # /show/* 页使用 ...-<page>.html，而不是 ?page=N。
+        if re.search(rf"-{next_page}\.html(?:$|[?#])", href):
+            return True
+        if text in {"下一页", "下页", "下一頁"} and href:
+            return True
+    return False
 
 
 def _best_media(urls):
