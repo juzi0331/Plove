@@ -11,7 +11,7 @@ import { computed, ref } from 'vue'
 
 import * as api from '@/api/client'
 import { describeError } from '@/api/http'
-import type { SiteMeta } from '@/api/types'
+import type { SiteMeta, VodCategory } from '@/api/types'
 
 const KEY = 'plove.site_key'
 
@@ -21,8 +21,46 @@ export const useSitesStore = defineStore('sites', () => {
   const loading = ref(false)
   const lastError = ref<string | null>(null)
 
+  // 站点与分类共享响应式缓存：siteKey -> VodCategory[]
+  const categoriesMap = ref<Record<string, VodCategory[]>>({})
+  const categoriesLoading = ref(false)
+
   const current = computed(() => sites.value.find((s) => s.key === currentKey.value) ?? null)
   const isEmpty = computed(() => !loading.value && sites.value.length === 0)
+
+  // 当前选中站点的分类列表（自动过滤隐藏分类）
+  const currentCategories = computed<VodCategory[]>(() => {
+    if (!currentKey.value) return []
+    return (categoriesMap.value[currentKey.value] ?? []).filter((c) => !c.hidden)
+  })
+
+  function getCategories(key: string): VodCategory[] | undefined {
+    return categoriesMap.value[key]
+  }
+
+  function setCategories(key: string, cats: VodCategory[]): void {
+    categoriesMap.value = {
+      ...categoriesMap.value,
+      [key]: cats,
+    }
+  }
+
+  async function loadCategoriesForSite(key: string, force = false): Promise<VodCategory[]> {
+    if (!force && categoriesMap.value[key] && categoriesMap.value[key].length > 0) {
+      return categoriesMap.value[key]
+    }
+    try {
+      categoriesLoading.value = true
+      const homeData = await api.getHome(key)
+      const cats = homeData.categories ?? []
+      setCategories(key, cats)
+      return cats
+    } catch (err) {
+      throw err
+    } finally {
+      categoriesLoading.value = false
+    }
+  }
 
   function readSavedKey(): string | null {
     try {
@@ -92,6 +130,12 @@ export const useSitesStore = defineStore('sites', () => {
     loading,
     lastError,
     isEmpty,
+    categoriesMap,
+    categoriesLoading,
+    currentCategories,
+    getCategories,
+    setCategories,
+    loadCategoriesForSite,
     load,
     select,
     nextSite,

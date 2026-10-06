@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import { useSitesStore } from '@/stores/sites'
 
@@ -7,6 +8,8 @@ const emit = defineEmits<{
   (e: 'change', key: string): void
 }>()
 
+const router = useRouter()
+const route = useRoute()
 const sites = useSitesStore()
 const isOpen = ref(false)
 const selectorRef = ref<HTMLElement | null>(null)
@@ -24,6 +27,11 @@ function selectSite(key: string): void {
   isOpen.value = false
   emit('change', key)
   showToast(`已切換至片源：${sites.current?.name ?? key}`)
+
+  // 若当前在分类页或详情页等非首页路由，切源后默认平滑返回大厅首页，防止分类/影片ID跨源404
+  if (route.name !== 'home') {
+    void router.push({ name: 'home' })
+  }
 }
 
 function onDocClick(e: MouseEvent): void {

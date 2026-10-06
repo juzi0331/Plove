@@ -62,7 +62,10 @@ const displayedSections = computed<HomeSection[]>(() => {
   return []
 })
 
-const categories = computed(() => (home.value?.categories ?? []).filter((c) => !c.hidden))
+const categories = computed(() => {
+  if (sites.currentCategories.length > 0) return sites.currentCategories
+  return (home.value?.categories ?? []).filter((c) => !c.hidden)
+})
 const recommend = computed(() => home.value?.recommend ?? [])
 const sections = computed(() => home.value?.sections ?? [])
 
@@ -81,24 +84,32 @@ async function load(force = false): Promise<void> {
 
     // 内存瞬时还原：若已加载过当前源的首页，秒开展示（0ms），彻底解决从分类返回主页卡顿
     if (!force && homeCache.has(key)) {
-      home.value = homeCache.get(key)!
+      const cached = homeCache.get(key)!
+      home.value = cached
+      if (cached.categories) {
+        sites.setCategories(key, cached.categories)
+      }
       // 后台静默对齐最新数据，不打扰当前展示
       void api.getHome(key).then((res) => {
         homeCache.set(key, res)
         home.value = res
+        if (res.categories) sites.setCategories(key, res.categories)
       }).catch(() => undefined)
       return
     }
 
+    // 未命中内存缓存时，清空旧数据并进入加载状态，避免跨源残留旧站点的分类与内容
+    home.value = null
     loading.value = true
     const result = await api.getHome(key)
     homeCache.set(key, result)
     home.value = result
-  } catch (err) {
-    if (!home.value) {
-      home.value = null
-      error.value = describeError(err)
+    if (result.categories) {
+      sites.setCategories(key, result.categories)
     }
+  } catch (err) {
+    home.value = null
+    error.value = describeError(err)
   } finally {
     loading.value = false
   }
@@ -106,6 +117,11 @@ async function load(force = false): Promise<void> {
 
 function onScroll(): void {
   scrolled.value = window.scrollY > 30
+}
+
+function onSiteChanged(): void {
+  activeNav.value = 'all'
+  void load()
 }
 
 onMounted(() => {
@@ -120,7 +136,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('scroll', onScroll)
 })
 
-watch(() => sites.currentKey, () => void load())
+watch(() => sites.currentKey, () => onSiteChanged())
 watch(() => device.restoredAt, () => void load())
 
 function openDetail(item: { vod_id?: string | number }): void {
@@ -196,6 +212,10 @@ function scrollRow(rowId: string, direction: 'left' | 'right'): void {
           >
             {{ formatCatDisplay(cat.name, cat.custom_name) || cat.tid }}
           </button>
+          <!-- 切换源加载中骨架占位 -->
+          <template v-if="loading && categories.length === 0">
+            <span v-for="i in 4" :key="i" class="nf-nav-skeleton-pill" />
+          </template>
         </nav>
       </div>
 
@@ -220,7 +240,7 @@ function scrollRow(rowId: string, direction: 'left' | 'right'): void {
         </div>
 
         <!-- 换源下拉选择组件 -->
-        <SiteSelector ref="siteSelectorRef" />
+        <SiteSelector ref="siteSelectorRef" @change="onSiteChanged" />
 
         <!-- 用户头像与 VIP 会员到期时间面板组件 -->
         <UserMenu />
@@ -228,7 +248,7 @@ function scrollRow(rowId: string, direction: 'left' | 'right'): void {
     </header>
 
     <!-- 移动端专属横向分类导航滑轨 (Mobile Category Bar) -->
-    <div v-if="categories.length > 0" class="nf-mobile-cat-bar">
+    <div v-if="categories.length > 0 || loading" class="nf-mobile-cat-bar">
       <button
         class="nf-mobile-cat-pill"
         :class="{ 'is-active': activeNav === 'all' }"
@@ -247,6 +267,9 @@ function scrollRow(rowId: string, direction: 'left' | 'right'): void {
       >
         {{ formatCatDisplay(cat.name, cat.custom_name) || cat.tid }}
       </button>
+      <template v-if="loading && categories.length === 0">
+        <span v-for="i in 4" :key="i" class="nf-mobile-cat-skeleton-pill" />
+      </template>
     </div>
 
     <!-- ==================================================== 核心影视多行滑轨 (直接展开列表，不要大屏展示) -->
@@ -397,6 +420,21 @@ function scrollRow(rowId: string, direction: 'left' | 'right'): void {
   color: #ffffff;
   font-weight: 700;
   cursor: default;
+}
+
+.nf-nav-skeleton-pill {
+  width: 48px;
+  height: 18px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.05) 25%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.05) 75%);
+  background-size: 200% 100%;
+  animation: nfNavShimmer 1.5s infinite;
+  display: inline-block;
+}
+
+@keyframes nfNavShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 .nf-navbar__right {
@@ -729,6 +767,16 @@ function scrollRow(rowId: string, direction: 'left' | 'right'): void {
     background: #e50914;
     border-color: #e50914;
     box-shadow: 0 2px 8px rgba(229, 9, 20, 0.4);
+  }
+
+  .nf-mobile-cat-skeleton-pill {
+    width: 56px;
+    height: 28px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.05) 25%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.05) 75%);
+    background-size: 200% 100%;
+    animation: nfNavShimmer 1.5s infinite;
+    flex-shrink: 0;
   }
 
   .nf-main-content {

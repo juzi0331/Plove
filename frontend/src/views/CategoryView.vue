@@ -31,7 +31,7 @@ const router = useRouter()
 
 const siteSelectorRef = ref<InstanceType<typeof SiteSelector> | null>(null)
 const items = ref<VodItem[]>([])
-const allCategories = ref<VodCategory[]>([])
+const allCategories = computed<VodCategory[]>(() => sites.currentCategories)
 const firstLoading = ref(true)
 const firstError = ref<string | null>(null)
 const loadingMore = ref(false)
@@ -104,11 +104,10 @@ function saveState(): void {
 }
 
 async function loadCategories(): Promise<void> {
+  const key = sites.currentKey
+  if (!key) return
   try {
-    const key = sites.currentKey
-    if (!key) return
-    const homeData = await api.getHome(key)
-    allCategories.value = homeData.categories ?? []
+    await sites.loadCategoriesForSite(key)
   } catch {
     /* 忽略分类菜单拉取失败 */
   }
@@ -152,8 +151,6 @@ async function loadFirstPage(force = false): Promise<void> {
     // 优先保证分类数据已装载，以便正确计算二级分类和标题
     if (allCategories.value.length === 0) {
       await loadCategories()
-    } else {
-      void loadCategories()
     }
 
     const result = await api.getCategory(key, { tid: props.tid, page: 1 })
@@ -266,27 +263,9 @@ function onScroll(): void {
   }
 }
 
-async function onSiteChanged(): Promise<void> {
-  try {
-    const key = sites.currentKey
-    if (!key) return
-    const homeData = await api.getHome(key)
-    allCategories.value = homeData.categories ?? []
-
-    // 检查原 tid 是否依然属于当前新站点的分类（主类或任意子类）
-    const exists = allCategories.value.some(
-      (c) => String(c.tid) === String(props.tid) || c.subcategories?.some((s) => String(s.tid) === String(props.tid))
-    )
-    if (!exists && allCategories.value.length > 0) {
-      // 若原 tid 不属于新站点，自动切到新站点的第一个主分类，防止 404 与二级分类消失
-      const newTid = allCategories.value[0].tid
-      void router.replace({ name: 'category', params: { tid: newTid } })
-      return
-    }
-    void loadFirstPage(true)
-  } catch {
-    void loadFirstPage(true)
-  }
+function onSiteChanged(): void {
+  // 切换站点后默认平滑返回主页大厅，避免跨源分类 ID 不匹配产生 404
+  void router.push({ name: 'home' })
 }
 
 function onResize(): void {
@@ -371,12 +350,16 @@ function goBack(): void {
           >
             {{ formatCatDisplay(cat.name, cat.custom_name) || cat.tid }}
           </button>
+          <!-- 切换源加载中骨架占位 -->
+          <template v-if="firstLoading && allCategories.length === 0">
+            <span v-for="i in 4" :key="i" class="nf-cat-skeleton-pill" />
+          </template>
         </nav>
       </div>
 
       <div class="nf-navbar__right">
-        <!-- 换源下拉选择组件 -->
-        <SiteSelector ref="siteSelectorRef" @change="() => loadFirstPage(true)" />
+        <!-- 换源下拉选择组件 (移除多余 @change 避免与 onSiteChanged 竞争) -->
+        <SiteSelector ref="siteSelectorRef" />
 
         <!-- 用户头像与 VIP 会员到期时间面板组件 -->
         <UserMenu />
@@ -384,7 +367,7 @@ function goBack(): void {
     </header>
 
     <!-- 移动端专属横向分类导航滑轨 (Mobile Category Bar) -->
-    <div v-if="allCategories.length > 0" class="nf-mobile-cat-bar">
+    <div v-if="allCategories.length > 0 || firstLoading" class="nf-mobile-cat-bar">
       <button
         class="nf-mobile-cat-pill"
         type="button"
@@ -402,6 +385,9 @@ function goBack(): void {
       >
         {{ formatCatDisplay(cat.name, cat.custom_name) || cat.tid }}
       </button>
+      <template v-if="firstLoading && allCategories.length === 0">
+        <span v-for="i in 4" :key="i" class="nf-mobile-cat-skeleton-pill" />
+      </template>
     </div>
 
     <!-- ==================================================== 主体无限瀑布流 -->
@@ -445,6 +431,7 @@ function goBack(): void {
         <div class="category__state-actions">
           <button class="category__action-btn primary" type="button" @click="() => loadFirstPage(true)">重新載入</button>
           <button class="category__action-btn" type="button" @click="siteSelectorRef?.open()">更換片源線路</button>
+          <button class="category__action-btn" type="button" @click="goBack">返回大廳</button>
         </div>
       </div>
 
@@ -601,6 +588,21 @@ function goBack(): void {
   color: #ffffff;
   font-weight: 700;
   border-bottom: 2px solid #e50914;
+}
+
+.nf-cat-skeleton-pill {
+  width: 48px;
+  height: 18px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.05) 25%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.05) 75%);
+  background-size: 200% 100%;
+  animation: nfCatShimmer 1.5s infinite;
+  display: inline-block;
+}
+
+@keyframes nfCatShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 .nf-navbar__right {
@@ -926,6 +928,16 @@ function goBack(): void {
     background: #e50914;
     border-color: #e50914;
     box-shadow: 0 2px 8px rgba(229, 9, 20, 0.4);
+  }
+
+  .nf-mobile-cat-skeleton-pill {
+    width: 56px;
+    height: 28px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.05) 25%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.05) 75%);
+    background-size: 200% 100%;
+    animation: nfCatShimmer 1.5s infinite;
+    flex-shrink: 0;
   }
 
   .nf-category-main {
