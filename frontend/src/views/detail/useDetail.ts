@@ -6,6 +6,7 @@ import { describeError } from '@/api/http'
 import type { DetailPayload, Episode, VodItem } from '@/api/types'
 import { useDeviceStore } from '@/stores/device'
 import { useSitesStore } from '@/stores/sites'
+import { formatPosterUrl } from '@/utils/format'
 
 export function useDetail(vodIdRef: Ref<string>) {
   const sites = useSitesStore()
@@ -54,13 +55,14 @@ export function useDetail(vodIdRef: Ref<string>) {
     descOpen.value = false
     try {
       await sites.load()
+      const stateSite = (window.history.state?.site as string) || null
       const siteFromQuery = typeof route.query.site === 'string' ? route.query.site : null
-      let key = siteFromQuery || sites.currentKey
+      let key = stateSite || siteFromQuery || sites.currentKey
       if (!key && sites.sites.length > 0) {
         key = sites.sites[0].key
       }
-      if (siteFromQuery && sites.currentKey !== siteFromQuery) {
-        sites.select(siteFromQuery)
+      if (key && sites.currentKey !== key) {
+        sites.select(key)
       }
       if (!key) throw new Error('後端暫無可用片源站')
 
@@ -86,12 +88,18 @@ export function useDetail(vodIdRef: Ref<string>) {
       detail.value = result
       activeLine.value = result.lines?.length ? result.lines[0]?.line : undefined
 
-      if (key && route.query.site !== key) {
+      // 如果 URL 上残留了 ?site=...，静默替换为纯净路径，同时将 site 写入 history.state，抹除地址栏泄漏
+      if (route.query.site) {
+        const remainingQuery = { ...route.query }
+        delete remainingQuery.site
         void router.replace({
           name: 'detail',
           params: { vodId: vodIdRef.value },
-          query: { ...route.query, site: key },
+          query: Object.keys(remainingQuery).length ? remainingQuery : undefined,
+          state: { ...window.history.state, site: key },
         })
+      } else if (key && window.history.replaceState) {
+        window.history.replaceState({ ...window.history.state, site: key }, '')
       }
 
       // 顺便拉取首页推荐作为底部的“更多类似好片”
@@ -116,16 +124,23 @@ export function useDetail(vodIdRef: Ref<string>) {
   function play(episode: Episode | null): void {
     if (!episode) return
     const label = epLabel(episode)
-    const siteKey = (typeof route.query.site === 'string' ? route.query.site : null) || sites.currentKey
+    const siteKey =
+      (window.history.state?.site as string) ||
+      (typeof route.query.site === 'string' ? route.query.site : null) ||
+      sites.currentKey
+    const rawPic = video.value?.vod_pic || undefined
+    const securedPic = rawPic ? formatPosterUrl(rawPic, siteKey) : undefined
+
     void router.push({
       name: 'play',
       params: { vodId: vodIdRef.value, ep: String(episode.ep_index) },
-      query: {
+      // 敏感参数全部收敛至 history.state，地址栏干干净净只有 /play/:vodId/:ep
+      state: {
         site: siteKey || undefined,
         line: episode.line ?? activeLine.value,
         play_id: episode.play_id || undefined,
         title: video.value?.vod_name || undefined,
-        pic: video.value?.vod_pic || undefined,
+        pic: securedPic || rawPic,
         name: label === `第 ${episode.ep_index} 集` ? undefined : label,
       },
     })
@@ -176,7 +191,12 @@ export function useDetail(vodIdRef: Ref<string>) {
 
   function selectRelated(targetVodId: string | number): void {
     window.scrollTo({ top: 0, behavior: 'smooth' })
-    void router.replace({ name: 'detail', params: { vodId: String(targetVodId) } })
+    const siteKey = (window.history.state?.site as string) || sites.currentKey
+    void router.replace({
+      name: 'detail',
+      params: { vodId: String(targetVodId) },
+      state: { site: siteKey || undefined },
+    })
   }
 
   function scrollRow(direction: 'left' | 'right'): void {

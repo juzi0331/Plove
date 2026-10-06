@@ -132,6 +132,51 @@ def publish_draft(
     return ok(result, request_id)
 
 
+@router.post(
+    "/publish",
+    response_model=Envelope[ReleasePublishResult],
+    summary="从草稿创建不可变发布快照并原子切换生效指针（通用路径）",
+)
+def publish_draft_generic(
+    body: ReleasePublishRequest | None = None,
+    request_id: str = Depends(get_request_id),
+    db: Session = Depends(get_db),
+) -> Envelope[ReleasePublishResult]:
+    draft_id = (body.draft_id if body and body.draft_id else "default")
+    note = body.note if body else ""
+    result = publish_experience_release(session=db, draft_id=draft_id, note=note)
+    return ok(result, request_id)
+
+
+@router.get(
+    "/preview/bootstrap",
+    response_model=Envelope[ClientBootstrapPayload],
+    summary="预览草稿对应的客户端 Bootstrap 配置（通用路径）",
+)
+def get_preview_bootstrap_generic(
+    draft_id: str = Query("default"),
+    request_id: str = Depends(get_request_id),
+    db: Session = Depends(get_db),
+) -> Envelope[ClientBootstrapPayload]:
+    payload = preview_draft_bootstrap(db, draft_id)
+    return ok(payload, request_id)
+
+
+@router.get(
+    "/preview/pages/{page_id}",
+    response_model=Envelope[PageViewModel],
+    summary="预览草稿对应的页面视图模型（通用路径）",
+)
+def get_preview_page_generic(
+    page_id: str = "home",
+    draft_id: str = Query("default"),
+    request_id: str = Depends(get_request_id),
+    db: Session = Depends(get_db),
+) -> Envelope[PageViewModel]:
+    payload = preview_draft_page(db, draft_id, page_id)
+    return ok(payload, request_id)
+
+
 @router.get(
     "/releases",
     response_model=Envelope[list[ExperienceReleaseItem]],

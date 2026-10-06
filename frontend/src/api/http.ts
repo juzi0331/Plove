@@ -74,7 +74,9 @@ export class ApiError extends Error {
 }
 
 function buildUrl(path: string, query: RequestOptions['query']): string {
-  const url = `${BASE}${path}`
+  const url = path.startsWith('/api/') || path.startsWith('http://') || path.startsWith('https://')
+    ? path
+    : `${BASE}${path}`
   if (!query) return url
   const search = new URLSearchParams()
   for (const [key, value] of Object.entries(query)) {

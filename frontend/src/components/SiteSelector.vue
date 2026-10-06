@@ -65,7 +65,7 @@ defineExpose({
       aria-label="切換片源線路"
     >
       <span class="nf-switch-dot" />
-      <span class="nf-switch-name">{{ sites.current?.name ?? sites.currentKey ?? '默認站點' }}</span>
+      <span class="nf-switch-name">{{ sites.current?.name || '極速專線' }}</span>
       <span v-if="sites.current?.badge" class="nf-switch-badge">{{ sites.current.badge }}</span>
       <span class="nf-switch-arrow" :class="{ 'is-rotated': isOpen }">▾</span>
     </button>
@@ -79,7 +79,7 @@ defineExpose({
         </div>
         <div class="nf-site-dropdown__list">
           <button
-            v-for="site in sites.sites"
+            v-for="(site, idx) in sites.sites"
             :key="site.key"
             class="nf-site-option"
             :class="{ 'is-current': site.key === sites.currentKey }"
@@ -90,10 +90,10 @@ defineExpose({
               <span class="nf-site-option__dot" />
               <div class="nf-site-option__meta">
                 <div class="nf-site-option__title-row">
-                  <span class="nf-site-option__name">{{ site.name || site.key }}</span>
+                  <span class="nf-site-option__name">{{ site.name || `極速專線 ${idx + 1}` }}</span>
                   <span v-if="site.badge" class="nf-site-option__tag">{{ site.badge }}</span>
                 </div>
-                <span class="nf-site-option__key">線路標識: {{ site.badge || site.key }}</span>
+                <span class="nf-site-option__key">線路標識: {{ site.badge || `NODE-${idx + 1}` }}</span>
               </div>
             </div>
             <span v-if="site.key === sites.currentKey" class="nf-site-option__badge">✓ 當前在線</span>

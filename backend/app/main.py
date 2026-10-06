@@ -163,6 +163,7 @@ def create_app() -> FastAPI:
     app.add_middleware(RequestIdMiddleware)
     register_exception_handlers(app)
     app.include_router(api_router, prefix=settings.api_prefix)
+    app.include_router(experience_v2_router, prefix="/api/v1")
     app.include_router(experience_v2_router, prefix="/api/v2")
 
     @app.get("/", response_class=HTMLResponse, include_in_schema=False)

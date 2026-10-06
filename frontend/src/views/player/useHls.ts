@@ -161,7 +161,19 @@ export function useHls(
     loading.value = false
   }
 
-  async function load(): Promise<void> {
+  function getNavParam<T = any>(paramKey: string): T | undefined {
+    const hs = (typeof window !== 'undefined' ? window.history.state : null) as Record<string, any> | null
+    if (hs && hs[paramKey] !== undefined && hs[paramKey] !== null && hs[paramKey] !== '') {
+      return hs[paramKey] as T
+    }
+    const qVal = route.query[paramKey]
+    if (qVal !== undefined && qVal !== null && qVal !== '') {
+      return qVal as unknown as T
+    }
+    return undefined
+  }
+
+  async function load(overrides?: { line?: number; playId?: string; site?: string }): Promise<void> {
     const currentSeq = ++loadSeq
     destroyPlayer()
 
@@ -178,21 +190,67 @@ export function useHls(
       }
     }, 3500)
 
-    epLabel.value = typeof route.query.name === 'string' ? route.query.name : ''
+    epLabel.value = getNavParam<string>('name') || ''
 
     try {
       await sites.load()
       if (currentSeq !== loadSeq || isUnmounted) return
 
-      const siteFromQuery = typeof route.query.site === 'string' ? route.query.site : null
-      let key = siteFromQuery || sites.currentKey
+      const siteFromNav = overrides?.site || getNavParam<string>('site') || null
+      let key = siteFromNav || sites.currentKey
       if (!key && sites.sites.length > 0) {
         key = sites.sites[0].key
       }
       if (!key) throw new Error('伺服器暫無可用片源站點')
 
-      if (siteFromQuery && sites.currentKey !== siteFromQuery) {
-        sites.select(siteFromQuery)
+      if (siteFromNav && sites.currentKey !== siteFromNav) {
+        sites.select(siteFromNav)
+      }
+
+      const targetLine =
+        overrides?.line !== undefined
+          ? overrides.line
+          : getNavParam<number | string>('line')
+            ? Number(getNavParam('line'))
+            : undefined
+
+      let targetPlayId = overrides?.playId !== undefined ? overrides.playId : getNavParam<string>('play_id')
+
+      // 冷启动 / 外链直接访问自愈兜底：若既无 playId 又无详情缓存，先探测详情补齐 play_id 与剧集信息
+      if (!targetPlayId && !detail.value) {
+        try {
+          const detailRes = await api.getDetail(key, vodId.value)
+          if (detailRes) {
+            detail.value = detailRes
+            const targetEp = Number(ep.value) || 1
+            const matchedEp =
+              detailRes.episodes?.find((e: Episode) => e.ep_index === targetEp) || detailRes.episodes?.[0]
+            if (matchedEp?.play_id) {
+              targetPlayId = matchedEp.play_id
+            }
+          }
+        } catch {
+          const candidateKeys = sites.sites.map((s) => s.key).filter((k) => k !== key)
+          for (const cand of candidateKeys) {
+            try {
+              const probeRes = await api.getDetail(cand, vodId.value)
+              if (probeRes) {
+                detail.value = probeRes
+                key = cand
+                sites.select(cand)
+                const targetEp = Number(ep.value) || 1
+                const matchedEp =
+                  probeRes.episodes?.find((e: Episode) => e.ep_index === targetEp) || probeRes.episodes?.[0]
+                if (matchedEp?.play_id) {
+                  targetPlayId = matchedEp.play_id
+                }
+                break
+              }
+            } catch {
+              // 继续探测
+            }
+          }
+        }
       }
 
       let playbackRes: Playback | null = null
@@ -200,11 +258,15 @@ export function useHls(
         playbackRes = await api.getPlayback(key, {
           vodId: vodId.value,
           ep: Number(ep.value) || 1,
-          line: route.query.line ? Number(route.query.line) : undefined,
-          playId: typeof route.query.play_id === 'string' ? route.query.play_id : undefined,
+          line: targetLine,
+          playId: targetPlayId,
         })
       } catch (initialErr) {
-        const title = (route.query.title as string) || (route.query.name as string) || detail.value?.video?.vod_name || ''
+        const title =
+          getNavParam<string>('title') ||
+          getNavParam<string>('name') ||
+          detail.value?.video?.vod_name ||
+          ''
         const candidateKeys = sites.sites.map((s) => s.key).filter((k) => k !== key)
         let recovered = false
 
@@ -280,7 +342,11 @@ export function useHls(
     const nextSite = sites.sites.find((s) => s.key !== currentKey)
     if (nextSite) {
       sites.select(nextSite.key)
-      const title = detail.value?.video?.vod_name || (route.query.title as string) || (route.query.name as string) || ''
+      const title =
+        detail.value?.video?.vod_name ||
+        getNavParam<string>('title') ||
+        getNavParam<string>('name') ||
+        ''
       if (title) {
         void router.push({
           name: 'search',

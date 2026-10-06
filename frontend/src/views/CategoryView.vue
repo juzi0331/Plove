@@ -306,7 +306,7 @@ function openDetail(item: { vod_id?: string | number }): void {
     void router.push({
       name: 'detail',
       params: { vodId: String(item.vod_id) },
-      query: { site: sites.currentKey || undefined },
+      state: { site: sites.currentKey || undefined },
     })
   }
 }

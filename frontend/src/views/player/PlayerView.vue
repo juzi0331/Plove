@@ -71,13 +71,30 @@ const hlsEngine = useHls(videoEl, vodIdRef, epRef, {
 // ==========================================
 // 计算属性与剧集索引
 // ==========================================
+function getNavParam<T = any>(paramKey: string): T | undefined {
+  const hs = (typeof window !== 'undefined' ? window.history.state : null) as Record<string, any> | null
+  if (hs && hs[paramKey] !== undefined && hs[paramKey] !== null && hs[paramKey] !== '') {
+    return hs[paramKey] as T
+  }
+  const qVal = route.query[paramKey]
+  if (qVal !== undefined && qVal !== null && qVal !== '') {
+    return qVal as unknown as T
+  }
+  return undefined
+}
+
+const selectedLine = ref<number | undefined>(undefined)
+const selectedPlayId = ref<string | undefined>(undefined)
+
 const videoMeta = computed(() => hlsEngine.detail.value?.video ?? null)
 const vodTitle = computed(
-  () => videoMeta.value?.vod_name || (route.query.title as string) || (route.query.name as string) || '影視大廳',
+  () => videoMeta.value?.vod_name || getNavParam<string>('title') || getNavParam<string>('name') || '影視大廳',
 )
 
 const currentLine = computed<number>(() => {
-  if (route.query.line) return Number(route.query.line)
+  if (selectedLine.value !== undefined) return selectedLine.value
+  const navLine = getNavParam<number | string>('line')
+  if (navLine !== undefined && navLine !== null && navLine !== '') return Number(navLine)
   if (hlsEngine.detail.value?.lines?.length) return hlsEngine.detail.value.lines[0]?.line ?? 1
   return 1
 })
@@ -125,12 +142,16 @@ function switchEpisode(episode: Episode): void {
   resetGestureState()
   state.cancelAutoNext()
   state.isDrawerOpen.value = false
+  const targetLine = episode.line ?? currentLine.value
+  selectedLine.value = targetLine
+  selectedPlayId.value = episode.play_id || undefined
+
   void router.replace({
     name: 'play',
     params: { vodId: props.vodId, ep: String(episode.ep_index) },
-    query: {
-      ...route.query,
-      line: episode.line ?? currentLine.value,
+    state: {
+      ...window.history.state,
+      line: targetLine,
       play_id: episode.play_id || undefined,
       name: episode.ep_name || undefined,
     },
@@ -140,16 +161,16 @@ function switchEpisode(episode: Episode): void {
 function switchLine(lineId: number): void {
   state.cancelAutoNext()
   state.isLineMenuOpen.value = false
-  const newQuery: Record<string, any> = {
-    ...route.query,
-    line: lineId,
+  selectedLine.value = lineId
+  selectedPlayId.value = undefined
+
+  if (window.history && window.history.replaceState) {
+    const nextState = { ...window.history.state, line: lineId }
+    delete nextState.play_id
+    window.history.replaceState(nextState, '')
   }
-  delete newQuery.play_id
-  void router.replace({
-    name: 'play',
-    params: { vodId: props.vodId, ep: props.ep },
-    query: newQuery,
-  })
+
+  void hlsEngine.load({ line: lineId })
 }
 
 function playPrev(): void {
@@ -171,7 +192,8 @@ function goBack(): void {
   if (origin && !origin.includes('/play/') && !origin.includes('/detail/')) {
     void router.replace(origin)
   } else {
-    void router.replace({ name: 'detail', params: { vodId: props.vodId } })
+    const siteKey = getNavParam<string>('site') || sitesStore.currentKey
+    void router.replace({ name: 'detail', params: { vodId: props.vodId }, state: { site: siteKey } })
   }
 }
 
@@ -180,7 +202,8 @@ function goToDetail(): void {
   if (document.fullscreenElement) {
     void document.exitFullscreen().catch(() => undefined)
   }
-  void router.replace({ name: 'detail', params: { vodId: props.vodId } })
+  const siteKey = getNavParam<string>('site') || sitesStore.currentKey
+  void router.replace({ name: 'detail', params: { vodId: props.vodId }, state: { site: siteKey } })
 }
 
 function seekTo(time: number): void {
@@ -453,10 +476,10 @@ function sendHeartbeat(isPlaying: boolean): void {
   const pos = Math.round(state.currentTime.value || 0)
   const pct = dur > 0 ? Math.min(100, Math.max(0, Math.round((pos / dur) * 100))) : 0
 
-  const pic = videoMeta.value?.vod_pic || (route.query.pic as string) || ''
-  const name = vodTitle.value || (route.query.title as string) || (route.query.name as string) || '影視大廳'
-  const ep = displayEpText.value || (route.query.name as string) || `第 ${props.ep} 集`
-  const site = (route.query.site as string) || sitesStore.currentKey || ''
+  const pic = videoMeta.value?.vod_pic || getNavParam<string>('pic') || ''
+  const name = vodTitle.value || getNavParam<string>('title') || getNavParam<string>('name') || '影視大廳'
+  const ep = displayEpText.value || getNavParam<string>('name') || `第 ${props.ep} 集`
+  const site = getNavParam<string>('site') || sitesStore.currentKey || ''
 
   reportPlaybackHeartbeat({
     vod_id: String(props.vodId),
@@ -508,15 +531,54 @@ watch(
 
 watch(
   () => [props.vodId, props.ep],
-  () => {
+  (newVal, oldVal) => {
     hasSentInitialPlayHeartbeat = false
     lastHeartbeatTime = 0
+    state.cancelAutoNext()
+    resetGestureState()
+    if (oldVal && newVal[0] !== oldVal[0]) {
+      hlsEngine.detail.value = null
+      selectedLine.value = undefined
+      selectedPlayId.value = undefined
+    }
+    void hlsEngine.load({
+      line: selectedLine.value,
+      playId: selectedPlayId.value,
+    })
   },
 )
 
 onMounted(() => {
   hlsEngine.setUnmounted(false)
-  void hlsEngine.load()
+
+  // 检查若 URL 携带老版敏感 query 参数，将其提取至 history.state，并静默净化地址栏
+  if (
+    route.query.site ||
+    route.query.line ||
+    route.query.play_id ||
+    route.query.title ||
+    route.query.pic ||
+    route.query.name
+  ) {
+    const legacyState = {
+      site: typeof route.query.site === 'string' ? route.query.site : undefined,
+      line: route.query.line ? Number(route.query.line) : undefined,
+      play_id: typeof route.query.play_id === 'string' ? route.query.play_id : undefined,
+      title: typeof route.query.title === 'string' ? route.query.title : undefined,
+      pic: typeof route.query.pic === 'string' ? route.query.pic : undefined,
+      name: typeof route.query.name === 'string' ? route.query.name : undefined,
+    }
+    void router.replace({
+      name: 'play',
+      params: { vodId: props.vodId, ep: props.ep },
+      state: { ...window.history.state, ...legacyState },
+    })
+  }
+
+  void hlsEngine.load({
+    line: selectedLine.value,
+    playId: selectedPlayId.value,
+  })
   document.addEventListener('fullscreenchange', state.onFullscreenChange)
   state.showHud()
 })
@@ -531,17 +593,6 @@ onBeforeUnmount(() => {
   document.removeEventListener('fullscreenchange', state.onFullscreenChange)
 })
 
-watch(
-  () => [props.vodId, props.ep, route.query.site, route.query.line, route.query.play_id],
-  (newVal, oldVal) => {
-    state.cancelAutoNext()
-    resetGestureState()
-    if (oldVal && (newVal[0] !== oldVal[0] || newVal[2] !== oldVal[2])) {
-      hlsEngine.detail.value = null
-    }
-    void hlsEngine.load()
-  },
-)
 watch(() => device.restoredAt, () => void hlsEngine.load())
 watch(
   () => device.kicked,
