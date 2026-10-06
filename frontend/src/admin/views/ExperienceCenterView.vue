@@ -61,11 +61,19 @@ import type {
   SectionDefinition,
 } from '@/api/types'
 
-const activeTab = ref('theme')
+const activeTab = ref('landing')
 const loading = ref(false)
 const saving = ref(false)
 const publishing = ref(false)
 const rollingBack = ref(false)
+
+const DEFAULT_LANDING_TEXT: Record<string, string> = {
+  landing_title: '大家都在聊的人氣作品',
+  landing_subtitle: '隨時隨地，隨心暢看海量超清影視。',
+  landing_lead: '準備開始觀賞了嗎？請輸入您的激活碼，開啟專屬私人影院。',
+  landing_input_placeholder: '激活碼地址 (例如: PLV-XXXX-XXXX)',
+  landing_button_text: '開始使用',
+}
 
 // 当前编辑的草稿数据
 const draft = ref<ExperienceDraftPayload>({
@@ -77,6 +85,7 @@ const draft = ref<ExperienceDraftPayload>({
     name: 'Plove',
     logo_url: '',
   },
+  text: { ...DEFAULT_LANDING_TEXT },
   theme: {
     color: {
       background: '#141414',
@@ -157,7 +166,13 @@ async function fetchDraft(): Promise<void> {
   loading.value = true
   try {
     const res = await getExperienceDraft('default')
-    draft.value = res
+    draft.value = {
+      ...res,
+      text: {
+        ...DEFAULT_LANDING_TEXT,
+        ...(res.text || {}),
+      },
+    }
   } catch (err: unknown) {
     ElMessage.error(err instanceof Error ? err.message : '获取草稿失败')
   } finally {
@@ -366,24 +381,97 @@ onMounted(() => {
 
     <!-- 主体 Tabs -->
     <ElTabs v-model="activeTab" class="exp-tabs" type="border-card">
-      <!-- 1. 主题与视觉 Token -->
-      <ElTabPane label="主题与视觉 Token" name="theme">
+      <!-- 1. 品牌与落地页文案 -->
+      <ElTabPane label="品牌与落地页文案" name="landing">
         <div class="tab-pane-inner">
           <ElRow :gutter="24">
-            <ElCol :xs="24" :md="12">
+            <ElCol :xs="24" :md="10">
               <ElCard shadow="never" class="sub-card">
-                <template #header><div class="card-head">品牌标识</div></template>
+                <template #header>
+                  <div class="card-head">
+                    <span>站点与品牌标识</span>
+                  </div>
+                </template>
                 <ElForm label-width="110px" label-position="left">
-                  <ElFormItem label="品牌名称">
+                  <ElFormItem label="站点名称">
                     <ElInput v-model="draft.brand!.name" placeholder="Plove" />
+                    <div style="font-size: 12px; color: #888; margin-top: 4px">
+                      控制全站网页标题 (document.title) 及 APP 顶部/任务栏显示名称
+                    </div>
                   </ElFormItem>
                   <ElFormItem label="品牌 Logo URL">
-                    <ElInput v-model="draft.brand!.logo_url" placeholder="留空则显示文本 Logo" />
+                    <ElInput v-model="draft.brand!.logo_url" placeholder="留空则显示纯文本 Logo" />
                   </ElFormItem>
                 </ElForm>
               </ElCard>
 
               <ElCard shadow="never" class="sub-card" style="margin-top: 16px">
+                <template #header>
+                  <div class="card-head">
+                    <span>热更新生效机制</span>
+                  </div>
+                </template>
+                <div style="font-size: 13px; color: #aaa; line-height: 1.8">
+                  <p style="margin: 0 0 8px">1. 提交保存草稿后，点击右上角【发布上线】生效。</p>
+                  <p style="margin: 0 0 8px">2. 无论是否已激活，所有访问中的前台网页及离线 APP 将在切回前台或周期检测时<b>无感热更新</b>，无需重新发版安装。</p>
+                  <p style="margin: 0">3. 离线/弱网环境下自带经典文案保底，绝不白屏。</p>
+                </div>
+              </ElCard>
+            </ElCol>
+
+            <ElCol :xs="24" :md="14">
+              <ElCard shadow="never" class="sub-card">
+                <template #header>
+                  <div class="card-head">
+                    <span>未激活落地页 (Landing Page) 引导文案</span>
+                  </div>
+                </template>
+                <ElForm label-width="120px" label-position="left">
+                  <ElFormItem label="首屏大标题">
+                    <ElInput
+                      v-model="draft.text!['landing_title']"
+                      placeholder="大家都在聊的人氣作品"
+                    />
+                  </ElFormItem>
+                  <ElFormItem label="首屏副标题">
+                    <ElInput
+                      v-model="draft.text!['landing_subtitle']"
+                      placeholder="隨時隨地，隨心暢看海量超清影視。"
+                    />
+                  </ElFormItem>
+                  <ElFormItem label="引导提示语">
+                    <ElInput
+                      v-model="draft.text!['landing_lead']"
+                      type="textarea"
+                      :rows="2"
+                      placeholder="準備開始觀賞了嗎？請輸入您的激活碼，開啟專屬私人影院。"
+                    />
+                  </ElFormItem>
+                  <ElFormItem label="输入框提示">
+                    <ElInput
+                      v-model="draft.text!['landing_input_placeholder']"
+                      placeholder="激活碼地址 (例如: PLV-XXXX-XXXX)"
+                    />
+                  </ElFormItem>
+                  <ElFormItem label="激活按钮文字">
+                    <ElInput
+                      v-model="draft.text!['landing_button_text']"
+                      placeholder="開始使用"
+                    />
+                  </ElFormItem>
+                </ElForm>
+              </ElCard>
+            </ElCol>
+          </ElRow>
+        </div>
+      </ElTabPane>
+
+      <!-- 2. 主题与视觉 Token -->
+      <ElTabPane label="主题与视觉 Token" name="theme">
+        <div class="tab-pane-inner">
+          <ElRow :gutter="24">
+            <ElCol :xs="24" :md="12">
+              <ElCard shadow="never" class="sub-card">
                 <template #header><div class="card-head">卡片与排版</div></template>
                 <ElForm label-width="110px" label-position="left">
                   <ElFormItem label="卡片海报比例">

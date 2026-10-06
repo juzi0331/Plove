@@ -18,9 +18,17 @@ import type { VodItem } from '@/api/types'
 import BrandLogo from '@/components/BrandLogo.vue'
 import HeroBackdrop from '@/components/HeroBackdrop.vue'
 import { useDeviceStore } from '@/stores/device'
+import { useExperienceStore } from '@/stores/experience'
 
 const device = useDeviceStore()
+const experience = useExperienceStore()
 const router = useRouter()
+
+const landingTitle = computed(() => experience.bootstrap?.text?.landing_title || '大家都在聊的人氣作品')
+const landingSubtitle = computed(() => experience.bootstrap?.text?.landing_subtitle || '隨時隨地，隨心暢看海量超清影視。')
+const landingLead = computed(() => experience.bootstrap?.text?.landing_lead || '準備開始觀賞了嗎？請輸入您的激活碼，開啟專屬私人影院。')
+const landingInputPlaceholder = computed(() => experience.bootstrap?.text?.landing_input_placeholder || '激活碼地址 (例如: PLV-XXXX-XXXX)')
+const landingButtonText = computed(() => experience.bootstrap?.text?.landing_button_text || '開始使用')
 
 // 激活输入
 const code = ref('')
@@ -168,6 +176,9 @@ const top10Items = computed(() => {
 
 onMounted(() => {
   void loadTrending()
+  if (!experience.bootstrap) {
+    void experience.loadBootstrap()
+  }
 })
 </script>
 
@@ -186,11 +197,11 @@ onMounted(() => {
       <HeroBackdrop :items="trendingList" />
 
       <div class="nf-hero__content">
-        <!-- 官方 1:1 震撼大标题与排版 -->
-        <h1 class="nf-hero__title">大家都在聊的人氣作品</h1>
-        <p class="nf-hero__subtitle">隨時隨地，隨心暢看海量超清影視。</p>
+        <!-- 官方 1:1 震撼大标题与排版（支持后台动态配置与热更新） -->
+        <h1 class="nf-hero__title">{{ landingTitle }}</h1>
+        <p class="nf-hero__subtitle">{{ landingSubtitle }}</p>
         <p class="nf-hero__lead">
-          準備開始觀賞了嗎？請輸入您的激活碼，開啟專屬私人影院。
+          {{ landingLead }}
         </p>
 
         <!-- 官方 1:1 紧凑单行水平表单 -->
@@ -208,12 +219,12 @@ onMounted(() => {
               @input="code = normalizeInput(($event.target as HTMLInputElement).value)"
             />
             <label class="nf-floating-label" for="activate-input">
-              激活碼地址 (例如: PLV-XXXX-XXXX)
+              {{ landingInputPlaceholder }}
             </label>
           </div>
 
           <button class="nf-cta-btn" type="submit" :disabled="device.busy">
-            <span>{{ device.busy ? '處理中...' : '開始使用' }}</span>
+            <span>{{ device.busy ? '處理中...' : landingButtonText }}</span>
             <svg class="nf-cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6" d="M9 5l7 7-7 7" />
             </svg>

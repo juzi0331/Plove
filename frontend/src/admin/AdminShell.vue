@@ -95,6 +95,7 @@ watch(() => route.path, () => {
 })
 
 const MENU_PREFIXES = computed(() => [
+  adminPath('/experience'),
   adminPath('/webhooks'),
   adminPath('/cache'),
   adminPath('/proxy-nodes'),
@@ -213,6 +214,10 @@ function logout(): void {
 
             <ElMenuItemGroup>
               <template #title><span class="shell__group-title">运营与授权</span></template>
+              <ElMenuItem :index="adminPath('/experience')">
+                <ElIcon><Monitor /></ElIcon>
+                <template #title>品牌与体验中心</template>
+              </ElMenuItem>
               <ElMenuItem :index="adminPath('/system')">
                 <ElIcon><Bell /></ElIcon>
                 <template #title>公告与维护广播</template>

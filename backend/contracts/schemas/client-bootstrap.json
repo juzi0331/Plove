@@ -401,7 +401,7 @@
       "type": "string"
     },
     "refresh_after_seconds": {
-      "default": 30,
+      "default": 120,
       "description": "活跃客户端条件版本查询间隔秒数",
       "title": "Refresh After Seconds",
       "type": "integer"

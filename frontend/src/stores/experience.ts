@@ -112,8 +112,8 @@ export const useExperienceStore = defineStore('experience', () => {
     if (isPollingActive.value || typeof window === 'undefined') return
     isPollingActive.value = true
 
-    // 1. 定时心跳轮询（默认 30 秒）
-    const intervalSec = bootstrap.value?.refresh_after_seconds || 30
+    // 1. 定时心跳轮询（默认 120 秒，结合切回前台即时核查）
+    const intervalSec = Math.max(60, bootstrap.value?.refresh_after_seconds || 120)
     pollTimer = window.setInterval(() => {
       checkForUpdates()
     }, intervalSec * 1000)

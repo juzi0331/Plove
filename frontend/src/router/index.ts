@@ -67,10 +67,7 @@ const router = createRouter({
           component: () => import('@/admin/views/WebhooksView.vue'),
           meta: { admin: true, title: 'Telegram 机器人' },
         },
-        {
-          path: 'playground',
-          redirect: { name: 'admin-webhooks' },
-        },
+
         {
           path: 'cache',
           name: 'admin-cache',

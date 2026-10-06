@@ -24,7 +24,7 @@ class ClientBootstrapPayload(BaseModel):
     release_id: str = Field(description="当前生效的发布版本 ID")
     revision: int = Field(description="单调自增的配置修订版本号")
     min_runtime_version: str = Field(default="1.0.0", description="要求的客户端最低运行时版本")
-    refresh_after_seconds: int = Field(default=30, description="活跃客户端条件版本查询间隔秒数")
+    refresh_after_seconds: int = Field(default=120, description="活跃客户端条件版本查询间隔秒数")
     offline_display_ttl_seconds: int = Field(default=86400, description="离线安全展示有效秒数")
     brand: BrandConfig = Field(default_factory=BrandConfig, description="品牌标识")
     theme: ThemeConfig = Field(default_factory=ThemeConfig, description="主题视觉 Token")
