@@ -73,26 +73,42 @@ def get_category_rules_payload(
         tid = str(cat.tid)
         seen_tids.add(tid)
         saved_item = saved_rules_map.get(tid, {})
-        subcats = [
-            SubCategoryItem(
-                tid=str(s.get("tid")),
-                name=str(s.get("name")),
-                custom_name=str(s.get("custom_name", "")),
-                hidden=bool(s.get("hidden", False)),
-            )
+
+        # 建立已保存子分类字典 {sub_tid: saved_dict}
+        saved_sub_map: dict[str, dict] = {
+            str(s.get("tid")): s
             for s in saved_item.get("subcategories", [])
-            if isinstance(s, dict) and "tid" in s
-        ]
-        if not subcats and cat.subcategories:
-            subcats = [
+            if isinstance(s, dict) and s.get("tid")
+        }
+
+        subcats: list[SubCategoryItem] = []
+        seen_sub_tids = set()
+
+        # 1. 优先基于源站真实返回的子分类（保证爬虫新增的子分类如“里番”、情色片等永不丢失）
+        for s in (cat.subcategories or []):
+            s_tid = str(s.tid)
+            seen_sub_tids.add(s_tid)
+            saved_sub = saved_sub_map.get(s_tid, {})
+            subcats.append(
                 SubCategoryItem(
-                    tid=str(s.tid),
-                    name=str(s.name),
-                    custom_name="",
-                    hidden=False,
+                    tid=s_tid,
+                    name=s.name or s_tid,
+                    custom_name=str(saved_sub.get("custom_name", "")),
+                    hidden=bool(saved_sub.get("hidden", False)),
                 )
-                for s in cat.subcategories
-            ]
+            )
+
+        # 2. 补齐在后台手动添加但源站未硬编码的扩展子分类
+        for s_tid, saved_sub in saved_sub_map.items():
+            if s_tid not in seen_sub_tids:
+                subcats.append(
+                    SubCategoryItem(
+                        tid=s_tid,
+                        name=str(saved_sub.get("name", s_tid)),
+                        custom_name=str(saved_sub.get("custom_name", "")),
+                        hidden=bool(saved_sub.get("hidden", False)),
+                    )
+                )
 
         if is_new_config:
             show_home = idx < 3
@@ -237,23 +253,41 @@ def apply_category_rules(
             custom_name = rule.get("custom_name", "")
             name = format_category_display_name(raw_name, custom_name)
             sort_order = int(rule.get("sort_order", 0))
-            subcats_raw = rule.get("subcategories")
-            if isinstance(subcats_raw, list) and subcats_raw:
-                for s in subcats_raw:
-                    if not isinstance(s, dict) or not s.get("tid"):
-                        continue
-                    if s.get("hidden"):
-                        continue
-                    s_raw_name = str(s.get("name", s.get("tid")))
-                    s_custom = str(s.get("custom_name", ""))
+
+            saved_sub_map = {
+                str(s.get("tid")): s
+                for s in rule.get("subcategories", [])
+                if isinstance(s, dict) and s.get("tid")
+            }
+
+            seen_sub_tids = set()
+            # 1. 遍历源站真实子分类（保证新增子分类正常展示）
+            for s in (cat.subcategories or []):
+                s_tid = str(s.tid)
+                seen_sub_tids.add(s_tid)
+                saved_sub = saved_sub_map.get(s_tid)
+                if saved_sub and saved_sub.get("hidden"):
+                    continue
+                s_raw_name = s.name or s_tid
+                s_custom = str(saved_sub.get("custom_name", "")) if saved_sub else ""
+                subcategories.append(
+                    SubCategory(
+                        tid=s_tid,
+                        name=format_category_display_name(s_raw_name, s_custom),
+                    )
+                )
+
+            # 2. 追加后台手动添加且未隐藏的子分类
+            for s_tid, saved_sub in saved_sub_map.items():
+                if s_tid not in seen_sub_tids and not saved_sub.get("hidden"):
+                    s_raw_name = str(saved_sub.get("name", s_tid))
+                    s_custom = str(saved_sub.get("custom_name", ""))
                     subcategories.append(
                         SubCategory(
-                            tid=str(s.get("tid")),
+                            tid=s_tid,
                             name=format_category_display_name(s_raw_name, s_custom),
                         )
                     )
-            else:
-                subcategories = list(cat.subcategories)
         else:
             subcategories = list(cat.subcategories)
 

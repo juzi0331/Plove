@@ -42,6 +42,22 @@ def _align_columns(engine: Engine) -> None:
                     except Exception:
                         pass
 
+            # 若为 MySQL / MariaDB，自动扩容 JSON 字段为 MEDIUMTEXT，根治多分类超出 4096 字符截断与报错
+            if engine.dialect.name == "mysql":
+                for col_name in ("category_rules_json", "detail_policy_json", "cache_policy_json"):
+                    try:
+                        conn.execute(text(f"ALTER TABLE site_settings MODIFY COLUMN {col_name} MEDIUMTEXT"))
+                    except Exception:
+                        pass
+
+    if "system_settings" in insp.get_table_names():
+        if engine.dialect.name == "mysql":
+            with engine.begin() as conn:
+                try:
+                    conn.execute(text("ALTER TABLE system_settings MODIFY COLUMN value_json MEDIUMTEXT"))
+                except Exception:
+                    pass
+
     if "activation_codes" in insp.get_table_names():
         existing_cols = {c["name"] for c in insp.get_columns("activation_codes")}
         if "max_devices" not in existing_cols:

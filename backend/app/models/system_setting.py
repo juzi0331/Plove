@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, String
+from sqlalchemy import DateTime, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.clock import utcnow
@@ -19,5 +19,5 @@ class SystemSetting(Base):
     __tablename__ = "system_settings"
 
     key: Mapped[str] = mapped_column(String(64), primary_key=True)
-    value_json: Mapped[str] = mapped_column(String(4096), default="{}")
+    value_json: Mapped[str] = mapped_column(Text, default="{}")
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)

@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Integer, String
+from sqlalchemy import Boolean, DateTime, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.clock import utcnow
@@ -43,12 +43,12 @@ class SiteSetting(Base):
     #: 单站自定义超时秒数（0 或更小表示跟随全局默认配置）
     timeout_seconds: Mapped[float] = mapped_column(default=0.0)
 
-    #: 分类与子分类控制规则 JSON（隐藏、重命名、排序、子分类）
-    category_rules_json: Mapped[str] = mapped_column(String(4096), default="{}")
-    #: 详情页显示与清洗策略 JSON（广告过滤、线路映射、集数命名、兜底海报）
-    detail_policy_json: Mapped[str] = mapped_column(String(4096), default="{}")
+    #: 分类与子分类控制规则 JSON（使用 Text 避免多分类源站超长截断）
+    category_rules_json: Mapped[str] = mapped_column(Text, default="{}")
+    #: 详情页显示与清洗策略 JSON
+    detail_policy_json: Mapped[str] = mapped_column(Text, default="{}")
     #: 单站独立缓存策略 JSON（home_ttl, category_ttl, detail_ttl）
-    cache_policy_json: Mapped[str] = mapped_column(String(2048), default="{}")
+    cache_policy_json: Mapped[str] = mapped_column(Text, default="{}")
 
     #: 单站独立代理控制开关与地址
     proxy_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
