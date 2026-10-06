@@ -295,15 +295,6 @@ function formatNodeLabel(node: ProxyNodeItem): string {
             <!-- 贴心的新手指引卡片 -->
             <div class="chat-guidance-card" style="margin-top: 8px;">
               <div class="guidance-line">
-                <ElTag size="small" type="success" effect="light">💡 测试阶段无需建群</ElTag>
-                <span class="guidance-text">
-                  在 Telegram 中搜索你的机器人用户名
-                  <strong v-if="props.verifyResult?.username">(@{{ props.verifyResult.username }})</strong>，
-                  点击 <strong>【Start】</strong> 或给它发送任意一条消息（如 <code>hi</code>），然后点击上方
-                  <strong>【自动获取最新 Chat ID】</strong> 即可一键填入管理员个人私聊 ID；亦可向官方 <code>@userinfobot</code> 发送消息直接查看个人 ID。
-                </span>
-              </div>
-              <div class="guidance-line" style="margin-top: 8px;">
                 <ElTag size="small" type="info" effect="plain">👥 运维群组推送</ElTag>
                 <span class="guidance-text">
                   若需推送到群组，将机器人拉入群并设为管理员，在群里发一条消息后再点击 <strong>【自动获取最新 Chat ID】</strong> 即可抓取负数群组 ID。

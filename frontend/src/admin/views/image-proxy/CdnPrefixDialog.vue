@@ -6,6 +6,7 @@ import {
   ElDialog,
   ElForm,
   ElFormItem,
+  ElIcon,
   ElInput,
   ElOption,
   ElSelect,
@@ -18,9 +19,9 @@ import {
 import {
   Delete,
   Edit,
-  Link,
   Plus,
   Picture,
+  Promotion,
   RefreshLeft,
   VideoPlay,
 } from '@element-plus/icons-vue'
@@ -294,7 +295,8 @@ function handleImgError(): void {
       <template #header>
         <div class="submodal-header">
           <div class="submodal-icon-badge" :class="props.isEditingCdnRule ? 'is-edit' : 'is-add'">
-            <ElIcon :size="18"><Link /></ElIcon>
+            <ElIcon v-if="props.isEditingCdnRule" :size="18"><Edit /></ElIcon>
+            <ElIcon v-else :size="18"><Promotion /></ElIcon>
           </div>
           <div>
             <div class="submodal-title">{{ props.isEditingCdnRule ? '编辑图床加速规则' : '添加图床加速规则' }}</div>
@@ -639,6 +641,16 @@ function handleImgError(): void {
 .submodal-icon-badge.is-edit {
   background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+}
+
+.submodal-icon-badge.is-add {
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.3);
+}
+
+.submodal-icon-badge .el-icon {
+  color: #ffffff !important;
+  font-size: 18px !important;
 }
 
 .submodal-title {

@@ -173,14 +173,14 @@
 }
 
 /* 卡片通用架构 */
-.cards-grid {
+.system-notice-page .cards-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 20px;
 }
 
 @media (max-width: 960px) {
-  .cards-grid {
+  .system-notice-page .cards-grid {
     grid-template-columns: 1fr;
   }
 }

@@ -100,7 +100,7 @@ onMounted(() => {
     </div>
 
     <!-- 核心板块卡片矩阵 (全卡片化设计) -->
-    <div class="cards-grid">
+    <div class="proxy-cards-grid">
       <!-- 卡片 1: 全局海报防盗链中继总控 -->
       <ElCard shadow="hover" class="module-card relay-card" @click="showGlobalProxyDialog = true">
         <div class="card-top-bar">
