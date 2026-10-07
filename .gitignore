@@ -29,8 +29,6 @@ backend/data/*
 !backend/data/.gitkeep
 **/img_cache/
 *webhook_config.json
-*proxy_config.json
-!*proxy_config.example.json
 *proxy_nodes.json
 
 # 编辑器与操作系统痕迹
@@ -41,11 +39,8 @@ Thumbs.db
 desktop.ini
 .freebuff/
 
-# Docker 容器化配置与脚本
-Dockerfile*
-docker-compose*.yml
-docker-compose*.yaml
-docker/
+# Docker 部署文件必须进仓库 (ADR-001: Docker Compose + Caddy 部署)
+# 注意：不要忽略 Dockerfile / docker-compose.yml / Caddyfile
 
 # 压缩包与打包生成脚本 (禁止上传任何归档与打包 Python)
 *.zip
@@ -64,11 +59,13 @@ scratch/
 # 外部预编译内核及二进制执行文件 (不进 git，代码支持自动在线下载安装)
 backend/bin/
 
-# 各种没必要的文档 (文档只上传 README.md)
-docs/
+# 文档：只上传 README.md 和 docs/adr/ 下的 ADR
+docs/*
+!docs/adr/
 *.md
 !README.md
 !**/README.md
+!docs/adr/*.md
 
 # 采集器适配器脚本（动态采集脚本，不同步至远程仓库，保持仓库清空纯净）
 crawler/sites/*
@@ -82,4 +79,3 @@ crawler/sites/*
 *stop_services*.py
 backend/tools/stop_services.py
 backend/tools/make_launchers.py
-

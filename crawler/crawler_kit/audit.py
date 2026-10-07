@@ -28,6 +28,8 @@ DANGEROUS_MODULES: frozenset[str] = frozenset({
 })
 
 #: 禁止直接调用的高危系统方法或属性
+#: 注：os 专属的文件操作 replace/remove 不在此列（见 OS_SCOPED_DANGEROUS_ATTRIBUTES），
+#: 以免误杀 str.replace() / list.remove() 等无害方法
 DANGEROUS_ATTRIBUTES: frozenset[str] = frozenset({
     "system",
     "popen",
@@ -36,12 +38,10 @@ DANGEROUS_ATTRIBUTES: frozenset[str] = frozenset({
     "spawn",
     "fork",
     "kill",
-    "remove",
     "unlink",
     "rmdir",
     "mkdir",
     "rename",
-    "replace",
     "chmod",
     "open",
     "modules",
@@ -66,6 +66,14 @@ DANGEROUS_BUILTIN_NAMES: frozenset[str] = frozenset({
     "compile",
 })
 
+#: 仅当通过 os 模块调用时才危险的属性名。
+#: str.replace() / bytes.replace() / list.remove() / set.remove()
+#: 等同名安全方法是爬虫文本清洗的常用操作，不应误杀。
+OS_SCOPED_DANGEROUS_ATTRIBUTES: frozenset[str] = frozenset({
+    "replace",
+    "remove",
+})
+
 
 def audit_script_ast(code: str) -> tuple[bool, str | None]:
     """静态检查 Python 源码是否包含语法错误或违规调用危险指令。
@@ -76,6 +84,14 @@ def audit_script_ast(code: str) -> tuple[bool, str | None]:
         tree = ast.parse(code)
     except SyntaxError as exc:
         return False, f"Python 语法错误（第 {exc.lineno} 行）: {exc.msg}"
+
+    # 预收集 os 的导入别名（import os / import os as o），用于判定作用域
+    os_aliases: set[str] = {"os"}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name == "os":
+                    os_aliases.add(alias.asname or "os")
 
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
@@ -91,6 +107,10 @@ def audit_script_ast(code: str) -> tuple[bool, str | None]:
         elif isinstance(node, ast.Attribute):
             if node.attr in DANGEROUS_ATTRIBUTES:
                 return False, f"禁止调用受限属性或函数: {node.attr}"
+            if node.attr in OS_SCOPED_DANGEROUS_ATTRIBUTES:
+                recv = node.value
+                if isinstance(recv, ast.Name) and recv.id in os_aliases:
+                    return False, f"禁止通过 os 调用受限文件操作: {recv.id}.{node.attr}"
         elif isinstance(node, ast.Name):
             if node.id in DANGEROUS_BUILTIN_NAMES:
                 return False, f"禁止直接使用内置危险函数: {node.id}"
