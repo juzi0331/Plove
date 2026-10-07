@@ -114,6 +114,51 @@ watch(
 const hasHtmlTags = computed(() => {
   return /<[a-z][\s\S]*>/i.test(props.draft.content || '')
 })
+
+function sanitizeTelegramHtml(raw: string): string {
+  if (!raw || typeof window === 'undefined') return ''
+  try {
+    const doc = new DOMParser().parseFromString(raw, 'text/html')
+    const allowedTags = new Set([
+      'B', 'STRONG', 'I', 'EM', 'U', 'INS', 'S', 'STRIKE', 'DEL', 'SPAN',
+      'TG-SPOILER', 'A', 'TG-EMOJI', 'CODE', 'PRE', 'BLOCKQUOTE', 'BR', 'P'
+    ])
+
+    function cleanNode(node: Node) {
+      const children = Array.from(node.childNodes)
+      for (const child of children) {
+        if (child.nodeType === Node.ELEMENT_NODE) {
+          const el = child as HTMLElement
+          if (!allowedTags.has(el.tagName)) {
+            const textNode = document.createTextNode(el.textContent || '')
+            node.replaceChild(textNode, el)
+          } else {
+            const attrs = Array.from(el.attributes)
+            for (const attr of attrs) {
+              const name = attr.name.toLowerCase()
+              const val = attr.value.trim().toLowerCase()
+              if (name.startsWith('on') || val.startsWith('javascript:') || val.startsWith('data:')) {
+                el.removeAttribute(attr.name)
+              } else if (name !== 'href' && name !== 'class' && name !== 'style') {
+                el.removeAttribute(attr.name)
+              }
+            }
+            cleanNode(el)
+          }
+        }
+      }
+    }
+
+    cleanNode(doc.body)
+    return doc.body.innerHTML
+  } catch {
+    return ''
+  }
+}
+
+const sanitizedPreviewHtml = computed(() => {
+  return sanitizeTelegramHtml(props.draft.content || '')
+})
 </script>
 
 <template>
@@ -279,7 +324,7 @@ const hasHtmlTags = computed(() => {
           <span>📱 Telegram 渲染仿真预览:</span>
         </div>
         <!-- eslint-disable-next-line vue/no-v-html -->
-        <div class="tg-bubble-preview" v-html="props.draft.content" />
+        <div class="tg-bubble-preview" v-html="sanitizedPreviewHtml" />
       </div>
     </div>
 

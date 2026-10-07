@@ -142,6 +142,10 @@ function handleModalToggleEnabled(next: boolean): void {
 async function handleCrawlerUploaded(): Promise<void> {
   await load()
   if (selectedSite.value) {
+    const updated = sites.value.find((s) => s.key === selectedSite.value?.key)
+    if (updated) {
+      selectedSite.value = updated
+    }
     await openCodeViewer(selectedSite.value)
   }
 }

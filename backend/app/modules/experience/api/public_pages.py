@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_content_cache, get_db, get_registry
+from app.api.deps import get_content_cache, get_db, get_registry, require_device
 from app.cache.content import ContentCache
 from app.core.middleware import get_request_id
 from app.crawler.registry import SiteRegistry
@@ -13,7 +13,11 @@ from app.modules.experience.application.build_page import build_page_view_model
 from app.modules.experience.schemas.page import PageViewModel
 from app.schemas.envelope import Envelope, ok
 
-router = APIRouter(prefix="/client", tags=["客户端体验协商"])
+router = APIRouter(
+    prefix="/client",
+    tags=["客户端体验协商"],
+    dependencies=[Depends(require_device)],
+)
 
 
 @router.get(

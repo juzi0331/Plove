@@ -108,12 +108,17 @@ def test_security_headers_injected(anon_client):
 
 
 def test_health_and_docs_in_production_mode():
-    """H1 & H2: 生产环境下不暴露详细版本号与环境内部名，且 /docs 强制禁用。"""
+    """H1 & H2 & SEC-08: 生产环境下脱敏健康检查、关闭 /docs 并彻底禁用 /portal。"""
     import os
     from unittest.mock import patch
     from app.core.config import get_settings
 
-    with patch.dict(os.environ, {"PLOVE_ENV": "prod", "PLOVE_DATABASE_URL": "sqlite:///:memory:"}):
+    prod_env = {
+        "PLOVE_ENV": "prod",
+        "PLOVE_DATABASE_URL": "sqlite:///:memory:",
+        "PLOVE_SECRET_KEY": "super-secure-production-secret-key-32bytes",
+    }
+    with patch.dict(os.environ, prod_env):
         get_settings.cache_clear()
         try:
             prod_app = create_app()
@@ -127,5 +132,54 @@ def test_health_and_docs_in_production_mode():
             # H1: 验证生产环境彻底关闭 Swagger 文档
             docs_resp = client.get("/docs")
             assert docs_resp.status_code == 404
+
+            # SEC-08: 验证生产环境彻底禁用 Portal
+            portal_resp = client.get("/portal")
+            assert portal_resp.status_code == 404
         finally:
             get_settings.cache_clear()
+
+
+def test_production_rejects_default_secret_key():
+    """SEC-06: 生产环境下如果使用默认或过短 secret_key 必须拒绝启动。"""
+    import os
+    from unittest.mock import patch
+    from pydantic import ValidationError
+    from app.core.config import get_settings, Settings
+
+    prod_env = {
+        "PLOVE_ENV": "prod",
+        "PLOVE_DATABASE_URL": "sqlite:///:memory:",
+    }
+    with patch.dict(os.environ, prod_env):
+        get_settings.cache_clear()
+        try:
+            with pytest.raises(ValidationError) as exc:
+                Settings()
+            assert "PLOVE_SECRET_KEY" in str(exc.value)
+        finally:
+            get_settings.cache_clear()
+
+
+def test_admin_brute_force_protection(anon_client, fake_app):
+    """SEC-04: 后台管理接口连续 10 次错误口令尝试触发 429 锁定。"""
+    settings = fake_app.dependency_overrides[get_settings]()
+    fake_app.dependency_overrides[get_settings] = lambda: settings.model_copy(
+        update={"admin_token": "valid-secret-token-32bytes!!", "rate_limit_enabled": True}
+    )
+
+    # 连续尝试 10 次错误口令
+    for _ in range(10):
+        resp = anon_client.get(
+            "/api/v1/admin/status",
+            headers={ADMIN_TOKEN_HEADER: "wrong-guess"},
+        )
+        assert resp.status_code == 401
+
+    # 第 11 次尝试触发 429 RATE_LIMITED
+    locked_resp = anon_client.get(
+        "/api/v1/admin/status",
+        headers={ADMIN_TOKEN_HEADER: "wrong-guess"},
+    )
+    assert locked_resp.status_code == 429
+    assert locked_resp.json()["error"]["code"] == "RATE_LIMITED"

@@ -9,7 +9,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 
 from app import __version__
@@ -170,6 +170,9 @@ def create_app() -> FastAPI:
     @app.get("/portal", response_class=HTMLResponse, include_in_schema=False)
     @app.get("/api/portal", response_class=HTMLResponse, include_in_schema=False)
     async def serve_backend_portal():
+        settings = get_settings()
+        if not settings.is_dev:
+            raise HTTPException(status_code=404, detail="Not Found")
         return HTMLResponse(content=_PORTAL_HTML)
 
     return app

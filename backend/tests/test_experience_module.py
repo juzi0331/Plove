@@ -37,9 +37,12 @@ def test_public_bootstrap_and_etag(anon_client: TestClient):
     assert resp_304.status_code == 304
 
 
-def test_public_page_view_model(anon_client: TestClient):
-    """测试客户端获取首页 ViewModel。"""
-    resp = anon_client.get("/api/v2/client/pages/home")
+def test_public_page_view_model(anon_client: TestClient, authed_client: TestClient):
+    """测试客户端获取首页 ViewModel：未激活拒绝（SEC-02），已激活设备正常放行。"""
+    resp_anon = anon_client.get("/api/v2/client/pages/home")
+    assert resp_anon.status_code == 401
+
+    resp = authed_client.get("/api/v2/client/pages/home")
     assert resp.status_code == 200
     data = resp.json()["data"]
     assert data["page_id"] == "home_default"

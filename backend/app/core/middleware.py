@@ -44,7 +44,9 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
         if is_maintenance_active():
             is_exempt = (
                 path.startswith("/api/v1/admin")
+                or path.startswith("/api/v2/admin")
                 or path.startswith("/api/v1/system/status")
+                or path.startswith("/api/v2/system/status")
                 or path == "/favicon.ico"
             )
             if not is_exempt:

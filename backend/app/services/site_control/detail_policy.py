@@ -11,6 +11,8 @@ from typing import Any
 import httpx
 from sqlalchemy.orm import Session
 
+from app.core.security import is_safe_public_url
+
 from app.crawler.registry import SiteRegistry
 from app.schemas.admin_site_control import (
     SiteDetailPolicyPayload,
@@ -145,6 +147,9 @@ def probe_and_select_fastest_line(
         try:
             playback_obj = catalog_service._load(Playback, registry, key, "play", **options)
             url = playback_obj.url
+            if not is_safe_public_url(url):
+                return line_id, 999.0
+
             headers = {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
                 "Range": "bytes=0-1024",
@@ -153,8 +158,26 @@ def probe_and_select_fastest_line(
                 headers.update(playback_obj.headers)
 
             t0 = time.perf_counter()
-            with httpx.Client(timeout=1.5, verify=False, follow_redirects=True) as client:
-                resp = client.get(url, headers=headers)
+            with httpx.Client(timeout=1.5, follow_redirects=False) as client:
+                current_url = url
+                resp = None
+                for _ in range(3):
+                    if not is_safe_public_url(current_url):
+                        return line_id, 999.0
+                    resp = client.get(current_url, headers=headers)
+                    if resp.is_redirect:
+                        loc = resp.headers.get("Location")
+                        if not loc:
+                            break
+                        next_url = str(resp.url.join(loc))
+                        if not is_safe_public_url(next_url):
+                            return line_id, 999.0
+                        current_url = next_url
+                        continue
+                    break
+
+                if resp is None:
+                    return line_id, 999.0
                 latency = time.perf_counter() - t0
                 if resp.status_code < 400:
                     return line_id, latency

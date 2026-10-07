@@ -44,6 +44,17 @@ DANGEROUS_ATTRIBUTES: frozenset[str] = frozenset({
     "replace",
     "chmod",
     "open",
+    "modules",
+    "load_module",
+    "__subclasses__",
+    "__bases__",
+    "__base__",
+    "__mro__",
+    "__globals__",
+    "__code__",
+    "__reduce__",
+    "__builtins__",
+    "__class__",
 })
 
 #: 禁止直接引用的内置危险全局函数

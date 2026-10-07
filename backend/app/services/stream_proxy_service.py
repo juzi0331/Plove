@@ -194,7 +194,8 @@ def rewrite_m3u8_content(
 ) -> str:
     """改写 m3u8 清单文本，将所有变体、分片与密钥链接路由到后端流中继。"""
     site_param = f"&site={quote(site)}" if site else ""
-    token_param = f"&token={quote(token)}" if token else ""
+    # SEC-03: 切片与密钥 URL 不再暴露明文长期令牌，播放器统一使用 X-Device-Token 标头进行鉴权
+    token_param = ""
     lines = m3u8_text.splitlines()
     output_lines: list[str] = []
     is_variant_stream = False
@@ -311,7 +312,20 @@ def fetch_and_decode_segment(
         if resp.status_code >= 400:
             raise RuntimeError(f"上游分片返回 HTTP {resp.status_code}: {upstream_url}")
 
+        # SEC-10: 限制媒体切片最大体积为 50MB，防止恶意超大响应耗尽内存造成 OOM DoS
+        MAX_SEGMENT_BYTES = 50 * 1024 * 1024
+        cl_header = resp.headers.get("content-length")
+        if cl_header:
+            try:
+                if int(cl_header) > MAX_SEGMENT_BYTES:
+                    raise ValueError(f"上游媒体分片体积超限 ({cl_header} bytes > 50MB)，拒绝加载")
+            except (ValueError, TypeError):
+                pass
+
         raw_body = resp.content
+        if len(raw_body) > MAX_SEGMENT_BYTES:
+            raise ValueError(f"上游媒体分片体积超限 ({len(raw_body)} bytes > 50MB)，拒绝中继")
+
         upstream_content_type = resp.headers.get("content-type") or ""
         upstream_status = resp.status_code
         upstream_content_range = resp.headers.get("content-range")

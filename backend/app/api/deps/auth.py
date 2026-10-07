@@ -55,17 +55,28 @@ def require_device(
     return device
 
 
+_WEAK_ADMIN_TOKENS = {"admin", "password", "123456", "root", "test", "admin123", "12345678", "qwerty"}
+
+from fastapi import Request
+import time
+from app.core.rate_limit import InMemoryRateLimiter, get_client_ip
+
+admin_fail_limiter = InMemoryRateLimiter(limit=10, window_seconds=60, scope="admin_auth_fail")
+_PROXY_DEV_TOKEN_CACHE: dict[str, float] = {}
+
+
 def require_admin(
+    request: Request,
     settings: Settings = Depends(get_settings),
     token: str | None = Security(admin_token_header),
 ) -> None:
     """后台接口的守卫。同样挂在 router 上。
 
-    两条刻意的处理：
-    * 没配令牌就一律拒绝。空令牌必须永远不能通过 —— 否则一个忘了配
-      PLOVE_ADMIN_TOKEN 的部署就等于把后台裸奔在公网上。
-    * 用 compare_digest 比较。普通 == 会在第一个不同的字符处
-      提前返回，从响应时间上能一个字符一个字符地把令牌猜出来。
+    安全设计：
+    * 没配令牌就一律拒绝。
+    * 弱口令直接阻断。
+    * 防暴力破解滑动窗口频控：限制同一来源连续错误尝试。
+    * 用 compare_digest 常数时间安全比对防时序攻击。
     """
     expected = settings.admin_token
     if not expected:
@@ -73,13 +84,19 @@ def require_admin(
             ErrorCode.FORBIDDEN,
             "后台接口未启用：请先在 .env 里设置 PLOVE_ADMIN_TOKEN",
         )
-    _WEAK_ADMIN_TOKENS = {"admin", "password", "123456", "root", "test", "admin123", "12345678", "qwerty"}
     if expected.strip().lower() in _WEAK_ADMIN_TOKENS:
         raise AppError(
             ErrorCode.FORBIDDEN,
             "管理令牌过于简单，存在严重安全隐患，请在 .env 中更换为高强度安全令牌",
         )
+
+    ip = get_client_ip(request)
+    if getattr(settings, "rate_limit_enabled", True):
+        admin_fail_limiter.check_only(f"admin:{ip}")
+
     if not token or not secrets.compare_digest(token, expected):
+        if getattr(settings, "rate_limit_enabled", True):
+            admin_fail_limiter.record_failure(f"admin:{ip}")
         raise AppError(ErrorCode.UNAUTHORIZED, "后台令牌不正确")
 
 
@@ -88,26 +105,35 @@ def require_proxy_access(
     settings: Settings = Depends(get_settings),
     device_token: str | None = Security(device_token_header),
     admin_token: str | None = Security(admin_token_header),
-    token: str | None = Query(None, description="设备令牌或管理员凭证"),
+    token: str | None = Query(None, description="设备令牌（兼容 img 标签）"),
 ) -> None:
     """代理接口守卫（图片防盗链代理、HLS 流媒体代理）。
 
     防白嫖与防非法代理：必须是「当前活跃设备」或「管理员凭据」方可中继媒体流与图片。
-    支持通过 X-Device-Token 标头或 URL 查询参数 token 传入（兼容 HLS 切片与 img 标签）。
+    安全规则：
+    1. 管理员凭据只允许通过 X-Admin-Token 请求头传入，严禁通过 URL 查询参数 token 传入（SEC-03）。
+    2. 设备令牌校验采用 60 秒轻量级内存缓存，防止 HLS 分片每秒高频请求击穿数据库连接池（SEC-07）。
     """
     candidate_dev_token = device_token or token
     if candidate_dev_token:
+        now = time.time()
+        cached_exp = _PROXY_DEV_TOKEN_CACHE.get(candidate_dev_token)
+        if cached_exp and now < cached_exp:
+            return
+
         try:
             activation_service.require_active(db, candidate_dev_token)
             site_settings.store().refresh(db)
+            _PROXY_DEV_TOKEN_CACHE[candidate_dev_token] = now + 60.0
             return
         except AppError:
+            _PROXY_DEV_TOKEN_CACHE.pop(candidate_dev_token, None)
             pass
 
-    candidate_admin_token = admin_token or token
+    # 管理员凭证只允许头信息传递
+    candidate_admin_token = admin_token
     expected_admin = settings.admin_token
     if candidate_admin_token and expected_admin:
-        _WEAK_ADMIN_TOKENS = {"admin", "password", "123456", "root", "test", "admin123", "12345678", "qwerty"}
         if expected_admin.strip().lower() not in _WEAK_ADMIN_TOKENS:
             if secrets.compare_digest(candidate_admin_token, expected_admin):
                 return

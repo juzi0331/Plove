@@ -9,6 +9,7 @@ from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 #: 后端根目录 ``backend/`` —— 本文件在 ``backend/app/core/config.py``
@@ -144,6 +145,16 @@ class Settings(BaseSettings):
     @property
     def is_dev(self) -> bool:
         return self.env.lower() in ("dev", "local", "test")
+
+    @model_validator(mode="after")
+    def validate_security(self) -> Settings:
+        # SEC-06: 生产环境杜绝默认或过短 HMAC 密钥
+        if not self.is_dev:
+            if self.secret_key == "plove-activation-hmac-secret-default" or len(self.secret_key) < 16:
+                raise ValueError(
+                    "安全严重警报：生产环境必须在 .env 中设置安全且长度不少于 16 位的 PLOVE_SECRET_KEY，禁止使用硬编码默认密钥！"
+                )
+        return self
 
     @property
     def sites_dir(self) -> Path:

@@ -57,7 +57,9 @@ docker/
 *zip*.py
 *package*.py
 build_*.py
+!backend/app/**/build_*.py
 make_clean_zip.py
+scratch/
 
 # 外部预编译内核及二进制执行文件 (不进 git，代码支持自动在线下载安装)
 backend/bin/

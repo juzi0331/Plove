@@ -142,13 +142,13 @@ def redeem(
                 stmt = stmt.with_for_update()
             record = session.scalar(stmt)
 
-            # 2. 兼容回退：老码可能尚未写入 hash，按明文查找并在首次命中时补齐 hash
+            # 2. 兼容回退与平滑密钥轮转：按明文查找并在命中时平滑同步/升级 hash
             if record is None:
                 fallback_stmt = select(ActivationCode).where(ActivationCode.code == clean_code)
                 if session.bind and session.bind.dialect.name != "sqlite":
                     fallback_stmt = fallback_stmt.with_for_update()
                 record = session.scalar(fallback_stmt)
-                if record is not None and record.code_hash is None:
+                if record is not None and record.code_hash != target_hash:
                     record.code_hash = target_hash
                     session.flush()
 

@@ -11,6 +11,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { ClientBootstrapPayload, PageViewModel, ReleaseCurrentPayload } from '@/api/types'
+import { getDeviceToken } from '@/api/session'
 import { applyThemeTokens } from '@/theme/adapter'
 
 export const useExperienceStore = defineStore('experience', () => {
@@ -53,7 +54,12 @@ export const useExperienceStore = defineStore('experience', () => {
    */
   async function loadPage(pageId = 'home', _force = false): Promise<PageViewModel | null> {
     try {
-      const resp = await fetch(`/api/v2/client/pages/${encodeURIComponent(pageId)}`)
+      const headers: Record<string, string> = {}
+      const token = getDeviceToken()
+      if (token) {
+        headers['X-Device-Token'] = token
+      }
+      const resp = await fetch(`/api/v2/client/pages/${encodeURIComponent(pageId)}`, { headers })
       if (!resp.ok) return null
       const json = await resp.json()
       if (json.ok && json.data) {

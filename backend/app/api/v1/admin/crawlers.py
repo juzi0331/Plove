@@ -6,12 +6,14 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.api.deps import (
+    get_content_cache,
     get_db,
     get_registry,
     get_site_settings,
 )
 from app.api.v1.admin._audit import audit
 from app.api.v1.admin._helpers import require_known_site
+from app.cache.content import ContentCache
 from app.core.middleware import get_request_id
 from app.crawler.registry import SiteRegistry
 from app.schemas.admin_site_control import (
@@ -51,6 +53,7 @@ def upload_crawler(
     registry: SiteRegistry = Depends(get_registry),
     store: SiteSettingsStore = Depends(get_site_settings),
     db: Session = Depends(get_db),
+    cache: ContentCache = Depends(get_content_cache),
 ) -> Envelope[CrawlerUploadResult]:
     """校验并安全落盘采集器脚本，热加载使之对系统可用。"""
     meta = crawler_manage_service.save_crawler(
@@ -65,6 +68,8 @@ def upload_crawler(
     # 清空 meta 缓存并刷新快照
     registry.forget_meta(payload.key)
     store.refresh(db, force=True)
+    # 清空该站点内容缓存（首页/分类/详情/磁盘WAL），确保立刻生效
+    cache.invalidate_site(payload.key)
 
     # 若脚本中包含图片解密逻辑，自动提取 Key/IV 并同步注册到后台图片代理规则库
     try:
@@ -101,11 +106,13 @@ def delete_crawler(
     registry: SiteRegistry = Depends(get_registry),
     store: SiteSettingsStore = Depends(get_site_settings),
     db: Session = Depends(get_db),
+    cache: ContentCache = Depends(get_content_cache),
 ) -> Envelope[dict]:
     """下线并删除采集器脚本文件。"""
     require_known_site(registry, key)
     crawler_manage_service.delete_crawler(registry.runner.sites_dir, key)
     registry.forget_meta(key)
     store.refresh(db, force=True)
+    cache.invalidate_site(key)
     audit("delete_crawler", request_id, key=key)
     return ok({"message": f"已成功删除采集器 {key}"}, request_id)

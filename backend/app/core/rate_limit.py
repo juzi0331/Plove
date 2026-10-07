@@ -1,5 +1,6 @@
 """轻量级内存滑动窗口限流器（无外部依赖，线程安全）。"""
 
+import ipaddress
 import threading
 import time
 from collections import defaultdict, deque
@@ -43,6 +44,33 @@ class InMemoryRateLimiter:
 
             queue.append(now)
 
+    def check_only(self, key: str) -> None:
+        """只检查当前是否已被封锁，不增加计数（保护正常管理操作与防连续爆破）。"""
+        now = time.time()
+        with self._lock:
+            queue = self._records.get(key)
+            if not queue:
+                return
+            cutoff = now - self.window
+            while queue and queue[0] <= cutoff:
+                queue.popleft()
+            if len(queue) >= self.limit:
+                retry_after = max(1, int(self.window - (now - queue[0])) + 1)
+                raise AppError(
+                    ErrorCode.RATE_LIMITED,
+                    f"连续失败过多，已被安全锁定，请在 {retry_after} 秒后再试",
+                )
+
+    def record_failure(self, key: str) -> None:
+        """记录一次失败，并推进滑动窗口。"""
+        now = time.time()
+        with self._lock:
+            queue = self._records[key]
+            cutoff = now - self.window
+            while queue and queue[0] <= cutoff:
+                queue.popleft()
+            queue.append(now)
+
     def _cleanup(self, now: float) -> None:
         cutoff = now - self.window
         stale_keys = [k for k, q in self._records.items() if not q or q[-1] <= cutoff]
@@ -54,19 +82,31 @@ class InMemoryRateLimiter:
             self._records.clear()
 
 
+def _is_trusted_proxy_ip(host: str) -> bool:
+    if host in ("127.0.0.1", "::1", "localhost", "testclient"):
+        return True
+    try:
+        ip = ipaddress.ip_address(host)
+        return ip.is_loopback or ip.is_private
+    except ValueError:
+        return False
+
+
 def get_client_ip(request: Request) -> str:
-    """获取请求来源 IP。在直连未授权场景下，以 client.host 为准，防止伪造 X-Forwarded-For 绕过限流。"""
+    """获取请求来源真实 IP。
+    当直连来源是受信任的本地回环或内网代理（如 Nginx、Docker 网桥、Traefik）时，
+    优先取 x-real-ip 或 x-forwarded-for 首个真实客户端 IP，避免容器部署全站误连带限流或伪造穿透。
+    """
     direct_host = request.client.host if request.client else "127.0.0.1"
-    # 仅当直连来源是本地受信任反向代理时，才从反代标头提取
-    if direct_host in ("127.0.0.1", "::1", "localhost", "testclient"):
+    if _is_trusted_proxy_ip(direct_host):
+        real_ip = request.headers.get("x-real-ip")
+        if real_ip and real_ip.strip():
+            return real_ip.strip()
         forwarded = request.headers.get("x-forwarded-for")
         if forwarded:
             ips = [ip.strip() for ip in forwarded.split(",") if ip.strip()]
             if ips:
-                return ips[-1]
-        real_ip = request.headers.get("x-real-ip")
-        if real_ip:
-            return real_ip.strip()
+                return ips[0]
     return direct_host
 
 

@@ -263,8 +263,34 @@ def test_decrypt_image(
             "Referer": f"{parsed.scheme}://{parsed.netloc}/",
             "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
         }
-        with httpx.Client(timeout=10.0, follow_redirects=True) as client:
-            resp = client.get(url, headers=headers)
+        with httpx.Client(timeout=10.0, follow_redirects=False) as client:
+            current_url = url
+            resp = None
+            for _ in range(5):
+                if not is_safe_public_url(current_url):
+                    return TestDecryptResult(
+                        success=False,
+                        message=f"图片链接重定向到受限或不安全的目标地址: {current_url}",
+                    )
+                resp = client.get(current_url, headers=headers)
+                if resp.is_redirect:
+                    loc = resp.headers.get("Location")
+                    if not loc:
+                        break
+                    next_url = str(resp.url.join(loc))
+                    if not is_safe_public_url(next_url):
+                        return TestDecryptResult(
+                            success=False,
+                            message=f"图片链接重定向到受限或不安全的目标地址: {next_url}",
+                        )
+                    current_url = next_url
+                    continue
+                break
+            if resp is None:
+                return TestDecryptResult(
+                    success=False,
+                    message="请求未产生有效响应",
+                )
             if resp.status_code != 200:
                 return TestDecryptResult(
                     success=False,
